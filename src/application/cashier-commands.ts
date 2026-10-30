@@ -3,7 +3,6 @@ import {
   metaSchema,
   normalPrice,
   operationSchema,
-  products,
 } from '../domain/model';
 import type {
   Command,
@@ -14,6 +13,8 @@ import type {
   Snapshot,
 } from '../domain/model';
 import { quote } from '../domain/pricing';
+import { getMenu } from '../domain/catalog';
+import { handoffUndoError } from '../domain/handoff';
 import { applyOrderAction } from '../domain/order';
 import type { LedgerRepository } from './ports';
 import { canonical } from './serialization';
@@ -162,7 +163,7 @@ export class CashierCommands {
           ticket: ticket.number,
           quantities: command.quantities,
           names: Object.fromEntries(
-            products.map((p) => [p.id, p.name]),
+            getMenu(price).map((p) => [p.id, p.name]),
           ) as Order['names'],
           price,
           quote: estimate,
@@ -202,7 +203,29 @@ export class CashierCommands {
         const owns =
           ticket?.orderId === order.id &&
           ticket.assignmentId === order.assignmentId;
-        if (command.type !== 'cancel' && !owns)
+        if (command.type === 'undoHandoff') {
+          const error = handoffUndoError(
+            current,
+            command.completionId,
+            {
+              orders: await tx.orders.toArray(),
+              operations: await tx.operations.toArray(),
+              logs: await tx.logs.toArray(),
+            },
+            ticket,
+          );
+          if (error) throw new Error(error);
+          await tx.tickets.put({
+            number: order.ticket,
+            orderId: order.id,
+            assignmentId: order.assignmentId,
+          });
+        }
+        if (
+          command.type !== 'cancel' &&
+          command.type !== 'undoHandoff' &&
+          !owns
+        )
           throw new Error(
             '札の現在の所有者が異なります。古い操作は実行できません。',
           );

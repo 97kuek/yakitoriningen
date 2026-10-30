@@ -4,7 +4,7 @@ import { newId } from '../lib/id';
 import type { Context, Snapshot } from '../domain/model';
 import { Database } from './database';
 import { CashierStore } from './commands';
-import { encodeBackup, parseBackup, restoreBackup } from './backup';
+import { encodeBackup, ordersCsv, parseBackup, restoreBackup } from './backup';
 let db: Database, store: CashierStore, ctx: Context, original: Snapshot;
 beforeEach(async () => {
   db = new Database(`backup-${newId()}`);
@@ -28,6 +28,52 @@ afterEach(async () => {
 });
 it('全ストアとメタデータを往復できる', () => {
   expect(parseBackup(encodeBackup(original))).toEqual(original);
+});
+it('新旧メニューが混在するバックアップとCSVに削除済み商品も残す', async () => {
+  const price = {
+    ...original.prices[0],
+    id: newId(),
+    items: [{ id: 'tsukune', name: 'つくね', price: 200, discountPrice: 50 }],
+    bundleItems: ['tsukune'],
+  };
+  const priceOperation = newId();
+  await store.prepare(priceOperation, ctx, { type: 'price', price });
+  await store.execute(priceOperation, ctx);
+  const reserveOperation = newId();
+  await store.prepare(reserveOperation, ctx, {
+    type: 'reserve',
+    orderId: newId(),
+    assignmentId: newId(),
+    confirmOperationId: newId(),
+    quantities: { tsukune: 2 },
+    price,
+  });
+  await store.execute(reserveOperation, ctx);
+  const snapshot = (await store.read())!;
+  expect(parseBackup(encodeBackup(snapshot))).toEqual(snapshot);
+  const rows = ordersCsv(snapshot)
+    .replace('\uFEFF', '')
+    .split('\r\n')
+    .map((row) => row.split(',').map((cell) => cell.slice(1, -1)));
+  const header = rows[0];
+  expect(header).toEqual(
+    expect.arrayContaining(['もも', 'かわ', 'ねぎま', 'つくね']),
+  );
+  const oldRow = rows.find((row) => row[0] === original.orders[0].id)!;
+  const newRow = rows.find(
+    (row) =>
+      row[0] ===
+      snapshot.orders.find((order) => order.id !== original.orders[0].id)!.id,
+  )!;
+  expect(oldRow[header.indexOf('もも')]).toBe('5');
+  expect(oldRow[header.indexOf('つくね')]).toBe('0');
+  expect(newRow[header.indexOf('もも')]).toBe('0');
+  expect(newRow[header.indexOf('つくね')]).toBe('2');
+});
+it('旧価格のoptional設定を追加せずに復元する', () => {
+  const result = parseBackup(encodeBackup(original));
+  expect(Object.hasOwn(result.prices[0], 'items')).toBe(false);
+  expect(Object.hasOwn(result.orders[0].price, 'discounted')).toBe(false);
 });
 it('空のDBへの復元に成功し世代を変更する', async () => {
   const other = new Database(`other-${newId()}`);
@@ -134,6 +180,11 @@ it('作成操作と異なる数量の注文を復元しない', () => {
   file.data.orders[0].quantities = { momo: 0, kawa: 5, negima: 0 };
   expect(() => parseBackup(JSON.stringify(file))).toThrow();
 });
+it('価格版と異なる商品名の注文を復元しない', () => {
+  const file = JSON.parse(encodeBackup(original));
+  file.data.orders[0].names.momo = '別の商品';
+  expect(() => parseBackup(JSON.stringify(file))).toThrow();
+});
 it('同時に受け渡し・札回収した記録をバックアップできる', async () => {
   const order = original.orders[0],
     target = { orderId: order.id, assignmentId: order.assignmentId };
@@ -169,4 +220,33 @@ it('変更記録と一致しない経費を拒否する', () => {
   const file = JSON.parse(encodeBackup(original));
   file.data.meta.expenseTotal = 1000;
   expect(() => parseBackup(JSON.stringify(file))).toThrow();
+});
+it('完了と取り消しを繰り返した記録をバックアップ・復元できる', async () => {
+  const order = original.orders[0];
+  const target = { orderId: order.id, assignmentId: order.assignmentId };
+  await store.prepare(order.confirmOperationId, ctx, {
+    type: 'pay',
+    ...target,
+    received: 1000,
+  });
+  await store.execute(order.confirmOperationId, ctx);
+  for (let n = 0; n < 2; n++) {
+    const completionId = newId();
+    await store.prepare(completionId, ctx, { type: 'complete', ...target });
+    await store.execute(completionId, ctx);
+    const undoId = newId();
+    await store.prepare(undoId, ctx, {
+      type: 'undoHandoff',
+      ...target,
+      completionId,
+    } as import('../domain/model').Command);
+    await store.execute(undoId, ctx);
+  }
+  const snapshot = (await store.read())!;
+  const incoming = parseBackup(encodeBackup(snapshot));
+  await restoreBackup(db, incoming, snapshot, true);
+  expect((await store.read())!.orders[0]).toMatchObject({
+    delivered: false,
+    returned: false,
+  });
 });

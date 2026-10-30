@@ -31,6 +31,57 @@ beforeEach(async () => {
 afterEach(async () => {
   await db.delete();
 });
+it('メニュー更新後も過去の注文・価格を保ち、新しい商品名・単価を固定する', async () => {
+  await reserve();
+  const oldOrder = (await store.read())!.orders[0];
+  const updated: Price = {
+    ...price,
+    id: newId(),
+    items: [{ id: 'tsukune', name: 'つくね', price: 200, discountPrice: 80 }],
+    discounted: true,
+    bundleItems: ['tsukune'],
+  };
+  await run({ type: 'price', price: updated });
+  const orderId = newId();
+  await run({
+    type: 'reserve',
+    orderId,
+    assignmentId: newId(),
+    confirmOperationId: newId(),
+    quantities: { tsukune: 5 },
+    price: updated,
+  });
+  const result = (await store.read())!;
+  expect(result.meta.activePriceId).toBe(updated.id);
+  expect(result.prices).toHaveLength(2);
+  expect(result.orders.find((order) => order.id === oldOrder.id)).toEqual(
+    oldOrder,
+  );
+  expect(result.orders.find((order) => order.id === orderId)).toMatchObject({
+    names: { tsukune: 'つくね' },
+    price: updated,
+    quote: { total: 400, count: 5, bundles: 0 },
+  });
+  expect(result.orders.find((order) => order.id === orderId)!.names).toEqual({
+    tsukune: 'つくね',
+  });
+  expect(result.logs).toHaveLength(3);
+});
+it('メニュー保存中のログ失敗で価格と適用版を一括して戻す', async () => {
+  const updated: Price = {
+    ...price,
+    id: newId(),
+    items: [{ id: 'tea', name: 'お茶', price: 100, discountPrice: 50 }],
+  };
+  const op = newId();
+  await store.prepare(op, ctx, { type: 'price', price: updated });
+  const before = await store.read();
+  db.logs.hook('creating', () => {
+    throw new Error('保存容量不足');
+  });
+  await expect(store.execute(op, ctx)).rejects.toThrow('保存容量不足');
+  expect(await store.read()).toEqual(before);
+});
 describe('保存コマンド', () => {
   it('初期化は明示操作のみで既存データを置き換えない', async () => {
     const blank = new Database(`blank-${newId()}`);
@@ -306,4 +357,95 @@ it('経費欄がない従来のDBを読み、ほかの設定変更後も未登�
   expect((await store.read())!.meta.expenseTotal).toBeNull();
   await run({ type: 'day', day: '2026-11-08' });
   expect((await store.read())!.meta.expenseTotal).toBeNull();
+});
+it('完了を取り消すと同じ札で待ちに戻り、会計額は変えず再試行できる', async () => {
+  const command = await reserve();
+  const target = {
+    orderId: command.orderId,
+    assignmentId: command.assignmentId,
+  };
+  await run(
+    { type: 'pay', ...target, received: 1000 },
+    command.confirmOperationId,
+  );
+  const completionId = newId();
+  await run({ type: 'complete', ...target }, completionId);
+  const undoId = newId();
+  await run(
+    { type: 'undoHandoff', ...target, completionId } as Command,
+    undoId,
+  );
+  await store.execute(undoId, ctx);
+  const state = (await store.read())!;
+  expect(state.orders[0]).toMatchObject({
+    status: 'paid',
+    delivered: false,
+    returned: false,
+    received: 1000,
+  });
+  expect(state.tickets[0]).toMatchObject(target);
+  expect(state.logs).toHaveLength(4);
+});
+it('札が再利用されて空きに戻っても古い完了は取り消せない', async () => {
+  const first = await reserve();
+  const target = { orderId: first.orderId, assignmentId: first.assignmentId };
+  await run(
+    { type: 'pay', ...target, received: 1000 },
+    first.confirmOperationId,
+  );
+  const completionId = newId();
+  await run({ type: 'complete', ...target }, completionId);
+  const next = await reserve();
+  await run({
+    type: 'cancel',
+    orderId: next.orderId,
+    assignmentId: next.assignmentId,
+    reason: '未入金',
+  });
+  await expect(
+    run({ type: 'undoHandoff', ...target, completionId } as Command),
+  ).rejects.toThrow(/再利用/);
+  expect(
+    (await store.read())!.orders.find((order) => order.id === first.orderId)!
+      .delivered,
+  ).toBe(true);
+  expect((await store.read())!.tickets[0].orderId).toBeNull();
+});
+it('再完了後に古い完了記録を指定して取り消せない', async () => {
+  const first = await reserve();
+  const target = { orderId: first.orderId, assignmentId: first.assignmentId };
+  await run(
+    { type: 'pay', ...target, received: 1000 },
+    first.confirmOperationId,
+  );
+  const completionId = newId();
+  await run({ type: 'complete', ...target }, completionId);
+  await run({ type: 'undoHandoff', ...target, completionId } as Command);
+  await run({ type: 'complete', ...target });
+  await expect(
+    run({ type: 'undoHandoff', ...target, completionId } as Command),
+  ).rejects.toThrow(/直近/);
+});
+it('完了取消の札書込が失敗したら待ち状態も売上も変えない', async () => {
+  const first = await reserve();
+  const target = { orderId: first.orderId, assignmentId: first.assignmentId };
+  await run(
+    { type: 'pay', ...target, received: 1000 },
+    first.confirmOperationId,
+  );
+  const completionId = newId();
+  await run({ type: 'complete', ...target }, completionId);
+  db.tickets.hook('updating', () => {
+    throw new Error('容量不足');
+  });
+  await expect(
+    run({ type: 'undoHandoff', ...target, completionId } as Command),
+  ).rejects.toThrow();
+  const state = (await store.read())!;
+  expect(state.orders[0]).toMatchObject({
+    delivered: true,
+    returned: true,
+    refunded: 0,
+  });
+  expect(state.logs).toHaveLength(3);
 });

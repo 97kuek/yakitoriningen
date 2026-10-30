@@ -86,3 +86,22 @@ it('売上がないときは0円、グラフの記録なしを返す', () => {
   expect(salesByDay([])).toEqual([]);
   expect(salesByHour([])).toEqual([]);
 });
+it('追加商品・削除済み商品も過去注文から集計する', () => {
+  const result = summarizeSales([
+    order({
+      quantities: { tsukune: 2 },
+      quote: { total: 400, count: 2, bundles: 0, singles: 2 },
+    }),
+    order({
+      quantities: { momo: 1, tsukune: 3 },
+      quote: { total: 750, count: 4, bundles: 0, singles: 4 },
+    }),
+  ]);
+  expect(result.quantities).toMatchObject({
+    momo: 1,
+    kawa: 0,
+    negima: 0,
+    tsukune: 5,
+  });
+  expect(result.count).toBe(6);
+});

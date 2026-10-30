@@ -9,6 +9,8 @@ import {
 } from '../domain/model';
 import type { Snapshot } from '../domain/model';
 import { quote } from '../domain/pricing';
+import { getMenu } from '../domain/catalog';
+import { validateOrderHistory } from './order-history';
 import { canonical } from './serialization';
 
 const dataSchema = z
@@ -81,6 +83,15 @@ function validate(data: Snapshot): void {
     requireValid(
       canonical(order.price) === canonical(prices.get(order.price.id)),
       '注文の価格版',
+    );
+    requireValid(
+      canonical(order.names) ===
+        canonical(
+          Object.fromEntries(
+            getMenu(order.price).map((item) => [item.id, item.name]),
+          ),
+        ),
+      '注文の商品名',
     );
     requireValid(
       canonical(quote(order.quantities, order.price)) ===
@@ -163,20 +174,11 @@ function validate(data: Snapshot): void {
         payments[0]?.id === order.confirmOperationId,
         '会計確定の操作ID',
       );
-    requireValid(
-      related.some(
-        (op) => op.command.type === 'deliver' || op.command.type === 'complete',
-      ) === order.delivered,
-      '受け渡しの記録',
-    );
-    if (order.received !== null)
-      requireValid(
-        related.some(
-          (op) =>
-            op.command.type === 'return' || op.command.type === 'complete',
-        ) === order.returned,
-        '札回収の記録',
-      );
+    try {
+      validateOrderHistory(order, related, data);
+    } catch {
+      requireValid(false, '注文と受け渡し・取消の記録');
+    }
     const cancellations = related.filter((op) => op.command.type === 'cancel');
     requireValid(
       cancellations.length === (order.status === 'cancelled' ? 1 : 0),
@@ -238,15 +240,6 @@ function validate(data: Snapshot): void {
               order.status !== 'pending',
             '入金操作',
           );
-        if (op.command.type === 'complete')
-          requireValid(
-            order?.delivered && order?.returned,
-            '受け渡しと札回収の記録',
-          );
-        if (op.command.type === 'deliver')
-          requireValid(order?.delivered, '受け渡し操作');
-        if (op.command.type === 'return')
-          requireValid(order?.returned, '札回収操作');
         if (op.command.type === 'cancel')
           requireValid(order?.status === 'cancelled', '取消操作');
       }
@@ -302,6 +295,13 @@ export function parseBackup(text: string): Snapshot {
   return file.data;
 }
 export function ordersCsv(snapshot: Snapshot): string {
+  const columns = new Map<string, string>();
+  for (const price of snapshot.prices)
+    for (const item of getMenu(price)) columns.set(item.id, item.name);
+  for (const order of snapshot.orders)
+    for (const [id, name] of Object.entries(order.names))
+      if (!columns.has(id)) columns.set(id, name);
+  const productIds = [...columns.keys()];
   const escape = (value: string | number | null) =>
     `"${String(value ?? '').replaceAll('"', '""')}"`;
   return (
@@ -313,9 +313,7 @@ export function ordersCsv(snapshot: Snapshot): string {
         '営業日',
         '札番号',
         '状態',
-        'もも',
-        'かわ',
-        'ねぎま',
+        ...columns.values(),
         '会計額',
         '受領額',
         '釣銭',
@@ -331,9 +329,7 @@ export function ordersCsv(snapshot: Snapshot): string {
         o.day,
         o.ticket,
         o.status,
-        o.quantities.momo,
-        o.quantities.kawa,
-        o.quantities.negima,
+        ...productIds.map((id) => o.quantities[id] ?? 0),
         o.quote.total,
         o.received,
         o.change,

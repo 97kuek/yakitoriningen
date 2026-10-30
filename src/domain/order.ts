@@ -2,7 +2,7 @@ import type { Command, Order } from './model';
 
 type OrderAction = Extract<
   Command,
-  { type: 'pay' | 'cancel' | 'deliver' | 'return' | 'complete' }
+  { type: 'pay' | 'cancel' | 'deliver' | 'return' | 'complete' | 'undoHandoff' }
 >;
 
 /** Order state transitions contain no browser, clock, or persistence access. */
@@ -56,6 +56,10 @@ export function applyOrderAction(
         delivered: true,
         returned: action.type === 'complete' || order.returned,
       };
+    case 'undoHandoff':
+      if (order.status !== 'paid' || !order.delivered || !order.returned)
+        throw new Error('取り消せる受け渡し完了ではありません。');
+      return { ...order, delivered: false, returned: false };
     case 'return':
       if (order.status === 'pending' || order.returned)
         throw new Error('この札は回収操作できません。');

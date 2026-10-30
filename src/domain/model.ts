@@ -5,13 +5,33 @@ export const products = [
   { id: 'kawa', name: 'かわ' },
   { id: 'negima', name: 'ねぎま' },
 ] as const;
-export const quantitySchema = z
-  .object({
-    momo: z.number().int().min(0).max(999),
-    kawa: z.number().int().min(0).max(999),
-    negima: z.number().int().min(0).max(999),
-  })
-  .strict();
+const forbiddenProductIds = [
+  ...Object.getOwnPropertyNames(Object.prototype),
+  'prototype',
+];
+const productIdSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .refine(
+    (value) => !forbiddenProductIds.includes(value),
+    'この商品IDは使用できません',
+  );
+function rejectUnsafeKeys(value: unknown, ctx: z.RefinementCtx) {
+  if (
+    value &&
+    typeof value === 'object' &&
+    Object.keys(value).some((key) => forbiddenProductIds.includes(key))
+  )
+    ctx.addIssue({ code: 'custom', message: 'この商品IDは使用できません' });
+  return value;
+}
+export const quantitySchema = z.preprocess(
+  rejectUnsafeKeys,
+  z
+    .record(productIdSchema, z.number().int().min(0).max(999))
+    .refine((value) => Object.keys(value).length <= 30, '商品は30種類までです'),
+);
 export type Quantities = z.infer<typeof quantitySchema>;
 export const emptyQuantities = (): Quantities => ({
   momo: 0,
@@ -20,6 +40,15 @@ export const emptyQuantities = (): Quantities => ({
 });
 export const moneySchema = z.number().int().min(0).max(100_000_000);
 const id = z.string().min(1).max(100);
+export const menuItemSchema = z
+  .object({
+    id: productIdSchema,
+    name: z.string().trim().min(1).max(40),
+    price: moneySchema,
+    discountPrice: moneySchema,
+  })
+  .strict();
+export type MenuItem = z.infer<typeof menuItemSchema>;
 export const priceSchema = z
   .object({
     id,
@@ -29,8 +58,31 @@ export const priceSchema = z
     bundlePrice: moneySchema,
     bundleEnabled: z.boolean(),
     mix: z.boolean(),
+    items: z.array(menuItemSchema).min(1).max(30).optional(),
+    bundleItems: z.array(productIdSchema).max(30).optional(),
+    discounted: z.boolean().optional(),
+    bundleDuringDiscount: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((price, ctx) => {
+    const ids = (price.items ?? products).map((p) => p.id);
+    if (new Set(ids).size !== ids.length)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['items'],
+        message: '商品IDが重複しています',
+      });
+    if (
+      price.bundleItems &&
+      (new Set(price.bundleItems).size !== price.bundleItems.length ||
+        price.bundleItems.some((id) => !ids.includes(id)))
+    )
+      ctx.addIssue({
+        code: 'custom',
+        path: ['bundleItems'],
+        message: 'セット対象の商品が正しくありません',
+      });
+  });
 export type Price = z.infer<typeof priceSchema>;
 export const normalPrice = (priceId: string): Price => ({
   id: priceId,
@@ -81,9 +133,15 @@ export const orderSchema = z
     day: dateSchema,
     ticket: z.number().int().min(1).max(100),
     quantities: quantitySchema,
-    names: z
-      .object({ momo: z.string(), kawa: z.string(), negima: z.string() })
-      .strict(),
+    names: z.preprocess(
+      rejectUnsafeKeys,
+      z
+        .record(productIdSchema, z.string().min(1).max(40))
+        .refine(
+          (value) => Object.keys(value).length <= 30,
+          '商品は30種類までです',
+        ),
+    ),
     price: priceSchema,
     quote: quoteSchema,
     status: z.enum(['pending', 'paid', 'cancelled']),
@@ -123,6 +181,9 @@ export const commandSchema = z.discriminatedUnion('type', [
     .strict(),
   z.object({ type: z.literal('deliver'), ...target }).strict(),
   z.object({ type: z.literal('complete'), ...target }).strict(),
+  z
+    .object({ type: z.literal('undoHandoff'), ...target, completionId: id })
+    .strict(),
   z.object({ type: z.literal('return'), ...target }).strict(),
   z
     .object({
@@ -174,4 +235,4 @@ export type Snapshot = {
   logs: Log[];
 };
 export const count = (q: Quantities) =>
-  products.reduce((n, p) => n + q[p.id], 0);
+  Object.values(q).reduce((n, quantity) => n + quantity, 0);

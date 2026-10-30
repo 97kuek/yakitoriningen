@@ -16,6 +16,7 @@ export const commandNames = {
   pay: '会計確定',
   deliver: '受け渡し',
   complete: '受け渡し・札回収',
+  undoHandoff: '受け渡し完了の取り消し',
   return: '札の回収',
   cancel: '取消',
   price: '価格変更',

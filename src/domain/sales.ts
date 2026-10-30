@@ -1,4 +1,4 @@
-import { emptyQuantities, products } from './model';
+import { emptyQuantities } from './model';
 import type { Order } from './model';
 
 export function summarizeSales(orders: readonly Order[]) {
@@ -8,7 +8,8 @@ export function summarizeSales(orders: readonly Order[]) {
   const refunds = settled.reduce((n, o) => n + o.refunded, 0);
   const quantities = emptyQuantities();
   for (const order of sold)
-    for (const p of products) quantities[p.id] += order.quantities[p.id];
+    for (const [id, quantity] of Object.entries(order.quantities))
+      quantities[id] = (quantities[id] ?? 0) + quantity;
   return {
     sales: gross - refunds,
     gross,
