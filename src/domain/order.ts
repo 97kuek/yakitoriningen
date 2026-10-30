@@ -6,7 +6,7 @@ type OrderAction = Extract<
 >;
 
 /** Order state transitions contain no browser, clock, or persistence access. */
-export function changeOrder(
+export function applyOrderAction(
   current: Order,
   action: OrderAction,
   operationId: string,

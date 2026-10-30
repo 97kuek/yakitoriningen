@@ -11,7 +11,7 @@ import { Icon } from './Icon';
 import type { Cashier } from '../application/ports';
 export function History({
   snapshot,
-  act,
+  perform,
   context,
   errorMessage,
   store,
@@ -209,7 +209,7 @@ export function History({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              void act(async () => {
+              void perform(async () => {
                 if (!staged)
                   throw new Error('返金前に準備を保存してください。');
                 await store.execute(staged.id, context);
@@ -240,8 +240,8 @@ export function History({
                 className="primary wide"
                 disabled={!reason.trim()}
                 onClick={() =>
-                  act(() =>
-                    store.stage(newId(), context, {
+                  perform(() =>
+                    store.prepare(newId(), context, {
                       type: 'cancel',
                       orderId: cancel.id,
                       assignmentId: cancel.assignmentId,

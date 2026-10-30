@@ -14,7 +14,7 @@ import type {
   Snapshot,
 } from '../domain/model';
 import { quote } from '../domain/pricing';
-import { changeOrder } from '../domain/order';
+import { applyOrderAction } from '../domain/order';
 import type { LedgerRepository } from './ports';
 import { canonical } from './serialization';
 
@@ -91,7 +91,7 @@ export class CashierCommands {
     });
     return { databaseId: meta.databaseId, generation: meta.generation };
   }
-  async stage(
+  async prepare(
     id: string,
     context: Context,
     input: Command,
@@ -190,7 +190,7 @@ export class CashierCommands {
           command.type === 'cancel' && current.status === 'pending'
             ? await tx.operations.get(current.confirmOperationId)
             : undefined;
-        const order = changeOrder(
+        const order = applyOrderAction(
           current,
           command,
           id,
@@ -255,7 +255,7 @@ export class CashierCommands {
       return result;
     });
   }
-  async dismiss(id: string, context: Context): Promise<void> {
+  async discard(id: string, context: Context): Promise<void> {
     await this.repository.write(async (tx) => {
       const meta = await tx.meta.get('main');
       assertContext(meta, context);

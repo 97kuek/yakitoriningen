@@ -1,12 +1,12 @@
 import type { Command, Context } from './domain/model';
-export type Act = (work: () => Promise<unknown>) => Promise<void>;
-export type CommandRunner = (
+export type ActionHandler = (work: () => Promise<unknown>) => Promise<void>;
+export type CommandSaver = (
   command: Command,
   operationId?: string,
 ) => Promise<string>;
 export type Shared = {
-  act: Act;
-  run: CommandRunner;
+  perform: ActionHandler;
+  saveCommand: CommandSaver;
   context: Context;
   busy: boolean;
   errorMessage: string;

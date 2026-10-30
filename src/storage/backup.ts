@@ -3,7 +3,7 @@ import { validateSnapshot } from '../application/backup';
 import { canonical } from '../application/serialization';
 import { newId } from '../lib/id';
 import type { Database } from './database';
-import { Store } from './commands';
+import { CashierStore } from './commands';
 export { encodeBackup, parseBackup, ordersCsv } from '../application/backup';
 
 export async function restoreBackup(
@@ -16,7 +16,7 @@ export async function restoreBackup(
   if (expected && !archived)
     throw new Error('既存データの退避ファイルを確認してから復元してください。');
   await db.transaction('rw', db.tables, async () => {
-    const current = await new Store(db).read();
+    const current = await new CashierStore(db).read();
     if (canonical(current) !== canonical(expected))
       throw new Error(
         '退避後に保存状態が変更されました。もう一度退避して確認してください。',

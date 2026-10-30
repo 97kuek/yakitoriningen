@@ -194,8 +194,8 @@ export function Checkout({
         className="primary checkout-button wide"
         disabled={!estimate?.count || unresolved || !hasTicket}
         onClick={() =>
-          shared.act(async () => {
-            await shared.run({
+          shared.perform(async () => {
+            await shared.saveCommand({
               type: 'reserve',
               orderId: newId(),
               assignmentId: newId(),
@@ -220,9 +220,9 @@ function Payment({
   order,
   operation,
   store,
-  act,
+  perform,
   context,
-  run,
+  saveCommand,
   resumed,
   onConfirmed,
   busy,
@@ -291,8 +291,8 @@ function Payment({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void act(() =>
-              store.stage(order.confirmOperationId, context, {
+            void perform(() =>
+              store.prepare(order.confirmOperationId, context, {
                 type: 'pay',
                 ...target,
                 received: Number(received),
@@ -354,8 +354,8 @@ function Payment({
                   '現金を受け取っていないことを確認して、この注文を取り消しますか？',
                 )
               )
-                void act(() =>
-                  run({
+                void perform(() =>
+                  saveCommand({
                     type: 'cancel',
                     ...target,
                     reason: '未入金の保留取消',
@@ -385,7 +385,7 @@ function Payment({
             ref={confirmButton}
             className="primary checkout-button wide"
             onClick={() =>
-              act(async () => {
+              perform(async () => {
                 await store.execute(order.confirmOperationId, context);
                 onConfirmed();
               })
@@ -402,8 +402,8 @@ function Payment({
                   '現金を照合し、会計未確定であることを確認しましたか？入金額を入力し直します。',
                 )
               )
-                void act(() =>
-                  store.dismiss(order.confirmOperationId, context),
+                void perform(() =>
+                  store.discard(order.confirmOperationId, context),
                 );
             }}
           >

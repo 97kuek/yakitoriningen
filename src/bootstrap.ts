@@ -1,16 +1,16 @@
 import { liveQuery } from 'dexie';
 import type { Cashier } from './application/ports';
-import { Store } from './storage/commands';
+import { CashierStore } from './storage/commands';
 import { restoreBackup } from './storage/backup';
 
-const store = new Store();
+const store = new CashierStore();
 /** Composition root: only this module wires browser persistence into the UI. */
 export const cashier: Cashier = {
   read: () => store.read(),
   initialize: (event, day, tickets) => store.initialize(event, day, tickets),
-  stage: (id, context, command) => store.stage(id, context, command),
+  prepare: (id, context, command) => store.prepare(id, context, command),
   execute: (id, context) => store.execute(id, context),
-  dismiss: (id, context) => store.dismiss(id, context),
+  discard: (id, context) => store.discard(id, context),
   restore: (snapshot, expected, archived) =>
     restoreBackup(store.db, snapshot, expected, archived),
   watch: (observer) => {

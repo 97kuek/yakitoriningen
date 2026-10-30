@@ -3,7 +3,7 @@ import { count } from '../domain/model';
 import { yen } from '../presentation/format';
 
 import type { Snapshot } from '../domain/model';
-import type { Act } from '../ui';
+import type { ActionHandler } from '../ui';
 import { canonical } from '../application/serialization';
 import type { Cashier } from '../application/ports';
 import { encodeBackup, ordersCsv, parseBackup } from '../application/backup';
@@ -30,14 +30,14 @@ async function fileText(file: File | undefined) {
 export function DataPanel({
   store,
   snapshot,
-  act,
+  perform,
   onRestored,
   onVerified,
   errorMessage,
 }: {
   store: Cashier;
   snapshot: Snapshot | null;
-  act: Act;
+  perform: ActionHandler;
   onRestored: () => void;
   onVerified: (s: Snapshot) => void;
   errorMessage: string;
@@ -66,7 +66,7 @@ export function DataPanel({
             <button
               className="secondary"
               onClick={() =>
-                act(async () => {
+                perform(async () => {
                   const current = await store.read();
                   if (!current) throw new Error('営業の記録がありません。');
                   const text = encodeBackup(current);
@@ -89,7 +89,7 @@ export function DataPanel({
             <button
               className="secondary"
               onClick={() =>
-                act(async () => {
+                perform(async () => {
                   const current = await store.read();
                   if (current)
                     download(
@@ -117,7 +117,7 @@ export function DataPanel({
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     e.target.value = '';
-                    void act(async () => {
+                    void perform(async () => {
                       const read = parseBackup(await fileText(file));
                       if (canonical(read) !== canonical(archive))
                         throw new Error(
@@ -199,7 +199,7 @@ export function DataPanel({
                 e.target.value = '';
                 setIncoming(null);
                 setRestoreConfirmed(false);
-                void act(async () =>
+                void perform(async () =>
                   setIncoming(parseBackup(await fileText(file))),
                 );
               }}
@@ -255,7 +255,7 @@ export function DataPanel({
                 className="danger"
                 disabled={!restoreConfirmed || (!!snapshot && !verified)}
                 onClick={() =>
-                  act(async () => {
+                  perform(async () => {
                     await store.restore(
                       incoming,
                       snapshot ? archive : null,

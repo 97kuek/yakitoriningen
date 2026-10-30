@@ -5,8 +5,8 @@ import type { Shared } from '../ui';
 import { Icon } from './Icon';
 export function Waiting({
   snapshot,
-  act,
-  run,
+  perform,
+  saveCommand,
 }: Shared & { snapshot: Snapshot }) {
   const waiting = snapshot.orders
     .filter((o) => o.status === 'paid' && !o.delivered)
@@ -16,8 +16,12 @@ export function Waiting({
   );
   const free = snapshot.tickets.filter((t) => t.orderId === null).length;
   function action(order: Order, type: 'complete' | 'return') {
-    void act(() =>
-      run({ type, orderId: order.id, assignmentId: order.assignmentId }),
+    void perform(() =>
+      saveCommand({
+        type,
+        orderId: order.id,
+        assignmentId: order.assignmentId,
+      }),
     );
   }
   return (

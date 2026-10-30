@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { today, yen } from '../presentation/format';
 
 import type { Snapshot } from '../domain/model';
-import type { Act } from '../ui';
+import type { ActionHandler } from '../ui';
 import type { Cashier } from '../application/ports';
 import { DataPanel } from './DataPanel';
 import { Icon } from './Icon';
 export function Startup({
   snapshot,
   store,
-  act,
+  perform,
   onStart,
   onRestored,
   onVerified,
@@ -17,7 +17,7 @@ export function Startup({
 }: {
   snapshot: Snapshot | null;
   store: Cashier;
-  act: Act;
+  perform: ActionHandler;
   onStart: () => void;
   onRestored: () => void;
   onVerified: (s: Snapshot) => void;
@@ -126,7 +126,7 @@ export function Startup({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void act(() => store.initialize(event, day, tickets));
+                void perform(() => store.initialize(event, day, tickets));
               }}
             >
               <label>
@@ -179,7 +179,7 @@ export function Startup({
           <DataPanel
             snapshot={snapshot}
             store={store}
-            act={act}
+            perform={perform}
             errorMessage={errorMessage}
             onRestored={onRestored}
             onVerified={onVerified}

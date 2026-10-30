@@ -3,11 +3,11 @@ import { newId } from '../lib/id';
 
 import type { Command, Context, Price } from '../domain/model';
 import { Database } from './database';
-import { Store } from './commands';
-let db: Database, store: Store, ctx: Context, price: Price;
+import { CashierStore } from './commands';
+let db: Database, store: CashierStore, ctx: Context, price: Price;
 const q = { momo: 3, kawa: 2, negima: 0 };
 async function run(command: Command, op = newId()) {
-  await store.stage(op, ctx, command);
+  await store.prepare(op, ctx, command);
   return store.execute(op, ctx);
 }
 async function reserve() {
@@ -24,7 +24,7 @@ async function reserve() {
 }
 beforeEach(async () => {
   db = new Database(`test-${newId()}`);
-  store = new Store(db);
+  store = new CashierStore(db);
   ctx = await store.initialize('早稲田祭', '2026-11-07', 2);
   price = (await store.read())!.prices[0];
 });
@@ -34,7 +34,7 @@ afterEach(async () => {
 describe('保存コマンド', () => {
   it('初期化は明示操作のみで既存データを置き換えない', async () => {
     const blank = new Database(`blank-${newId()}`);
-    expect(await new Store(blank).read()).toBeNull();
+    expect(await new CashierStore(blank).read()).toBeNull();
     await blank.delete();
     await expect(store.initialize('別', '2026-11-08', 20)).rejects.toThrow();
     expect((await store.read())!.meta.event).toBe('早稲田祭');
@@ -64,14 +64,14 @@ describe('保存コマンド', () => {
         assignmentId: c.assignmentId,
         received: 1000,
       };
-    await store.stage(c.confirmOperationId, ctx, pay);
+    await store.prepare(c.confirmOperationId, ctx, pay);
     expect(await store.execute(c.confirmOperationId, ctx)).toBe(c.orderId);
     expect(await store.execute(c.confirmOperationId, ctx)).toBe(c.orderId);
     await expect(
-      store.stage(c.confirmOperationId, ctx, { ...pay, received: 2000 }),
+      store.prepare(c.confirmOperationId, ctx, { ...pay, received: 2000 }),
     ).rejects.toThrow(/同じ操作ID/);
     await expect(
-      store.stage(op, ctx, pay).then(() => store.execute(op, ctx)),
+      store.prepare(op, ctx, pay).then(() => store.execute(op, ctx)),
     ).rejects.toThrow();
     const s = (await store.read())!;
     expect(s.orders[0]).toMatchObject({
@@ -191,7 +191,7 @@ describe('保存コマンド', () => {
     '%s書込の失敗時は全変更をロールバックする',
     async (table) => {
       const op = newId();
-      await store.stage(op, ctx, {
+      await store.prepare(op, ctx, {
         type: 'reserve',
         orderId: newId(),
         assignmentId: newId(),
@@ -216,22 +216,22 @@ describe('保存コマンド', () => {
   it('DB識別子・世代の異なる操作を拒否する', async () => {
     const c = { type: 'day' as const, day: '2026-11-08' };
     await expect(
-      store.stage(newId(), { ...ctx, generation: newId() }, c),
+      store.prepare(newId(), { ...ctx, generation: newId() }, c),
     ).rejects.toThrow(/世代/);
     await expect(
-      store.stage(newId(), { ...ctx, databaseId: newId() }, c),
+      store.prepare(newId(), { ...ctx, databaseId: newId() }, c),
     ).rejects.toThrow(/世代/);
   });
 });
 it('入金照合後に保留操作を破棄すると新しい確定IDで入力し直せる', async () => {
   const c = await reserve();
-  await store.stage(c.confirmOperationId, ctx, {
+  await store.prepare(c.confirmOperationId, ctx, {
     type: 'pay',
     orderId: c.orderId,
     assignmentId: c.assignmentId,
     received: 599,
   });
-  await store.dismiss(c.confirmOperationId, ctx);
+  await store.discard(c.confirmOperationId, ctx);
   const order = (await store.read())!.orders[0];
   expect(order.confirmOperationId).not.toBe(c.confirmOperationId);
   await run(
@@ -283,7 +283,7 @@ it('開催回全体の経費は未登録から保存でき、再試行で重複�
   await run({ type: 'day', day: '2026-11-08' });
   expect((await store.read())!.meta.expenseTotal).toBe(1000);
   await expect(
-    store.stage(op, ctx, { type: 'expense', amount: 2000 }),
+    store.prepare(op, ctx, { type: 'expense', amount: 2000 }),
   ).rejects.toThrow(/同じ操作ID/);
 });
 it('経費のログ保存が失敗したら合計を変更しない', async () => {

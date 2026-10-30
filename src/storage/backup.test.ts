@@ -3,16 +3,16 @@ import { newId } from '../lib/id';
 
 import type { Context, Snapshot } from '../domain/model';
 import { Database } from './database';
-import { Store } from './commands';
+import { CashierStore } from './commands';
 import { encodeBackup, parseBackup, restoreBackup } from './backup';
-let db: Database, store: Store, ctx: Context, original: Snapshot;
+let db: Database, store: CashierStore, ctx: Context, original: Snapshot;
 beforeEach(async () => {
   db = new Database(`backup-${newId()}`);
-  store = new Store(db);
+  store = new CashierStore(db);
   ctx = await store.initialize('祭', '2026-11-07', 3);
   const price = (await store.read())!.prices[0];
   const op = newId();
-  await store.stage(op, ctx, {
+  await store.prepare(op, ctx, {
     type: 'reserve',
     orderId: newId(),
     assignmentId: newId(),
@@ -32,7 +32,7 @@ it('全ストアとメタデータを往復できる', () => {
 it('空のDBへの復元に成功し世代を変更する', async () => {
   const other = new Database(`other-${newId()}`);
   await restoreBackup(other, original, null, false);
-  const s = (await new Store(other).read())!;
+  const s = (await new CashierStore(other).read())!;
   expect(s.meta.generation).not.toBe(original.meta.generation);
   expect(s.orders[0].quote.total).toBe(600);
   expect(s.orders[0].confirmOperationId).not.toBe(
@@ -75,14 +75,14 @@ it('退避未確認と、退避後に記録が増えた復元を拒否する', a
   await expect(restoreBackup(db, original, original, false)).rejects.toThrow(
     /退避/,
   );
-  await store.stage(newId(), ctx, { type: 'day', day: '2026-11-08' });
+  await store.prepare(newId(), ctx, { type: 'day', day: '2026-11-08' });
   await expect(restoreBackup(db, original, original, true)).rejects.toThrow(
     /変更/,
   );
 });
 it('復元後の古い画面と古い保留操作の再実行を拒否する', async () => {
   const op = newId();
-  await store.stage(op, ctx, { type: 'day', day: '2026-11-08' });
+  await store.prepare(op, ctx, { type: 'day', day: '2026-11-08' });
   const before = (await store.read())!;
   await restoreBackup(db, before, before, true);
   const current = (await store.read())!.meta;
@@ -103,7 +103,7 @@ it.each(['meta', 'prices', 'orders', 'tickets', 'operations', 'logs'] as const)(
 );
 it('バックアップ中の会計に対して整合した一時点を返す', async () => {
   const order = original.orders[0];
-  await store.stage(order.confirmOperationId, ctx, {
+  await store.prepare(order.confirmOperationId, ctx, {
     type: 'pay',
     orderId: order.id,
     assignmentId: order.assignmentId,
@@ -137,14 +137,14 @@ it('作成操作と異なる数量の注文を復元しない', () => {
 it('同時に受け渡し・札回収した記録をバックアップできる', async () => {
   const order = original.orders[0],
     target = { orderId: order.id, assignmentId: order.assignmentId };
-  await store.stage(order.confirmOperationId, ctx, {
+  await store.prepare(order.confirmOperationId, ctx, {
     type: 'pay',
     ...target,
     received: 1000,
   });
   await store.execute(order.confirmOperationId, ctx);
   const op = newId();
-  await store.stage(op, ctx, { type: 'complete', ...target });
+  await store.prepare(op, ctx, { type: 'complete', ...target });
   await store.execute(op, ctx);
   const current = (await store.read())!;
   expect(current.orders[0]).toMatchObject({ delivered: true, returned: true });
@@ -152,7 +152,7 @@ it('同時に受け渡し・札回収した記録をバックアップできる'
 });
 it('経費を保存したバックアップを戻せる', async () => {
   const op = newId();
-  await store.stage(op, ctx, { type: 'expense', amount: 2500 });
+  await store.prepare(op, ctx, { type: 'expense', amount: 2500 });
   await store.execute(op, ctx);
   const snapshot = (await store.read())!;
   const incoming = parseBackup(encodeBackup(snapshot));

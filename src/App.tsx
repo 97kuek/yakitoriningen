@@ -9,7 +9,7 @@ import { canonical } from './application/serialization';
 import { cashier } from './bootstrap';
 import { useExclusiveTab } from './useExclusiveTab';
 import { encodeBackup } from './application/backup';
-import type { Act, CommandRunner, Shared } from './ui';
+import type { ActionHandler, CommandSaver, Shared } from './ui';
 import { Recovery } from './components/Recovery';
 import { Checkout } from './components/Checkout';
 import type { Draft } from './components/Checkout';
@@ -124,7 +124,7 @@ export default function App() {
     }
     previousGeneration.current = snapshot.meta.generation;
   }, [snapshot?.meta.generation]);
-  const act: Act = async (work) => {
+  const perform: ActionHandler = async (work) => {
     if (lock.current || tabOwnership.state !== 'owned') return;
     lock.current = true;
     pendingBeforeAction.current = new Set(
@@ -154,13 +154,13 @@ export default function App() {
       setBusy(false);
     }
   };
-  const run: CommandRunner = async (command, id = newId()) => {
+  const saveCommand: CommandSaver = async (command, id = newId()) => {
     if (!snapshot || fatal) throw new Error('保存状態を確認してください。');
     const context = {
       databaseId: snapshot.meta.databaseId,
       generation: snapshot.meta.generation,
     };
-    await store.stage(id, context, command);
+    await store.prepare(id, context, command);
     return store.execute(id, context);
   };
   const resetAfterRestore = () => {
@@ -171,8 +171,8 @@ export default function App() {
   };
   const shared: Shared | null = snapshot
     ? {
-        act,
-        run,
+        perform,
+        saveCommand,
         busy,
         errorMessage: error,
         context: {
@@ -291,7 +291,10 @@ export default function App() {
                 : '操作を完了できませんでした'}
             </strong>
             <p>{error}</p>
-            <button className="secondary" onClick={() => act(async () => {})}>
+            <button
+              className="secondary"
+              onClick={() => perform(async () => {})}
+            >
               保存状態を読み直す
             </button>
           </div>
@@ -332,7 +335,7 @@ export default function App() {
               key={snapshot?.meta.generation ?? 'empty'}
               snapshot={snapshot}
               store={store}
-              act={act}
+              perform={perform}
               errorMessage={error}
               onStart={() => {
                 setResumeOrderIds(

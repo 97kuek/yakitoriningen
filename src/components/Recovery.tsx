@@ -32,7 +32,7 @@ export function Recovery({
   operations,
   snapshot,
   store,
-  act,
+  perform,
   context,
   draft,
   setDraft,
@@ -63,7 +63,7 @@ export function Recovery({
                 )
               )
                 return;
-              void act(async () => {
+              void perform(async () => {
                 await store.execute(op.id, context);
                 if (
                   op.command.type === 'reserve' &&
@@ -85,7 +85,7 @@ export function Recovery({
                   `${details(op, snapshot)}。現金・商品・札・履歴を確認しましたか？まだ行っていない場合だけ取り消してください。`,
                 )
               )
-                void act(() => store.dismiss(op.id, context));
+                void perform(() => store.discard(op.id, context));
             }}
           >
             実行していないので取り消す

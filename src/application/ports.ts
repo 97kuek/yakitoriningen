@@ -36,9 +36,9 @@ export interface LedgerRepository {
 export interface Cashier {
   read(): Promise<Snapshot | null>;
   initialize(event: string, day: string, tickets: number): Promise<Context>;
-  stage(id: string, context: Context, command: Command): Promise<Operation>;
+  prepare(id: string, context: Context, command: Command): Promise<Operation>;
   execute(id: string, context: Context): Promise<string>;
-  dismiss(id: string, context: Context): Promise<void>;
+  discard(id: string, context: Context): Promise<void>;
   restore(
     snapshot: Snapshot,
     expected: Snapshot | null,

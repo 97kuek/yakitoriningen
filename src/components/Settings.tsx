@@ -117,8 +117,8 @@ export function Settings({
             className="setting-form"
             onSubmit={(e) => {
               e.preventDefault();
-              void shared.act(async () => {
-                await shared.run({
+              void shared.perform(async () => {
+                await shared.saveCommand({
                   type: 'price',
                   price: priceSchema.parse({ ...selected, id: newId() }),
                 });
@@ -230,8 +230,8 @@ export function Settings({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void shared.act(async () => {
-                  await shared.run({ type: 'day', day });
+                void shared.perform(async () => {
+                  await shared.saveCommand({ type: 'day', day });
                   setSaved('営業日を変更しました。');
                 });
               }}
@@ -256,8 +256,8 @@ export function Settings({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void shared.act(async () => {
-                  await shared.run({ type: 'tickets', count: tickets });
+                void shared.perform(async () => {
+                  await shared.saveCommand({ type: 'tickets', count: tickets });
                   setSaved('札の枚数を変更しました。');
                 });
               }}
@@ -292,8 +292,11 @@ export function Settings({
             className="setting-form expense-form"
             onSubmit={(e) => {
               e.preventDefault();
-              void shared.act(async () => {
-                await shared.run({ type: 'expense', amount: Number(expense) });
+              void shared.perform(async () => {
+                await shared.saveCommand({
+                  type: 'expense',
+                  amount: Number(expense),
+                });
                 setSaved('経費を保存しました。売上画面に利益が表示されます。');
               });
             }}
@@ -326,7 +329,7 @@ export function Settings({
           <DataPanel
             store={store}
             snapshot={snapshot}
-            act={shared.act}
+            perform={shared.perform}
             errorMessage={shared.errorMessage}
             onRestored={onRestored}
             onVerified={onVerified}
@@ -339,7 +342,7 @@ export function Settings({
             <button
               className="secondary"
               onClick={() =>
-                shared.act(async () => {
+                shared.perform(async () => {
                   if (!navigator.storage?.persist)
                     throw new Error(
                       'このブラウザでは記録の保護を設定できません。',
