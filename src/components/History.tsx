@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { products } from '../domain/model';
 import { newId } from '../lib/id';
 import { yen } from '../presentation/format';
+import { profit, summarizeSales } from '../domain/sales';
+import { SalesCharts } from './SalesCharts';
 
 import type { Order, Snapshot } from '../domain/model';
 import type { Shared } from '../ui';
@@ -13,8 +15,13 @@ export function History({
   context,
   errorMessage,
   store,
-}: Shared & { snapshot: Snapshot; store: Cashier }) {
-  const [scope, setScope] = useState('day');
+  onEditExpenses,
+}: Shared & {
+  snapshot: Snapshot;
+  store: Cashier;
+  onEditExpenses: () => void;
+}) {
+  const [scope, setScope] = useState<'day' | 'event'>('event');
   const [cancel, setCancel] = useState<Order | null>(null);
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
@@ -35,11 +42,9 @@ export function History({
   const orders = snapshot.orders.filter(
     (o) => scope === 'event' || o.day === snapshot.meta.day,
   );
-  const sold = orders.filter((o) => o.status === 'paid');
-  const sales = sold.reduce((n, o) => n + o.quote.total, 0);
-  const gross = orders
-    .filter((o) => o.received !== null)
-    .reduce((n, o) => n + o.quote.total, 0);
+  const total = summarizeSales(snapshot.orders);
+  const selected = summarizeSales(orders);
+  const earnings = profit(total.sales, snapshot.meta.expenseTotal);
   return (
     <section className="panel history">
       <div className="section-heading">
@@ -47,38 +52,66 @@ export function History({
           <Icon name="chart" />
           売上・履歴
         </h2>
+        <span>開催回全体</span>
+      </div>
+      <div className="profit-equation">
+        <div>
+          <span>売上</span>
+          <strong data-testid="net-sales">{yen(total.sales)}</strong>
+          <small>返金を差し引いた金額</small>
+        </div>
+        <span aria-hidden="true">−</span>
+        <div>
+          <span>経費</span>
+          <strong data-testid="expense-total">
+            {snapshot.meta.expenseTotal == null
+              ? '未登録'
+              : yen(snapshot.meta.expenseTotal)}
+          </strong>
+          <button className="link-button" onClick={onEditExpenses}>
+            {snapshot.meta.expenseTotal == null ? '経費を登録' : '経費を変更'}
+          </button>
+        </div>
+        <span aria-hidden="true">＝</span>
+        <div>
+          <span>利益</span>
+          <strong
+            className={earnings !== null && earnings < 0 ? 'danger-text' : ''}
+            data-testid="profit"
+          >
+            {earnings === null ? '未登録' : yen(earnings)}
+          </strong>
+          <small>
+            {earnings === null
+              ? '経費を登録すると表示します'
+              : '売上から経費を引いた金額'}
+          </small>
+        </div>
+      </div>
+      <div className="sales-detail-heading">
+        <h3>売上の内訳</h3>
         <label className="inline-label">
-          集計範囲
-          <select value={scope} onChange={(e) => setScope(e.target.value)}>
-            <option value="day">営業日 {snapshot.meta.day}</option>
+          表示範囲
+          <select
+            value={scope}
+            onChange={(e) => setScope(e.target.value as 'day' | 'event')}
+          >
             <option value="event">開催回全体</option>
+            <option value="day">営業日 {snapshot.meta.day}</option>
           </select>
         </label>
       </div>
-      <div className="sales-overview">
-        <div className="sales-amount">
-          <span>売上</span>
-          <strong data-testid="net-sales">{yen(sales)}</strong>
-        </div>
-        <div className="sales-breakdown">
-          <span>
-            {sold.reduce((n, o) => n + o.quote.count, 0)}本 / {sold.length}件
-          </span>
-          <span>
-            {products
-              .map(
-                (p) =>
-                  `${p.name} ${sold.reduce((n, o) => n + o.quantities[p.id], 0)}本`,
-              )
-              .join('　')}
-          </span>
-        </div>
-        {gross !== sales && (
-          <p className="sales-adjustments">
-            返金 {yen(gross - sales)}を差し引いた売上です。
-          </p>
-        )}
+      <div className="sales-breakdown-line">
+        <span>
+          {selected.count}本 / {selected.orders}件
+        </span>
+        {selected.refunds > 0 && <span>返金 {yen(selected.refunds)}</span>}
+        <span>
+          {scope === 'day' ? `この日の売上 ${yen(selected.sales)}` : ''}
+        </span>
       </div>
+      <SalesCharts orders={orders} scope={scope} />
+      <h3 className="history-heading">注文履歴</h3>
       <div className="table-scroll">
         <table>
           <caption className="sr-only">注文履歴</caption>

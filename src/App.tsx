@@ -17,6 +17,7 @@ import { Waiting } from './components/Waiting';
 import { Startup } from './components/Startup';
 import { History } from './components/History';
 import { Settings } from './components/Settings';
+import type { SettingsSection } from './components/Settings';
 import { Icon } from './components/Icon';
 import type { IconName } from './components/Icon';
 import { Help } from './components/Help';
@@ -59,6 +60,8 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null | undefined>();
   const [started, setStarted] = useState(false);
   const [tab, setTab] = useState('会計');
+  const [settingsInitial, setSettingsInitial] =
+    useState<SettingsSection>('price');
   const [helpOpen, setHelpOpen] = useState(false);
   const [resumeOrderIds, setResumeOrderIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -211,7 +214,10 @@ export default function App() {
                 disabled={busy || fatal || tabOwnership.state !== 'owned'}
                 className={tab === item.key ? 'active' : ''}
                 aria-current={tab === item.key ? 'page' : undefined}
-                onClick={() => setTab(item.key)}
+                onClick={() => {
+                  if (item.key === '設定・データ') setSettingsInitial('price');
+                  setTab(item.key);
+                }}
               >
                 <Icon name={item.icon} />
                 <span
@@ -374,12 +380,21 @@ export default function App() {
                 </div>
               )}
               {tab === '履歴・集計' && (
-                <History snapshot={snapshot} store={store} {...shared} />
+                <History
+                  snapshot={snapshot}
+                  store={store}
+                  onEditExpenses={() => {
+                    setSettingsInitial('expenses');
+                    setTab('設定・データ');
+                  }}
+                  {...shared}
+                />
               )}
               {tab === '設定・データ' && (
                 <Settings
                   snapshot={snapshot}
                   store={store}
+                  initialSection={settingsInitial}
                   onRestored={resetAfterRestore}
                   onVerified={setVerifiedBackup}
                   {...shared}
