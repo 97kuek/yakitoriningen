@@ -27,4 +27,4 @@ IndexedDBの耐久性はDexieの`chromeTransactionDurability: 'strict'`、画面
 
 ## 配布
 
-`firebase.json`に静的配信の設定のみ用意しています。Firebaseプロジェクトの作成、課金設定、実際のデプロイは行っていません。公開する場合はHTTPSの同じオリジンを継続利用してください。別オリジンにはDBが自動で移りません。
+Cloudflare Workers Static Assetsへ`dist/`を配信します。公開先でのHTTPS・HTTPヘッダー・画像・オフライン再起動は[公開と更新](deployment.md)の手順で確認します。営業では同じオリジンを継続利用してください。別オリジンにはDBが自動で移りません。

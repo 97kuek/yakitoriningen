@@ -31,6 +31,7 @@ npm run preview
 
 ## ドキュメント
 
+- [公開と更新](docs/deployment.md)：Cloudflareへの公開とデータの引き継ぎ
 - [要件定義書](docs/requirements.md)：機能と運用の条件
 - [全体アーキテクチャ](docs/architecture.md)：構成とデータの流れ
 - [フロントエンド](docs/frontend.md)：画面と入力状態の扱い
@@ -39,6 +40,6 @@ npm run preview
 - [検証範囲](docs/acceptance.md)：自動試験と本番前の確認
 - [開発への参加](CONTRIBUTING.md)：変更・検証・Gitのルール
 
-記録は使用中のPC・ブラウザに保存され、クラウドへ同期しません。ブラウザデータの削除やPC故障に備え、バックアップを別媒体にも保存してください。Firebase Hostingの配信設定はありますが、デプロイは行っていません。
+記録は使用中のPC・ブラウザに保存され、クラウドへ同期しません。ブラウザデータの削除やPC故障に備え、バックアップを別媒体にも保存してください。公開・更新は[Cloudflareの手順](docs/deployment.md)を参照してください。
 
 [MIT License](LICENSE)
