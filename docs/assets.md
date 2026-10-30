@@ -35,3 +35,18 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 
 > Use case: precise-object-edit. This exact image is the edit target. Change ONLY the rendering of the chicken meat on every yakitori skewer. The user says the excessive glossy sheen looks AI-generated. Redraw all chicken pieces as simple FLAT MATTE ochre-brown marker shapes, with just dark brown/charcoal sketch outlines and a few charcoal grill marks. No white shine streaks, no specular highlights, no pale glossy rims, no glaze, no orange hot spots, no wet surfaces, no gradients or volumetric rendering. At most two flat brown tones per piece, sparse paper/colored-pencil grain is fine. Keep every chick, their expressions, outlines, lettering if present, typography, all positions, canvas framing, objects, the tray/stall, background, and colors elsewhere EXACTLY unchanged. Preserve existing transparency wherever present. This is a handmade school-festival illustration, not a food advertisement. Make the food look drawn with simple dry markers just like the chicks, not more realistic than the rest.
 
+
+## 追加修正（2026-10-30）
+
+組み込みのimage_genで生成・編集し、最終採用分だけをpublic/assetsへ保存。生成画像の外側にぼかしが残った空状態案は不採用。ロゴの焼き鳥は鶏肉とねぎが交互に刺さった形へ修正し、照り・衣の粒・大きな焦げ穴を除いた。空状態は白地の小さなひよこと空の盆を採用し、画面では紙色になじませている。
+
+- `public/assets/shop-logo.png`：既存の文字とひよこを維持した編集。透過PNG。
+- `public/assets/empty-orders.png`：空の待ち一覧用イラスト。白地PNG。
+
+ロゴ最終編集プロンプト：
+
+> Refine ONLY the meat on the left skewer of this transparent logo. Keep exact Japanese letters 焼き鳥人間 and chick and transparent layout unchanged. The chicken currently looks BREADED fried croquettes with long black middle slits. Make three solid irregular CUBES of unbreaded grilled chicken thigh: smooth simple flat pale tan fill, chunky squared outline, only two tiny short charcoal grill strokes on each piece, NO grainy crumbs, NO dark middle cutout slit, NO breading, NO texture. Keep pale white-green leek segments between the chicken cubes. Hand drawn outlined flat cartoon, matte. Every pixel outside the skewer/letters/chick must be transparent alpha0. NO background, NO glow, NO shadow.
+
+空状態の最終生成プロンプト：
+
+> A tiny quiet illustration for an empty yakitori order list. WHITE BACKGROUND, solid perfectly uniform pure white #FFFFFF, no transparency. One simple round yellow chick with a small cream festival headband, standing beside a small EMPTY rectangular wooden serving tray. Friendly calm face, eyes smiling. Sparse hand-drawn dark brown outlines, FLAT solid yellow body, FLAT ochre tray, small orange beak/feet. Only four flat colors plus white background. Like a simple Japanese school festival pen drawing, no digital effects. No shading, NO paper texture, NO grain, NO gradients, NO drop shadows, NO ambient glow, NO halo, NO fog, NO dark vignette, NO light rays, no food, no text, no lettering, no sparkles, no decor. The background must remain pure white right up to the character outline. Full character and tray comfortably visible, centered compact landscape composition, clean small UI sticker.
