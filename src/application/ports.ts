@@ -1,0 +1,51 @@
+import type {
+  Command,
+  Context,
+  Log,
+  Meta,
+  Operation,
+  Order,
+  Price,
+  Snapshot,
+  Ticket,
+} from '../domain/model';
+
+/** Atomic access to the ledger. Implementations decide how records are persisted. */
+export interface Records<T, K> {
+  get(key: K): Promise<T | undefined>;
+  add(value: T): Promise<unknown>;
+  put(value: T): Promise<unknown>;
+  delete(key: K): Promise<void>;
+  bulkAdd(values: T[]): Promise<unknown>;
+  count(): Promise<number>;
+  toArray(): Promise<T[]>;
+}
+export interface LedgerTransaction {
+  meta: Records<Meta, string>;
+  prices: Pick<Records<Price, string>, 'get' | 'add' | 'count' | 'toArray'>;
+  orders: Records<Order, string>;
+  tickets: Records<Ticket, number>;
+  operations: Records<Operation, string>;
+  logs: Pick<Records<Log, number>, 'add' | 'count' | 'toArray'>;
+}
+export interface LedgerRepository {
+  read<T>(work: (tx: LedgerTransaction) => Promise<T>): Promise<T>;
+  write<T>(work: (tx: LedgerTransaction) => Promise<T>): Promise<T>;
+}
+/** The application boundary consumed by the cashier screens. */
+export interface Cashier {
+  read(): Promise<Snapshot | null>;
+  initialize(event: string, day: string, tickets: number): Promise<Context>;
+  stage(id: string, context: Context, command: Command): Promise<Operation>;
+  execute(id: string, context: Context): Promise<string>;
+  dismiss(id: string, context: Context): Promise<void>;
+  restore(
+    snapshot: Snapshot,
+    expected: Snapshot | null,
+    archived: boolean,
+  ): Promise<void>;
+  watch(observer: {
+    next: (snapshot: Snapshot | null) => void;
+    error: (error: unknown) => void;
+  }): () => void;
+}

@@ -46,3 +46,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Browser test artifacts
+/test-results/
+/playwright-report/
