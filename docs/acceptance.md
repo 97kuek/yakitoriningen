@@ -4,9 +4,9 @@
 
 ## 自動試験
 
-`npm test` はfake-indexeddbを使い、価格計算、保留・確定・札回収・受け渡し・全額取消、同一ID再試行、異内容拒否、並行割当、価格・営業日変更、書込失敗、JSON検証、整合した出力、復元の原子性・世代を検証します。
+`npm test` はfake-indexeddbを使い、価格計算、保留・確定・札回収・受け渡し・全額取消、同一ID再試行、異内容拒否、並行割当、価格・営業日変更、経費の再試行と翌日引継ぎ、未登録・0円・赤字の区別、売上・返金・本数の集計、書込失敗、JSON検証、整合した出力、復元の原子性・世代を検証します。
 
-`npm run test:e2e` はビルド後のPWAをPlaywright付属Chromiumで操作し、実IndexedDBの保存・再起動、価格変更、オフライン再読み込み、JSON出力・読み直し・復元、実トランザクションの`strict`指定、画面幅390px、二重起動、取消の手順を検証します。テストにはサンプルデータだけを使用します。
+`npm run test:e2e` はビルド後のPWAをPlaywright付属Chromiumで操作し、実IndexedDBの保存・再起動、価格変更、オフライン再読み込み、JSON出力・読み直し・復元、実トランザクションの`strict`指定、画面幅390px、二重起動、取消の手順、金額欄の二重枠、設定の項目切り替えと入力保持、経費登録から利益・グラフ表示までを検証します。テストにはサンプルデータだけを使用します。
 
 IndexedDBの耐久性はDexieの`chromeTransactionDurability: 'strict'`、画面は`cache: 'disabled'`とコミット済み結果の購読を使います。設定の根拠は[Dexie公式ドキュメント](https://dexie.org/docs/Dexie/Dexie)です。strictの指定は停電に対する無条件の保証ではありません。
 
