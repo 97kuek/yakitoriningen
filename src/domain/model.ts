@@ -60,6 +60,7 @@ export const metaSchema = contextSchema
     activePriceId: id,
     ticketCount: z.number().int().min(1).max(100),
     sequence: z.number().int().nonnegative(),
+    expenseTotal: moneySchema.nullable().default(null),
   })
   .strict();
 export type Meta = z.infer<typeof metaSchema>;
@@ -131,6 +132,7 @@ export const commandSchema = z.discriminatedUnion('type', [
     })
     .strict(),
   z.object({ type: z.literal('price'), price: priceSchema }).strict(),
+  z.object({ type: z.literal('expense'), amount: moneySchema }).strict(),
   z.object({ type: z.literal('day'), day: dateSchema }).strict(),
   z
     .object({

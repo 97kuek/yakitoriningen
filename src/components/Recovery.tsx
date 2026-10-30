@@ -24,6 +24,7 @@ function details(op: Operation, snapshot: Snapshot): string {
     return `札 ${order?.ticket ?? '不明'} ／ ${order ? yen(order.quote.total) : '金額不明'}${c.type === 'cancel' ? ` ／ 取消理由：${c.reason}` : ''}`;
   }
   if (c.type === 'price') return `${c.price.label} ／ 1本 ${yen(c.price.unit)}`;
+  if (c.type === 'expense') return `開催回全体の経費 ${yen(c.amount)}`;
   if (c.type === 'day') return `営業日 ${c.day}`;
   return `番号札 1〜${c.count}`;
 }

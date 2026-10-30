@@ -260,6 +260,18 @@ function validate(data: Snapshot): void {
     if (op.status === 'dismissed')
       requireValid(log?.type === 'dismiss' && op.result === null, '破棄操作');
   }
+  const expenses = data.operations
+    .filter((op) => op.status === 'done' && op.command.type === 'expense')
+    .sort(
+      (a, b) =>
+        (logs.get(a.id)?.sequence ?? 0) - (logs.get(b.id)?.sequence ?? 0),
+    );
+  const latestExpense = expenses.at(-1);
+  const expectedExpense =
+    latestExpense?.command.type === 'expense'
+      ? latestExpense.command.amount
+      : null;
+  requireValid(data.meta.expenseTotal === expectedExpense, '経費と変更記録');
   for (const log of data.logs)
     requireValid(ops.has(log.operationId), 'ログに対応する操作がありません');
 }

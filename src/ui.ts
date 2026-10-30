@@ -19,6 +19,7 @@ export const commandNames = {
   return: '札の回収',
   cancel: '取消',
   price: '価格変更',
+  expense: '経費の変更',
   day: '営業日変更',
   tickets: '札の範囲変更',
 };

@@ -273,3 +273,37 @@ it('受け渡し・札回収の保存に失敗したら両方とも未反映で�
   expect(state.tickets[0].orderId).toBe(c.orderId);
   expect(state.logs).toHaveLength(2);
 });
+it('開催回全体の経費は未登録から保存でき、再試行で重複せず翌日も引き継ぐ', async () => {
+  expect((await store.read())!.meta.expenseTotal).toBeNull();
+  const op = newId();
+  await run({ type: 'expense', amount: 1000 }, op);
+  await store.execute(op, ctx);
+  expect((await store.read())!.meta.expenseTotal).toBe(1000);
+  expect((await store.read())!.logs).toHaveLength(1);
+  await run({ type: 'day', day: '2026-11-08' });
+  expect((await store.read())!.meta.expenseTotal).toBe(1000);
+  await expect(
+    store.stage(op, ctx, { type: 'expense', amount: 2000 }),
+  ).rejects.toThrow(/同じ操作ID/);
+});
+it('経費のログ保存が失敗したら合計を変更しない', async () => {
+  await run({ type: 'expense', amount: 1000 });
+  db.logs.hook('creating', () => {
+    throw new Error('ログの容量不足');
+  });
+  await expect(run({ type: 'expense', amount: 2000 })).rejects.toThrow();
+  const state = (await store.read())!;
+  expect(state.meta.expenseTotal).toBe(1000);
+  expect(state.logs).toHaveLength(1);
+  expect(state.operations.filter((op) => op.status === 'pending')).toHaveLength(
+    1,
+  );
+});
+it('経費欄がない従来のDBを読み、ほかの設定変更後も未登録を維持する', async () => {
+  const legacy = { ...(await db.meta.get('main'))! };
+  delete (legacy as Partial<typeof legacy>).expenseTotal;
+  await db.meta.put(legacy);
+  expect((await store.read())!.meta.expenseTotal).toBeNull();
+  await run({ type: 'day', day: '2026-11-08' });
+  expect((await store.read())!.meta.expenseTotal).toBeNull();
+});

@@ -39,7 +39,8 @@ export class CashierCommands {
   ) {}
   async read(): Promise<Snapshot | null> {
     return this.repository.read(async (tx) => {
-      const meta = await tx.meta.get('main');
+      const storedMeta = await tx.meta.get('main');
+      const meta = storedMeta ? metaSchema.parse(storedMeta) : undefined;
       if (!meta) {
         for (const table of Object.values(tx))
           if (await table.count())
@@ -222,6 +223,8 @@ export class CashierCommands {
           throw new Error('価格の版が既に使われています。');
         await tx.prices.add(command.price);
         meta.activePriceId = command.price.id;
+      } else if (command.type === 'expense') {
+        meta.expenseTotal = command.amount;
       } else if (command.type === 'day') {
         meta.day = command.day;
       } else if (command.type === 'tickets') {

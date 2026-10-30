@@ -150,3 +150,23 @@ it('同時に受け渡し・札回収した記録をバックアップできる'
   expect(current.orders[0]).toMatchObject({ delivered: true, returned: true });
   expect(parseBackup(encodeBackup(current))).toEqual(current);
 });
+it('経費を保存したバックアップを戻せる', async () => {
+  const op = newId();
+  await store.stage(op, ctx, { type: 'expense', amount: 2500 });
+  await store.execute(op, ctx);
+  const snapshot = (await store.read())!;
+  const incoming = parseBackup(encodeBackup(snapshot));
+  expect(incoming.meta.expenseTotal).toBe(2500);
+  await restoreBackup(db, incoming, snapshot, true);
+  expect((await store.read())!.meta.expenseTotal).toBe(2500);
+});
+it('経費を持たない従来のファイルは未登録として読み込む', () => {
+  const file = JSON.parse(encodeBackup(original));
+  delete file.data.meta.expenseTotal;
+  expect(parseBackup(JSON.stringify(file)).meta.expenseTotal).toBeNull();
+});
+it('変更記録と一致しない経費を拒否する', () => {
+  const file = JSON.parse(encodeBackup(original));
+  file.data.meta.expenseTotal = 1000;
+  expect(() => parseBackup(JSON.stringify(file))).toThrow();
+});
