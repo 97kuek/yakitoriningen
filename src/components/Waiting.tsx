@@ -1,4 +1,7 @@
-import { products } from '../domain/model';
+import { IconButton, Button } from './controls';
+import { canUndoHandoff } from '../domain/handoff';
+import { newId } from '../lib/id';
+import { orderItems, timeText, dayText } from '../presentation/format';
 
 import type { Order, Snapshot } from '../domain/model';
 import type { Shared } from '../ui';
@@ -7,18 +10,50 @@ export function Waiting({
   snapshot,
   perform,
   saveCommand,
-}: Shared & { snapshot: Snapshot }) {
+  lastHandoff,
+  onHandoffChange,
+}: Shared & {
+  snapshot: Snapshot;
+  lastHandoff: { orderId: string; completionId: string } | null;
+  onHandoffChange: (
+    value: { orderId: string; completionId: string } | null,
+  ) => void;
+}) {
   const waiting = snapshot.orders
     .filter((o) => o.status === 'paid' && !o.delivered)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const unreturned = snapshot.orders.filter(
     (o) => !o.returned && (o.delivered || o.status === 'cancelled'),
   );
+  const products = [
+    ...new Map(
+      waiting
+        .flatMap((order) => orderItems(order))
+        .map((item) => [item.id, item]),
+    ).values(),
+  ];
   const free = snapshot.tickets.filter((t) => t.orderId === null).length;
-  function action(order: Order, type: 'complete' | 'return') {
+  const completedOrder = snapshot.orders.find(
+    (order) => order.id === lastHandoff?.orderId,
+  );
+  function completeHandoff(order: Order) {
+    void perform(async () => {
+      const completionId = newId();
+      await saveCommand(
+        {
+          type: 'complete',
+          orderId: order.id,
+          assignmentId: order.assignmentId,
+        },
+        completionId,
+      );
+      onHandoffChange({ orderId: order.id, completionId });
+    });
+  }
+  function recoverTicket(order: Order) {
     void perform(() =>
       saveCommand({
-        type,
+        type: 'return',
         orderId: order.id,
         assignmentId: order.assignmentId,
       }),
@@ -36,6 +71,38 @@ export function Waiting({
           <small>/{snapshot.meta.ticketCount}</small>
         </span>
       </div>
+      <div className="handoff-feedback" role="status">
+        {completedOrder && lastHandoff && (
+          <>
+            <span>札 {completedOrder.ticket} を受け渡し済みにしました。</span>
+            <Button
+              variant="plain"
+              type="button"
+              className="link-button"
+              disabled={
+                !canUndoHandoff(
+                  completedOrder,
+                  lastHandoff.completionId,
+                  snapshot,
+                )
+              }
+              onClick={() =>
+                void perform(async () => {
+                  await saveCommand({
+                    type: 'undoHandoff',
+                    orderId: completedOrder.id,
+                    assignmentId: completedOrder.assignmentId,
+                    completionId: lastHandoff.completionId,
+                  });
+                  onHandoffChange(null);
+                })
+              }
+            >
+              元に戻す
+            </Button>
+          </>
+        )}
+      </div>
       {waiting.length > 0 && (
         <div
           className="waiting-totals"
@@ -45,7 +112,7 @@ export function Waiting({
             <span key={p.id}>
               {p.name}
               <strong>
-                {waiting.reduce((n, o) => n + o.quantities[p.id], 0)}
+                {waiting.reduce((n, o) => n + (o.quantities[p.id] ?? 0), 0)}
               </strong>
               <small>本</small>
             </span>
@@ -54,7 +121,12 @@ export function Waiting({
       )}
       {!waiting.length && (
         <div className="empty">
-          <Icon name="tray" className="empty-icon" />
+          <img
+            src="/assets/empty-orders.png"
+            alt=""
+            width="1536"
+            height="1024"
+          />
           <h3>待っている注文はありません</h3>
         </div>
       )}
@@ -71,35 +143,30 @@ export function Waiting({
             </span>
             <div className="order-content">
               <div className="order-quantities">
-                {products
-                  .filter((p) => order.quantities[p.id])
-                  .map((p) => (
-                    <span key={p.id}>
-                      {p.name}
-                      <strong>
-                        {order.quantities[p.id]}
-                        <small>本</small>
-                      </strong>
-                    </span>
-                  ))}
+                {orderItems(order).map((item) => (
+                  <span key={item.id}>
+                    {item.name}
+                    <strong>
+                      {item.quantity}
+                      <small>本</small>
+                    </strong>
+                  </span>
+                ))}
               </div>
             </div>
             <time>
               {order.day !== snapshot.meta.day
-                ? order.day.slice(5).replace('-', '/')
-                : new Date(order.createdAt).toLocaleTimeString('ja-JP', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                ? dayText(order.day)
+                : timeText(order.createdAt)}
             </time>
-            <button
+            <IconButton
+              variant="plain"
+              type="button"
               className="icon-button complete-button"
-              aria-label="受け渡し完了（札も回収）"
-              title="受け渡し完了（札も回収）"
-              onClick={() => action(order, 'complete')}
-            >
-              <Icon name="check" />
-            </button>
+              onClick={() => completeHandoff(order)}
+              label="受け渡し完了（札も回収）"
+              icon="check"
+            />
           </article>
         ))}
       </div>
@@ -114,14 +181,14 @@ export function Waiting({
               <span>
                 {order.status === 'cancelled' ? '取消済み' : '受け渡し済み'}
               </span>
-              <button
+              <IconButton
+                variant="plain"
+                type="button"
                 className="icon-button secondary"
-                aria-label="札を回収した"
-                title="札を回収した"
-                onClick={() => action(order, 'return')}
-              >
-                <Icon name="ticket" />
-              </button>
+                onClick={() => recoverTicket(order)}
+                label="札を回収した"
+                icon="ticket"
+              />
             </div>
           ))}
         </section>

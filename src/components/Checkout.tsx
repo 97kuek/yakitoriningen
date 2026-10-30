@@ -1,5 +1,6 @@
+import { IconButton, Button } from './controls';
 import { useEffect, useRef, useState } from 'react';
-import { count, emptyQuantities, products } from '../domain/model';
+import { count, emptyQuantities } from '../domain/model';
 import { newId } from '../lib/id';
 import { yen } from '../presentation/format';
 
@@ -10,6 +11,7 @@ import type {
   Quantities,
   Snapshot,
 } from '../domain/model';
+import { getMenu, getUnitPrice } from '../domain/catalog';
 import { quote } from '../domain/pricing';
 import type { Shared } from '../ui';
 import type { Cashier } from '../application/ports';
@@ -35,6 +37,7 @@ export function Checkout({
     (p) => p.id === snapshot.meta.activePriceId,
   )!;
   const price = draft.price ?? activePrice;
+  const products = getMenu(price);
   let estimate: ReturnType<typeof quote> | null = null;
   let latestEstimate: ReturnType<typeof quote> | null = null;
   try {
@@ -53,7 +56,12 @@ export function Checkout({
   const changeQuantity = (id: keyof Quantities, value: number) => {
     if (!Number.isInteger(value) || value < 0 || value > 999) return;
     setLastPaidTicket(null);
-    const quantities = { ...draft.quantities, [id]: value };
+    const quantities = Object.fromEntries(
+      products.map((product) => [
+        product.id,
+        product.id === id ? value : (draft.quantities[product.id] ?? 0),
+      ]),
+    );
     setDraft({ quantities, price: count(quantities) ? price : null });
   };
   if (pending.length)
@@ -68,6 +76,12 @@ export function Checkout({
             )}
             store={store}
             onConfirmed={() => setLastPaidTicket(order.ticket)}
+            onEdit={() =>
+              setDraft({
+                quantities: { ...order.quantities },
+                price: order.price,
+              })
+            }
             resumed={resumeOrderIds.includes(order.id)}
             {...shared}
           />
@@ -81,17 +95,17 @@ export function Checkout({
           <Icon name="skewer" />
           注文
         </h2>
-        <button
+        <IconButton
+          variant="plain"
+          type="button"
           className="icon-button muted"
-          aria-label="注文をクリア"
-          title="注文をクリア"
           disabled={!count(draft.quantities)}
           onClick={() =>
             setDraft({ quantities: emptyQuantities(), price: null })
           }
-        >
-          <Icon name="reset" />
-        </button>
+          label="注文をクリア"
+          icon="reset"
+        />
       </div>
       <div
         className={`checkout-feedback${lastPaidTicket !== null ? ' success' : ''}`}
@@ -109,67 +123,79 @@ export function Checkout({
       </div>
       <div className="price-strip">
         <span className="price-label">{price.label}</span>
-        <span>
-          1本 <b>{yen(price.unit)}</b>
-        </span>
-        {price.bundleEnabled && (
-          <span>
-            {price.bundleSize}本 <b>{yen(price.bundlePrice)}</b>
-            <small>{price.mix ? '組合せ自由' : '同じ種類'}</small>
-          </span>
-        )}
+        <span>{price.discounted ? '値下げ価格' : '通常価格'}</span>
+        {price.bundleEnabled &&
+          (!price.discounted || price.bundleDuringDiscount) && (
+            <span>
+              {price.bundleSize}本 <b>{yen(price.bundlePrice)}</b>
+              <small>
+                {price.mix ? '対象商品の組合せ自由' : '同じ種類でセット'}
+              </small>
+            </span>
+          )}
       </div>
       {draft.price && draft.price.id !== activePrice.id && (
         <div className="notice compact-notice">
           <span>この注文は変更前の価格です。</span>
           {latestEstimate ? (
-            <button
+            <Button
+              variant="plain"
+              type="button"
               className="link-button"
               onClick={() => setDraft({ ...draft, price: activePrice })}
             >
               {yen(latestEstimate.total)}に変更
-            </button>
+            </Button>
           ) : (
-            <span>最新価格では合計金額が上限を超えます。</span>
+            <span>
+              最新の商品・価格には変更できません。この注文は元の内容で会計できます。
+            </span>
           )}
         </div>
       )}
       <div className="products">
         {products.map((p, index) => (
           <div
-            className={`product product-${index}${draft.quantities[p.id] ? ' selected' : ''}`}
+            className={`product product-${index}${(draft.quantities[p.id] ?? 0) ? ' selected' : ''}`}
             key={p.id}
           >
             <div className="product-name">
               <strong>{p.name}</strong>
+              <small>{yen(getUnitPrice(p, price))}</small>
             </div>
             <div className="stepper">
-              <button
-                aria-label={`${p.name}を1本減らす`}
-                disabled={!draft.quantities[p.id]}
-                onClick={() => changeQuantity(p.id, draft.quantities[p.id] - 1)}
-              >
-                <Icon name="minus" />
-              </button>
+              <IconButton
+                variant="secondary"
+                type="button"
+                disabled={!(draft.quantities[p.id] ?? 0)}
+                onClick={() =>
+                  changeQuantity(p.id, (draft.quantities[p.id] ?? 0) - 1)
+                }
+                label={`${p.name}を1本減らす`}
+                icon="minus"
+              />
               <div className="quantity-input">
                 <input
                   aria-label={`${p.name}の本数`}
                   type="number"
                   min="0"
                   max="999"
-                  value={draft.quantities[p.id]}
+                  value={draft.quantities[p.id] ?? 0}
                   onChange={(e) => changeQuantity(p.id, Number(e.target.value))}
                 />
                 <span>本</span>
               </div>
-              <button
+              <IconButton
+                variant="secondary"
+                type="button"
                 className="increase"
-                aria-label={`${p.name}を1本増やす`}
-                disabled={draft.quantities[p.id] === 999}
-                onClick={() => changeQuantity(p.id, draft.quantities[p.id] + 1)}
-              >
-                <Icon name="plus" />
-              </button>
+                disabled={(draft.quantities[p.id] ?? 0) === 999}
+                onClick={() =>
+                  changeQuantity(p.id, (draft.quantities[p.id] ?? 0) + 1)
+                }
+                label={`${p.name}を1本増やす`}
+                icon="plus"
+              />
             </div>
           </div>
         ))}
@@ -190,7 +216,9 @@ export function Checkout({
           {estimate ? yen(estimate.total) : '上限超過'}
         </strong>
       </div>
-      <button
+      <Button
+        variant="primary"
+        type="button"
         className="primary checkout-button wide"
         disabled={!estimate?.count || unresolved || !hasTicket}
         onClick={() =>
@@ -209,7 +237,7 @@ export function Checkout({
       >
         会計へ
         <Icon name="arrow" />
-      </button>
+      </Button>
       {!hasTicket && (
         <p className="notice">空き札がありません。札の回収を待ってください。</p>
       )}
@@ -225,6 +253,7 @@ function Payment({
   saveCommand,
   resumed,
   onConfirmed,
+  onEdit,
   busy,
 }: Shared & {
   order: Order;
@@ -232,7 +261,9 @@ function Payment({
   store: Cashier;
   resumed: boolean;
   onConfirmed: () => void;
+  onEdit: () => void;
 }) {
+  const products = getMenu(order.price);
   const [received, setReceived] = useState('');
   const receivedInput = useRef<HTMLInputElement>(null);
   const confirmButton = useRef<HTMLButtonElement>(null);
@@ -328,24 +359,45 @@ function Payment({
                 (v, i, arr) => v >= order.quote.total && arr.indexOf(v) === i,
               )
               .map((v, i) => (
-                <button
+                <Button
+                  variant="secondary"
                   type="button"
                   key={v}
                   className="secondary"
                   onClick={() => setReceived(String(v))}
                 >
                   {i === 0 ? 'ちょうど' : yen(v)}
-                </button>
+                </Button>
               ))}
           </div>
-          <button
+          <Button
+            variant="primary"
+            type="submit"
             className="primary checkout-button wide"
             disabled={!received || amount < order.quote.total}
           >
             お釣りを確認
             <Icon name="arrow" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="plain"
+            type="button"
+            className="link-button payment-edit"
+            onClick={() =>
+              void perform(async () => {
+                await saveCommand({
+                  type: 'cancel',
+                  ...target,
+                  reason: '入金前の本数修正',
+                });
+                onEdit();
+              })
+            }
+          >
+            本数を修正
+          </Button>
+          <Button
+            variant="plain"
             type="button"
             className="link-button muted payment-back"
             onClick={() => {
@@ -364,7 +416,7 @@ function Payment({
             }}
           >
             この注文を取り消す
-          </button>
+          </Button>
         </form>
       ) : (
         <>
@@ -381,7 +433,9 @@ function Payment({
           <p className="payment-instruction">
             現金を受け取り、お釣りを渡してください。
           </p>
-          <button
+          <Button
+            variant="primary"
+            type="button"
             ref={confirmButton}
             className="primary checkout-button wide"
             onClick={() =>
@@ -393,8 +447,10 @@ function Payment({
           >
             <Icon name="check" />
             会計を確定
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="plain"
+            type="button"
             className="link-button muted payment-back"
             onClick={() => {
               if (
@@ -408,7 +464,7 @@ function Payment({
             }}
           >
             入金額を修正
-          </button>
+          </Button>
         </>
       )}
     </section>

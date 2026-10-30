@@ -4,6 +4,8 @@ import { today, yen } from '../presentation/format';
 import type { Snapshot } from '../domain/model';
 import type { ActionHandler } from '../ui';
 import type { Cashier } from '../application/ports';
+import { Button, Disclosure } from './controls';
+import { getMenu, getUnitPrice } from '../domain/catalog';
 import { DataPanel } from './DataPanel';
 import { Icon } from './Icon';
 export function Startup({
@@ -55,14 +57,17 @@ export function Startup({
               <dd>{snapshot.meta.day}</dd>
               <dt>価格</dt>
               <dd>
-                <span className="price-label">{price.label}</span>1本{' '}
-                {yen(price.unit)}
-                {price.bundleEnabled && (
-                  <small>
-                    {price.bundleSize}本 {yen(price.bundlePrice)} /{' '}
-                    {price.mix ? '組合せ自由' : '同じ種類'}
-                  </small>
-                )}
+                {getMenu(price).map((item) => (
+                  <span className="startup-menu-price" key={item.id}>
+                    {item.name} {yen(getUnitPrice(item, price))}
+                  </span>
+                ))}
+                {price.bundleEnabled &&
+                  (!price.discounted || price.bundleDuringDiscount) && (
+                    <small>
+                      対象商品 {price.bundleSize}本 {yen(price.bundlePrice)}
+                    </small>
+                  )}
               </dd>
               <dt>会計記録</dt>
               <dd>
@@ -83,8 +88,7 @@ export function Startup({
                 </small>
               </dd>
             </dl>
-            <details className="saved-details">
-              <summary>直近の記録・確認待ち</summary>
+            <Disclosure className="saved-details" title="直近の記録・確認待ち">
               <p>
                 {last
                   ? `直近：札 ${last.ticket} / ${yen(last.quote.total)} / ${last.day}`
@@ -98,7 +102,7 @@ export function Startup({
                 }
                 件
               </p>
-            </details>
+            </Disclosure>
             {snapshot.meta.day !== today() && (
               <p className="hint">営業日が今日と異なります。変更は設定から。</p>
             )}
@@ -110,14 +114,16 @@ export function Startup({
               />
               価格・営業日・保存件数を確認しました
             </label>
-            <button
+            <Button
+              variant="primary"
+              type="button"
               className="primary wide"
               disabled={!confirmed}
               onClick={onStart}
             >
               営業を始める
               <Icon name="arrow" />
-            </button>
+            </Button>
           </>
         ) : (
           <>
@@ -161,21 +167,25 @@ export function Startup({
                   />
                 </label>
               </div>
-              <button className="primary wide" disabled={!event.trim()}>
+              <Button
+                variant="primary"
+                type="submit"
+                className="primary wide"
+                disabled={!event.trim()}
+              >
                 データを作成
                 <Icon name="arrow" />
-              </button>
+              </Button>
             </form>
             <p className="hint">
               営業の続きなら、新規作成せずバックアップを復元してください。
             </p>
           </>
         )}
-        <details className="startup-restore">
-          <summary>
-            <Icon name="upload" />
-            別のデータから再開
-          </summary>
+        <Disclosure
+          className="startup-restore"
+          title="バックアップから引き継ぐ"
+        >
           <DataPanel
             snapshot={snapshot}
             store={store}
@@ -184,7 +194,7 @@ export function Startup({
             onRestored={onRestored}
             onVerified={onVerified}
           />
-        </details>
+        </Disclosure>
       </section>
     </div>
   );

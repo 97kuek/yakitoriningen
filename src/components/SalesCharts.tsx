@@ -1,6 +1,8 @@
 import { useId } from 'react';
 import type { Order } from '../domain/model';
-import { products } from '../domain/model';
+import { orderItems } from '../presentation/format';
+import { getMenu } from '../domain/catalog';
+import type { Price } from '../domain/model';
 import { salesByDay, salesByHour, summarizeSales } from '../domain/sales';
 import { yen } from '../presentation/format';
 function Bars({
@@ -38,10 +40,19 @@ function Bars({
 export function SalesCharts({
   orders,
   scope,
+  price,
 }: {
   orders: readonly Order[];
   scope: 'day' | 'event';
+  price: Price;
 }) {
+  const products = [
+    ...new Map(
+      [...getMenu(price), ...orders.flatMap((order) => orderItems(order))].map(
+        (item) => [item.id, item],
+      ),
+    ).values(),
+  ];
   const summary = summarizeSales(orders);
   const revenue =
     scope === 'event'
@@ -68,7 +79,7 @@ export function SalesCharts({
         title="種類別の販売本数"
         rows={products.map((p) => ({
           label: p.name,
-          value: summary.quantities[p.id],
+          value: summary.quantities[p.id] ?? 0,
         }))}
         money={false}
       />

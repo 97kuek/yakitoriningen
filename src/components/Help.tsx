@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Dialog, Disclosure } from './controls';
 import { Icon } from './Icon';
 export function Help({
   open,
@@ -7,24 +7,13 @@ export function Help({
   open: boolean;
   onClose: () => void;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (open) dialog.current?.showModal();
-    else dialog.current?.close();
-  }, [open]);
   return (
-    <dialog ref={dialog} onCancel={onClose} className="help-dialog">
-      <div className="section-heading">
-        <h2>使い方</h2>
-        <button
-          className="icon-button"
-          aria-label="閉じる"
-          title="閉じる"
-          onClick={onClose}
-        >
-          <Icon name="close" />
-        </button>
-      </div>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="使い方"
+      className="help-dialog"
+    >
       <ol className="help-steps">
         <li>
           <strong>本数を選ぶ</strong>
@@ -52,8 +41,7 @@ export function Help({
       <p>
         設定でバックアップを保存し、保存先のファイルを確認してください。USBなど別の場所にもコピーしてください。
       </p>
-      <details>
-        <summary>再開・トラブル時</summary>
+      <Disclosure title="再開・トラブル時">
         <p>
           保留の会計は現金と比べて、二度受け取らないでください。保存結果が不明なときは新しい注文を入力せず、確認待ちの記録を開いてください。
         </p>
@@ -61,7 +49,7 @@ export function Help({
           ブラウザのデータを削除すると記録が失われます。同じPC・ブラウザの通常のウィンドウで使ってください。
         </p>
         <p>待ち一覧の本数は未受け渡し分です。調理済みの商品も含みます。</p>
-      </details>
-    </dialog>
+      </Disclosure>
+    </Dialog>
   );
 }

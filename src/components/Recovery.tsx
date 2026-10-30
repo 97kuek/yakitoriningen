@@ -1,7 +1,9 @@
-import { emptyQuantities, products } from '../domain/model';
+import { Button } from './controls';
+import { emptyQuantities } from '../domain/model';
 import { yen } from '../presentation/format';
 
 import type { Operation, Snapshot } from '../domain/model';
+import { getMenu } from '../domain/catalog';
 import { quote } from '../domain/pricing';
 import { canonical } from '../application/serialization';
 import type { Cashier } from '../application/ports';
@@ -17,7 +19,9 @@ function details(op: Operation, snapshot: Snapshot): string {
     } catch {
       /* Invalid totals remain unresolved. */
     }
-    return `${products.map((p) => `${p.name} ${c.quantities[p.id]}本`).join(' ／ ')} ／ ${total}`;
+    return `${getMenu(c.price)
+      .map((p) => `${p.name} ${c.quantities[p.id] ?? 0}本`)
+      .join(' ／ ')} ／ ${total}`;
   }
   if ('orderId' in c) {
     const order = snapshot.orders.find((o) => o.id === c.orderId);
@@ -52,7 +56,9 @@ export function Recovery({
         <div key={op.id}>
           <strong>{commandNames[op.command.type]}</strong>
           <span>{details(op, snapshot)}</span>
-          <button
+          <Button
+            variant="secondary"
+            type="button"
             className="secondary"
             disabled={op.context.generation !== context.generation}
             onClick={() => {
@@ -76,8 +82,10 @@ export function Recovery({
             }}
           >
             確認して記録
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
+            type="button"
             className="secondary"
             onClick={() => {
               if (
@@ -89,7 +97,7 @@ export function Recovery({
             }}
           >
             実行していないので取り消す
-          </button>
+          </Button>
           {op.context.generation !== context.generation && (
             <small>データを戻す前の記録です。このまま記録はできません。</small>
           )}

@@ -1,3 +1,4 @@
+import { IconButton, Button } from './components/controls';
 import { useEffect, useRef, useState } from 'react';
 import { ZodError } from 'zod';
 import { useRegisterSW } from 'virtual:pwa-register/react';
@@ -63,6 +64,10 @@ export default function App() {
   const [settingsInitial, setSettingsInitial] =
     useState<SettingsSection>('price');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [lastHandoff, setLastHandoff] = useState<{
+    orderId: string;
+    completionId: string;
+  } | null>(null);
   const [resumeOrderIds, setResumeOrderIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -168,6 +173,7 @@ export default function App() {
     setTab('会計');
     setDraft({ quantities: emptyQuantities(), price: null });
     setVerifiedBackup(null);
+    setLastHandoff(null);
   };
   const shared: Shared | null = snapshot
     ? {
@@ -209,13 +215,14 @@ export default function App() {
                 { key: '設定・データ', label: '設定', icon: 'settings' },
               ] as { key: string; label: string; icon: IconName }[]
             ).map((item) => (
-              <button
+              <Button
+                variant="secondary"
+                type="button"
                 key={item.key}
                 disabled={busy || fatal || tabOwnership.state !== 'owned'}
                 className={tab === item.key ? 'active' : ''}
                 aria-current={tab === item.key ? 'page' : undefined}
                 onClick={() => {
-                  if (item.key === '設定・データ') setSettingsInitial('price');
                   setTab(item.key);
                 }}
               >
@@ -227,7 +234,7 @@ export default function App() {
                 >
                   {item.label}
                 </span>
-              </button>
+              </Button>
             ))}
           </nav>
         )}
@@ -254,14 +261,14 @@ export default function App() {
                 : '準備中'}
             </span>
           </span>
-          <button
+          <IconButton
+            variant="plain"
+            type="button"
             className="icon-button"
-            aria-label="使い方"
-            title="使い方"
             onClick={() => setHelpOpen(true)}
-          >
-            <Icon name="help" />
-          </button>
+            label="使い方"
+            icon="help"
+          />
         </div>
       </header>
       <Help open={helpOpen} onClose={() => setHelpOpen(false)} />
@@ -272,9 +279,14 @@ export default function App() {
             <p>
               同じブラウザで開いている会計画面を閉じてから、この画面で再確認してください。
             </p>
-            <button className="secondary" onClick={tabOwnership.retry}>
+            <Button
+              variant="secondary"
+              type="button"
+              className="secondary"
+              onClick={tabOwnership.retry}
+            >
               この画面で再確認
-            </button>
+            </Button>
           </div>
         )}
         {tabOwnership.state === 'unsupported' && (
@@ -291,12 +303,14 @@ export default function App() {
                 : '操作を完了できませんでした'}
             </strong>
             <p>{error}</p>
-            <button
+            <Button
+              variant="secondary"
+              type="button"
               className="secondary"
               onClick={() => perform(async () => {})}
             >
               保存状態を読み直す
-            </button>
+            </Button>
           </div>
         )}
         {needRefresh && (
@@ -305,7 +319,9 @@ export default function App() {
             <span>
               営業終了後、バックアップを保存・確認してから更新してください。
             </span>
-            <button
+            <Button
+              variant="secondary"
+              type="button"
               className="secondary"
               disabled={
                 tabOwnership.state !== 'owned' ||
@@ -319,8 +335,9 @@ export default function App() {
                 void updateServiceWorker(true);
               }}
             >
+              <Icon name="refresh" />
               更新する
-            </button>
+            </Button>
           </div>
         )}
         <fieldset
@@ -379,7 +396,12 @@ export default function App() {
                     resumeOrderIds={resumeOrderIds}
                     {...shared}
                   />
-                  <Waiting snapshot={snapshot} {...shared} />
+                  <Waiting
+                    snapshot={snapshot}
+                    lastHandoff={lastHandoff}
+                    onHandoffChange={setLastHandoff}
+                    {...shared}
+                  />
                 </div>
               )}
               {tab === '履歴・集計' && (
@@ -393,16 +415,17 @@ export default function App() {
                   {...shared}
                 />
               )}
-              {tab === '設定・データ' && (
+              <div hidden={tab !== '設定・データ'}>
                 <Settings
                   snapshot={snapshot}
                   store={store}
-                  initialSection={settingsInitial}
+                  section={settingsInitial}
+                  onSectionChange={setSettingsInitial}
                   onRestored={resetAfterRestore}
                   onVerified={setVerifiedBackup}
                   {...shared}
                 />
-              )}
+              </div>
             </>
           )}
         </fieldset>

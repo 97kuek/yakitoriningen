@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useState } from 'react';
 import { count } from '../domain/model';
 import { yen } from '../presentation/format';
 
@@ -7,6 +7,7 @@ import type { ActionHandler } from '../ui';
 import { canonical } from '../application/serialization';
 import type { Cashier } from '../application/ports';
 import { encodeBackup, ordersCsv, parseBackup } from '../application/backup';
+import { Button, Dialog } from './controls';
 import { Icon } from './Icon';
 export function download(
   text: string,
@@ -48,12 +49,6 @@ export function DataPanel({
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
   const [status, setStatus] = useState('');
   const [restoreOpen, setRestoreOpen] = useState(false);
-  const restoreDialog = useRef<HTMLDialogElement>(null);
-  const restoreHeading = useId();
-  useEffect(() => {
-    if (restoreOpen) restoreDialog.current?.showModal();
-    else restoreDialog.current?.close();
-  }, [restoreOpen]);
   return (
     <section className="data-panel" aria-labelledby="backup-heading">
       <h3 id="backup-heading">
@@ -63,7 +58,9 @@ export function DataPanel({
       {snapshot && (
         <>
           <div className="actions">
-            <button
+            <Button
+              variant="secondary"
+              type="button"
               className="secondary"
               onClick={() =>
                 perform(async () => {
@@ -85,8 +82,10 @@ export function DataPanel({
             >
               <Icon name="download" />
               バックアップを保存
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              type="button"
               className="secondary"
               onClick={() =>
                 perform(async () => {
@@ -102,7 +101,7 @@ export function DataPanel({
             >
               <Icon name="chart" />
               売上一覧を保存
-            </button>
+            </Button>
           </div>
           <p className="hint">
             引き継ぎにはバックアップを使います。売上一覧は集計用です。
@@ -154,32 +153,21 @@ export function DataPanel({
           {status}
         </p>
       )}
-      <button
+      <Button
+        variant="secondary"
         type="button"
         className="secondary restore-trigger"
         onClick={() => setRestoreOpen(true)}
       >
         <Icon name="upload" />
         バックアップから戻す
-      </button>
-      <dialog
-        ref={restoreDialog}
+      </Button>
+      <Dialog
+        open={restoreOpen}
+        onClose={() => setRestoreOpen(false)}
+        title="バックアップから戻す"
         className="restore-dialog"
-        aria-labelledby={restoreHeading}
-        onCancel={() => setRestoreOpen(false)}
       >
-        <div className="section-heading">
-          <h2 id={restoreHeading}>バックアップから戻す</h2>
-          <button
-            className="icon-button"
-            aria-label="閉じる"
-            title="閉じる"
-            type="button"
-            onClick={() => setRestoreOpen(false)}
-          >
-            <Icon name="close" />
-          </button>
-        </div>
         {errorMessage && (
           <p className="inline-error" role="alert">
             {errorMessage}
@@ -251,7 +239,9 @@ export function DataPanel({
                 />
                 会計を止め、戻す内容と現在の記録の保存を確認しました
               </label>
-              <button
+              <Button
+                variant="danger"
+                type="button"
                 className="danger"
                 disabled={!restoreConfirmed || (!!snapshot && !verified)}
                 onClick={() =>
@@ -270,14 +260,14 @@ export function DataPanel({
                 }
               >
                 この内容に戻す
-              </button>
+              </Button>
               <p className="hint">
                 保留の注文は、現金と札を確認してから再開してください。
               </p>
             </div>
           )}
         </div>
-      </dialog>
+      </Dialog>
     </section>
   );
 }

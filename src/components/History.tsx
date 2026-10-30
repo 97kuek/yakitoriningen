@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { products } from '../domain/model';
-import { newId } from '../lib/id';
-import { yen } from '../presentation/format';
+import { useState } from 'react';
+import { dayText, orderText, timeText, yen } from '../presentation/format';
 import { profit, summarizeSales } from '../domain/sales';
+import { historyPage } from '../domain/history';
+import { Button, Select } from './controls';
+import { RefundDialog } from './RefundDialog';
 import { SalesCharts } from './SalesCharts';
 
 import type { Order, Snapshot } from '../domain/model';
@@ -15,6 +16,8 @@ export function History({
   context,
   errorMessage,
   store,
+  busy,
+  saveCommand,
   onEditExpenses,
 }: Shared & {
   snapshot: Snapshot;
@@ -23,25 +26,13 @@ export function History({
 }) {
   const [scope, setScope] = useState<'day' | 'event'>('event');
   const [cancel, setCancel] = useState<Order | null>(null);
-  const [reason, setReason] = useState('');
-  const [confirmed, setConfirmed] = useState(false);
-  const staged = snapshot.operations.find(
-    (op) =>
-      op.status === 'pending' &&
-      op.command.type === 'cancel' &&
-      op.command.orderId === cancel?.id &&
-      op.context.generation === context.generation,
-  );
-  const stagedReason =
-    staged?.command.type === 'cancel' ? staged.command.reason : '';
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (cancel) dialog.current?.showModal();
-    else dialog.current?.close();
-  }, [cancel]);
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [waitingOnly, setWaitingOnly] = useState(false);
+  const [page, setPage] = useState(0);
   const orders = snapshot.orders.filter(
     (o) => scope === 'event' || o.day === snapshot.meta.day,
   );
+  const history = historyPage(orders, ticketSearch, waitingOnly, page);
   const total = summarizeSales(snapshot.orders);
   const selected = summarizeSales(orders);
   const earnings = profit(total.sales, snapshot.meta.expenseTotal);
@@ -68,9 +59,14 @@ export function History({
               ? '未登録'
               : yen(snapshot.meta.expenseTotal)}
           </strong>
-          <button className="link-button" onClick={onEditExpenses}>
+          <Button
+            variant="plain"
+            type="button"
+            className="link-button"
+            onClick={onEditExpenses}
+          >
             {snapshot.meta.expenseTotal == null ? '経費を登録' : '経費を変更'}
-          </button>
+          </Button>
         </div>
         <span aria-hidden="true">＝</span>
         <div>
@@ -92,13 +88,18 @@ export function History({
         <h3>売上の内訳</h3>
         <label className="inline-label">
           表示範囲
-          <select
+          <Select
             value={scope}
-            onChange={(e) => setScope(e.target.value as 'day' | 'event')}
-          >
-            <option value="event">開催回全体</option>
-            <option value="day">営業日 {snapshot.meta.day}</option>
-          </select>
+            label="表示範囲"
+            onChange={(value) => {
+              setScope(value as 'day' | 'event');
+              setPage(0);
+            }}
+            options={[
+              { value: 'event', label: '開催回全体' },
+              { value: 'day', label: `日付 ${snapshot.meta.day}` },
+            ]}
+          />
         </label>
       </div>
       <div className="sales-breakdown-line">
@@ -110,8 +111,41 @@ export function History({
           {scope === 'day' ? `この日の売上 ${yen(selected.sales)}` : ''}
         </span>
       </div>
-      <SalesCharts orders={orders} scope={scope} />
+      <SalesCharts
+        orders={orders}
+        scope={scope}
+        price={snapshot.prices.find(
+          (price) => price.id === snapshot.meta.activePriceId,
+        )!}
+      />
       <h3 className="history-heading">注文履歴</h3>
+      <div className="history-filters">
+        <label>
+          札番号で検索
+          <input
+            type="search"
+            inputMode="numeric"
+            maxLength={3}
+            value={ticketSearch}
+            placeholder="札番号"
+            onChange={(event) => {
+              setTicketSearch(event.target.value);
+              setPage(0);
+            }}
+          />
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={waitingOnly}
+            onChange={(event) => {
+              setWaitingOnly(event.target.checked);
+              setPage(0);
+            }}
+          />
+          未受け渡しだけ表示
+        </label>
+      </div>
       <div className="table-scroll">
         <table>
           <caption className="sr-only">注文履歴</caption>
@@ -128,32 +162,16 @@ export function History({
             </tr>
           </thead>
           <tbody>
-            {[...orders].reverse().map((o) => (
+            {history.orders.map((o) => (
               <tr key={o.id}>
                 <td>
-                  {new Date(o.createdAt).toLocaleTimeString('ja-JP', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  {scope === 'event' && (
-                    <small>
-                      {new Intl.DateTimeFormat('ja-JP', {
-                        month: 'numeric',
-                        day: 'numeric',
-                        timeZone: 'Asia/Tokyo',
-                      }).format(new Date(`${o.day}T00:00:00+09:00`))}
-                    </small>
-                  )}
+                  {timeText(o.createdAt)}
+                  {scope === 'event' && <small>{dayText(o.day)}</small>}
                 </td>
                 <td>
                   <strong>{o.ticket}</strong>
                 </td>
-                <td>
-                  {products
-                    .filter((p) => o.quantities[p.id])
-                    .map((p) => `${o.names[p.id]} ${o.quantities[p.id]}本`)
-                    .join(' ／ ')}
-                </td>
+                <td>{orderText(o)}</td>
                 <td>
                   {yen(o.quote.total)}
                   {o.refunded > 0 && <small>返金 {yen(o.refunded)}</small>}
@@ -178,115 +196,61 @@ export function History({
                 </td>
                 <td>
                   {o.status === 'paid' && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      type="button"
                       className="secondary danger-text"
                       onClick={() => {
-                        setReason('');
-                        setConfirmed(false);
                         setCancel(o);
                       }}
                     >
                       全額返金
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!orders.length && (
-          <p className="empty-text">この範囲の注文はありません。</p>
+        {!history.total && (
+          <p className="empty-text">条件に合う注文はありません。</p>
         )}
       </div>
-      <dialog ref={dialog} onCancel={() => setCancel(null)}>
-        <h2>全額返金</h2>
-        {errorMessage && (
-          <p className="inline-error" role="alert">
-            {errorMessage}
-          </p>
-        )}
-        {cancel && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void perform(async () => {
-                if (!staged)
-                  throw new Error('返金前に準備を保存してください。');
-                await store.execute(staged.id, context);
-                setCancel(null);
-              });
-            }}
+      <div className="history-pagination">
+        <span>
+          {history.total
+            ? `${history.page * 50 + 1}〜${Math.min((history.page + 1) * 50, history.total)}件 / ${history.total}件`
+            : '0件'}
+        </span>
+        <div>
+          <Button
+            disabled={history.page === 0}
+            onClick={() => setPage(history.page - 1)}
           >
-            <div className="refund-amount">
-              <span>札 {cancel.ticket} の返金</span>
-              <strong>{yen(cancel.quote.total)}</strong>
-            </div>
-            {!staged && (
-              <p className="hint">準備ができてから現金を返してください。</p>
-            )}
-            <label>
-              取消理由
-              <input
-                required
-                maxLength={200}
-                disabled={!!staged}
-                value={staged ? stagedReason : reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
-            </label>
-            {!staged && (
-              <button
-                type="button"
-                className="primary wide"
-                disabled={!reason.trim()}
-                onClick={() =>
-                  perform(() =>
-                    store.prepare(newId(), context, {
-                      type: 'cancel',
-                      orderId: cancel.id,
-                      assignmentId: cancel.assignmentId,
-                      reason,
-                    }),
-                  )
-                }
-              >
-                返金を始める
-              </button>
-            )}
-            {staged && (
-              <>
-                <p className="notice">
-                  <strong>返金の準備ができました。</strong>
-                  <br />
-                  返金済みか確認し、未返金なら {yen(cancel.quote.total)}{' '}
-                  を返金してください。
-                </p>
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={confirmed}
-                    onChange={(e) => setConfirmed(e.target.checked)}
-                  />
-                  全額返金し、現金を確認しました
-                </label>
-              </>
-            )}
-
-            <div className="actions">
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setCancel(null)}
-              >
-                戻る
-              </button>
-              <button className="danger" disabled={!staged || !confirmed}>
-                返金を記録
-              </button>
-            </div>
-          </form>
-        )}
-      </dialog>
+            新しい50件
+          </Button>
+          <Button
+            disabled={history.page + 1 >= history.pages}
+            onClick={() => setPage(history.page + 1)}
+          >
+            前の50件
+          </Button>
+        </div>
+      </div>
+      {cancel && (
+        <RefundDialog
+          key={cancel.id}
+          order={snapshot.orders.find((order) => order.id === cancel.id)!}
+          snapshot={snapshot}
+          store={store}
+          onClose={() => setCancel(null)}
+          perform={perform}
+          context={context}
+          errorMessage={errorMessage}
+          busy={busy}
+          saveCommand={saveCommand}
+        />
+      )}
     </section>
   );
 }
