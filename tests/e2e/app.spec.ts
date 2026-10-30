@@ -416,3 +416,28 @@ test('キーボードで支払いへ進み、確認ボタンへ迷わず移れ�
   await confirm.press('Enter');
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
 });
+test('お預かり金額はフォーカスしても二重枠やハイライトを出さない', async ({
+  page,
+}) => {
+  await setup(page);
+  await page.getByRole('button', { name: 'ももを1本増やす' }).click();
+  await page.getByRole('button', { name: '会計へ', exact: true }).click();
+  const amount = page.getByLabel('お預かり金額');
+  await expect(amount).toBeFocused();
+  await expect(amount).toHaveCSS('outline-style', 'none');
+  const bounds = await amount.evaluate((input) => {
+    const field = input.getBoundingClientRect(),
+      frame = input.parentElement!.getBoundingClientRect();
+    return (
+      field.left >= frame.left &&
+      field.right <= frame.right &&
+      field.top >= frame.top &&
+      field.bottom <= frame.bottom
+    );
+  });
+  expect(bounds).toBe(true);
+  await page.screenshot({
+    path: 'test-results/payment-input.png',
+    fullPage: true,
+  });
+});

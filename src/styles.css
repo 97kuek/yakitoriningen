@@ -1964,3 +1964,17 @@ select {
   color: var(--muted);
   margin-bottom: 14px;
 }
+/* The amount field has one permanent frame; focusing its inner input adds no ring. */
+.money-input input:focus,
+.money-input input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.money-input {
+  border: 1.5px solid var(--control-border);
+}
+.money-input input {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+}
