@@ -50,3 +50,6 @@ Thumbs.db
 # Browser test artifacts
 /test-results/
 /playwright-report/
+
+# Cloudflare local runtime and deployment state
+.wrangler/
