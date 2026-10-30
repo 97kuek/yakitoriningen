@@ -1,0 +1,401 @@
+/* Shared controls use one border for rest, selection, and keyboard focus. */
+button,
+.control-button {
+  min-height: 40px;
+  height: 40px;
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: none;
+}
+
+.control-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--ink);
+  background: var(--paper);
+  font-size: inherit;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.control-button.control-primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.control-button.control-secondary {
+  background: var(--paper);
+  border-color: var(--control-border);
+  color: var(--ink);
+}
+
+.control-button.control-danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--paper);
+}
+
+.control-button.control-plain {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink);
+}
+
+button:focus,
+input:focus,
+select:focus,
+summary:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+button.control-primary:focus-visible,
+button.control-danger:focus-visible {
+  text-decoration-color: var(--paper);
+}
+
+button.control-icon-button:focus-visible {
+  border-color: var(--ink);
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+input:not([type='checkbox']),
+select {
+  min-height: 40px;
+  height: 40px;
+  border-width: 1px;
+  padding: 7px 10px;
+  box-shadow: none;
+}
+
+input:focus-visible {
+  text-decoration: none;
+  border-color: var(--ink);
+}
+
+input[type='checkbox'] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  margin: 0;
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  background: var(--paper);
+}
+
+input[type='checkbox']::before {
+  content: '';
+  width: 11px;
+  height: 7px;
+  border: solid var(--paper);
+  border-width: 0 0 2px 2px;
+  transform: translateY(-1px) rotate(-45deg);
+  opacity: 0;
+}
+
+input[type='checkbox']:checked {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+input[type='checkbox']:checked::before {
+  opacity: 1;
+}
+
+input[type='checkbox']:focus-visible {
+  border-color: var(--ink);
+  background: var(--yellow);
+}
+
+input[type='checkbox']:checked:focus-visible::before {
+  border-color: var(--ink);
+}
+
+.quantity-input {
+  border-bottom: 1px solid transparent;
+}
+
+.quantity-input:focus-within {
+  border-bottom-color: var(--ink);
+}
+
+.money-input {
+  border: 1px solid var(--control-border);
+  box-shadow: none;
+}
+
+.money-input:focus-within {
+  border-color: var(--ink);
+  box-shadow: none;
+}
+
+.money-input input:focus,
+.money-input input:focus-visible {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+strong,
+b,
+h3,
+h4 {
+  font-weight: 600;
+}
+
+.tabs button.active,
+.price-options button[aria-pressed='true'] {
+  box-shadow: none;
+}
+
+.icon-button.control-icon-button {
+  flex-shrink: 0;
+  min-width: 40px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 9px;
+}
+
+.control-disclosure {
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+  padding-top: 8px;
+  overflow-anchor: none;
+}
+
+.control-disclosure > .control-disclosure-trigger {
+  justify-content: space-between;
+  width: 100%;
+  height: auto;
+  min-height: 40px;
+  text-align: left;
+  padding: 8px 0;
+  border-radius: 0;
+  border-width: 0 0 1px;
+}
+
+.control-disclosure-trigger > .icon {
+  flex: 0 0 20px;
+  margin-left: 12px;
+  transition: transform 150ms ease;
+}
+
+.control-disclosure-trigger[aria-expanded='true'] > .icon {
+  transform: rotate(180deg);
+}
+
+.control-disclosure-content {
+  padding: 4px 0 0;
+}
+
+.control-disclosure-content[hidden] {
+  display: none;
+}
+
+.control-select {
+  position: relative;
+  display: inline-block;
+  min-width: 0;
+  width: 100%;
+  font-weight: 400;
+}
+
+.control-select > .control-select-trigger {
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.control-select-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.control-select-trigger > .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.inline-label > .control-select {
+  width: auto;
+  min-width: 132px;
+}
+
+.control-select-options {
+  position: absolute;
+  inset: calc(100% + 4px) 0 auto;
+  z-index: 10;
+  min-width: max-content;
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--paper);
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  font-size: 14px;
+  text-align: left;
+}
+
+.control-select-options > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.control-select-options > li[data-active='true'] {
+  background: color-mix(in srgb, var(--yellow) 24%, var(--paper));
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.control-select-options > li[aria-selected='true'] {
+  font-weight: 600;
+}
+
+.control-select-options .icon {
+  width: 16px;
+  height: 16px;
+}
+
+dialog.control-dialog {
+  width: min(540px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: none;
+  font: inherit;
+  scrollbar-gutter: auto;
+}
+
+.control-dialog::backdrop {
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.control-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.control-dialog-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.control-dialog-body {
+  font-size: 14px;
+}
+
+.control-dialog-body p {
+  font-size: inherit;
+}
+
+.control-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.control-dialog-footer > button {
+  flex: 0 1 auto;
+  min-width: 100px;
+  width: auto;
+  height: 40px;
+  min-height: 40px;
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+.control-dialog-footer > .control-primary,
+.control-dialog-footer > .control-danger {
+  order: 1;
+}
+
+@media (max-width: 480px) {
+  dialog.control-dialog {
+    padding: 20px;
+  }
+
+  .control-dialog-footer > button {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control-disclosure-trigger > .icon,
+  .control-select-trigger > .icon {
+    transition: none;
+  }
+
+  dialog.control-dialog[open] {
+    animation: none;
+  }
+}
+
+.control-dialog .refund-amount {
+  padding: 4px 0 12px;
+  margin: 0;
+}
+.control-dialog .refund-amount strong {
+  font-size: 28px;
+  font-weight: 600;
+}
+.control-dialog form > label {
+  margin-block: 16px;
+}
+.control-dialog .notice {
+  margin-bottom: 16px;
+}
+.control-dialog-footer .control-button {
+  min-width: 100px;
+  width: auto;
+}
+
+.control-dialog[open] {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
