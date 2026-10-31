@@ -31,6 +31,8 @@ npm run preview
 
 プレビューは `http://127.0.0.1:4173` で開けます。検証コマンドと開発ルールは[開発への参加](CONTRIBUTING.md)を参照してください。
 
+`main`へpushするとGitHub Actionsが検証し、成功したビルドをCloudflare Pagesへ自動公開します。
+
 ## ドキュメント
 
 - [公開と更新](docs/deployment.md)：Cloudflareへの公開とデータの引き継ぎ
