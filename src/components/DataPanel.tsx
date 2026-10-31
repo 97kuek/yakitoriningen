@@ -53,63 +53,66 @@ export function DataPanel({
     <section className="data-panel" aria-labelledby="backup-heading">
       <h3 id="backup-heading">
         <Icon name="download" />
-        記録の保存・引き継ぎ
+        記録の保存・読み込み
       </h3>
       {snapshot && (
         <>
           <div className="actions">
-            <Button
-              variant="secondary"
-              type="button"
-              className="secondary"
-              onClick={() =>
-                perform(async () => {
-                  const current = await store.read();
-                  if (!current) throw new Error('営業の記録がありません。');
-                  const text = encodeBackup(current);
-                  parseBackup(await new Blob([text]).text());
-                  download(
-                    text,
-                    `焼き鳥人間_バックアップ_${current.meta.day}_${new Date().toLocaleTimeString('sv-SE', { hour12: false }).replaceAll(':', '-')}.json`,
-                  );
-                  setArchive(current);
-                  setVerified(false);
-                  setStatus(
-                    '保存先のファイルを確認してください。USBなど別の場所にもコピーしましょう。',
-                  );
-                })
-              }
-            >
-              <Icon name="download" />
-              バックアップを保存
-            </Button>
-            <Button
-              variant="secondary"
-              type="button"
-              className="secondary"
-              onClick={() =>
-                perform(async () => {
-                  const current = await store.read();
-                  if (current)
+            <div className="data-action">
+              <Button
+                variant="secondary"
+                type="button"
+                className="secondary"
+                onClick={() =>
+                  perform(async () => {
+                    const current = await store.read();
+                    if (!current) throw new Error('営業の記録がありません。');
+                    const text = encodeBackup(current);
+                    parseBackup(await new Blob([text]).text());
                     download(
-                      ordersCsv(current),
-                      `焼き鳥人間_売上一覧_${current.meta.day}.csv`,
-                      'text/csv;charset=utf-8',
+                      text,
+                      `焼き鳥人間_バックアップ_${current.meta.day}_${new Date().toLocaleTimeString('sv-SE', { hour12: false }).replaceAll(':', '-')}.json`,
                     );
-                })
-              }
-            >
-              <Icon name="chart" />
-              売上一覧を保存
-            </Button>
+                    setArchive(current);
+                    setVerified(false);
+                    setStatus(
+                      '保存したファイルを選んで確認し、USBなどにもコピーしてください。',
+                    );
+                  })
+                }
+              >
+                <Icon name="download" />
+                記録を保存
+              </Button>
+              <p className="hint">再開やPCの引き継ぎに使います。</p>
+            </div>
+            <div className="data-action">
+              <Button
+                variant="secondary"
+                type="button"
+                className="secondary"
+                onClick={() =>
+                  perform(async () => {
+                    const current = await store.read();
+                    if (current)
+                      download(
+                        ordersCsv(current),
+                        `焼き鳥人間_売上一覧_${current.meta.day}.csv`,
+                        'text/csv;charset=utf-8',
+                      );
+                  })
+                }
+              >
+                <Icon name="chart" />
+                売上一覧を保存
+              </Button>
+              <p className="hint">売上を表で確認できます。</p>
+            </div>
           </div>
-          <p className="hint">
-            引き継ぎにはバックアップを使います。売上一覧は集計用です。
-          </p>
           {archive && (
             <div className="archive-check">
               <label>
-                保存したバックアップを確認
+                保存したファイルを確認
                 <input
                   type="file"
                   accept=".json,application/json"
@@ -160,12 +163,13 @@ export function DataPanel({
         onClick={() => setRestoreOpen(true)}
       >
         <Icon name="upload" />
-        バックアップから戻す
+        保存した記録を開く
       </Button>
+      <p className="hint">保存済みの記録を読み込みます。</p>
       <Dialog
         open={restoreOpen}
         onClose={() => setRestoreOpen(false)}
-        title="バックアップから戻す"
+        title="保存した記録を開く"
         className="restore-dialog"
       >
         {errorMessage && (
@@ -175,10 +179,12 @@ export function DataPanel({
         )}
         <div className="restore">
           <p>
-            現在の記録を置き換えます。先にバックアップを保存し、ファイルを確認してください。
+            {snapshot
+              ? '会計を止めてから開いてください。現在の記録は置き換わります。先に記録を保存し、ファイルを確認してください。'
+              : '保存したファイルを選び、内容を確認してください。'}
           </p>
           <label>
-            戻すバックアップ
+            開くファイル
             <input
               type="file"
               accept=".json,application/json"
@@ -195,7 +201,7 @@ export function DataPanel({
           </label>
           {incoming && (
             <div className="restore-preview">
-              <h4>戻す内容</h4>
+              <h4>開く内容</h4>
               <p>
                 {incoming.meta.event} / {incoming.meta.day}
               </p>
@@ -237,7 +243,7 @@ export function DataPanel({
                   checked={restoreConfirmed}
                   onChange={(e) => setRestoreConfirmed(e.target.checked)}
                 />
-                会計を止め、戻す内容と現在の記録の保存を確認しました
+                開く内容と現在の記録の保存を確認した
               </label>
               <Button
                 variant="danger"
@@ -259,7 +265,7 @@ export function DataPanel({
                   })
                 }
               >
-                この内容に戻す
+                この記録に置き換える
               </Button>
               <p className="hint">
                 保留の注文は、現金と札を確認してから再開してください。

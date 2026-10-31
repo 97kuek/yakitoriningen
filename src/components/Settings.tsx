@@ -198,7 +198,7 @@ export function Settings({
               <p role="status">
                 {persisted
                   ? '記録の保護が有効です。'
-                  : '記録の保護は許可されませんでした。バックアップを保存してください。'}
+                  : '記録の保護は許可されませんでした。記録を保存してください。'}
               </p>
             )}
           </Disclosure>

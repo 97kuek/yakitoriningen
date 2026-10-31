@@ -16,9 +16,9 @@ async function setup(page: Page, capture = false) {
   }
   await page.getByLabel('開催回').fill('早稲田祭 2026');
   await page.getByLabel('営業日').fill('2026-11-07');
-  await page.getByRole('button', { name: 'データを作成' }).click();
-  await page.getByLabel('価格・営業日・保存件数を確認しました').check();
-  await page.getByRole('button', { name: '営業を始める' }).click();
+  await page.getByRole('button', { name: '新しく作る' }).click();
+  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByRole('button', { name: '会計を始める' }).click();
   if (capture) {
     await page.getByRole('heading', { name: '注文', exact: true }).waitFor();
     await page.waitForFunction(() =>
@@ -60,8 +60,8 @@ test('会計・受け渡し・札回収・入力保持・再起動・取消', as
   await expect(page.getByText('別々に記録', { exact: true })).toHaveCount(0);
   await page.reload();
   await expect(page.getByText('確定済み 1件')).toBeVisible();
-  await page.getByLabel('価格・営業日・保存件数を確認しました').check();
-  await page.getByRole('button', { name: '営業を始める' }).click();
+  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByRole('button', { name: '会計を始める' }).click();
   await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
   await expect(page.getByTestId('net-sales')).toHaveText('￥600');
   await page.getByRole('button', { name: '全額返金' }).click();
@@ -97,9 +97,9 @@ test('オフラインで再起動して保留注文を照合できる', async ({
   await expect(page.getByRole('button', { name: '会計を確定' })).toBeVisible();
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByText('保留会計 1件')).toBeVisible();
-  await page.getByLabel('価格・営業日・保存件数を確認しました').check();
-  await page.getByRole('button', { name: '営業を始める' }).click();
+  await expect(page.getByText('途中の会計 1件')).toBeVisible();
+  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByRole('button', { name: '会計を始める' }).click();
   await expect(page.getByRole('heading', { name: 'お会計' })).toBeVisible();
   await page.getByRole('button', { name: '会計を確定' }).click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
@@ -112,16 +112,16 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   const firstDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'バックアップを保存' }).click();
+  await page.getByRole('button', { name: '記録を保存' }).click();
   const first = await readFile((await (await firstDownload).path())!);
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await page.getByRole('button', { name: 'かわを1本増やす' }).click();
   await pay(page, '200');
   await page.getByRole('button', { name: '設定', exact: true }).click();
   const archiveDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'バックアップを保存' }).click();
+  await page.getByRole('button', { name: '記録を保存' }).click();
   const archive = await readFile((await (await archiveDownload).path())!);
-  await page.getByLabel('保存したバックアップを確認').setInputFiles({
+  await page.getByLabel('保存したファイルを確認').setInputFiles({
     name: 'archive.json',
     mimeType: 'application/json',
     buffer: archive,
@@ -129,20 +129,18 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
   await expect(page.getByText('保存したファイルを確認済み')).toBeVisible();
   await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await page
-    .getByRole('button', { name: 'バックアップから戻す', exact: true })
+    .getByRole('button', { name: '保存した記録を開く', exact: true })
     .click();
-  await page.getByLabel('戻すバックアップ').setInputFiles({
+  await page.getByLabel('開くファイル').setInputFiles({
     name: 'restore.json',
     mimeType: 'application/json',
     buffer: first,
   });
-  await page
-    .getByLabel('会計を止め、戻す内容と現在の記録の保存を確認しました')
-    .check();
-  await page.getByRole('button', { name: 'この内容に戻す' }).click();
+  await page.getByLabel('開く内容と現在の記録の保存を確認した').check();
+  await page.getByRole('button', { name: 'この記録に置き換える' }).click();
   await expect(page.getByText('確定済み 1件')).toBeVisible();
-  await page.getByLabel('価格・営業日・保存件数を確認しました').check();
-  await page.getByRole('button', { name: '営業を始める' }).click();
+  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByRole('button', { name: '会計を始める' }).click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
 });
 test('実際のIndexedDB書込でstrict durabilityを要求する', async ({ page }) => {
@@ -190,12 +188,12 @@ test('二重起動した画面の操作を止め、元の画面を閉じてか�
   await second.goto('/');
   await expect(second.getByText('別の画面で使用中です')).toBeVisible();
   await expect(
-    second.getByRole('button', { name: '営業を始める' }),
+    second.getByRole('button', { name: '会計を始める' }),
   ).toBeDisabled();
   await page.close();
   await second.getByRole('button', { name: 'この画面で再確認' }).click();
-  await second.getByLabel('価格・営業日・保存件数を確認しました').check();
-  await second.getByRole('button', { name: '営業を始める' }).click();
+  await second.getByLabel('日付・価格・件数を確認した').check();
+  await second.getByRole('button', { name: '会計を始める' }).click();
   await expect(
     second.getByRole('heading', { name: '注文', exact: true }),
   ).toBeVisible();
@@ -240,7 +238,7 @@ test('設定の操作はファイル形式や開発用語を知らずに選べ�
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: 'バックアップを保存', exact: true }),
+    page.getByRole('button', { name: '記録を保存', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: '売上一覧を保存', exact: true }),
@@ -257,13 +255,13 @@ test('データを戻す画面を開閉しても設定の位置や入力が変�
   await page.getByLabel('ももの通常価格（円）').fill('177');
   await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   const trigger = page.getByRole('button', {
-    name: 'バックアップから戻す',
+    name: '保存した記録を開く',
     exact: true,
   });
   await trigger.scrollIntoViewIfNeeded();
   const before = await trigger.boundingBox();
   await trigger.click();
-  const modal = page.getByRole('dialog', { name: 'バックアップから戻す' });
+  const modal = page.getByRole('dialog', { name: '保存した記録を開く' });
   await expect(modal).toBeVisible();
   await modal.getByRole('button', { name: '閉じる', exact: true }).click();
   await expect(modal).not.toBeVisible();
@@ -331,10 +329,10 @@ test('戻すファイルに問題があれば開いている画面の中で理�
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await page
-    .getByRole('button', { name: 'バックアップから戻す', exact: true })
+    .getByRole('button', { name: '保存した記録を開く', exact: true })
     .click();
-  const modal = page.getByRole('dialog', { name: 'バックアップから戻す' });
-  await modal.getByLabel('戻すバックアップ').setInputFiles({
+  const modal = page.getByRole('dialog', { name: '保存した記録を開く' });
+  await modal.getByLabel('開くファイル').setInputFiles({
     name: 'invalid.json',
     mimeType: 'application/json',
     buffer: Buffer.from('{"bad":true}'),
@@ -383,8 +381,8 @@ test('確認待ちの記録は再試行に失敗しても途中で消えない',
       }),
   );
   await page.reload();
-  await page.getByLabel('価格・営業日・保存件数を確認しました').check();
-  await page.getByRole('button', { name: '営業を始める' }).click();
+  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByRole('button', { name: '会計を始める' }).click();
   await expect(
     page.getByRole('heading', { name: '確認が必要な記録' }),
   ).toBeVisible();
@@ -549,8 +547,8 @@ test('営業日別の内訳に変えても開催回全体の経費・利益を�
   await page.getByRole('button', { name: '経費を保存', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('経費を保存しました。');
   await page.reload();
-  await page.getByLabel('価格・営業日・保存件数を確認しました').check();
-  await page.getByRole('button', { name: '営業を始める' }).click();
+  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByRole('button', { name: '会計を始める' }).click();
   await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
   await expect(page.getByTestId('profit')).toHaveText('￥150');
   await expect(page.getByTestId('expense-total')).toHaveText('￥0');

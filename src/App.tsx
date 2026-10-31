@@ -92,6 +92,28 @@ export default function App() {
       ),
   });
   useEffect(() => {
+    if (!navigator.serviceWorker) return;
+    const checkForUpdates = () => {
+      if (!navigator.onLine || document.visibilityState !== 'visible') return;
+      void navigator.serviceWorker
+        .getRegistration()
+        .then((registration) => registration?.update())
+        .catch(() => {
+          /* A failed update check must not interrupt the current sale. */
+        });
+    };
+    window.addEventListener('focus', checkForUpdates);
+    window.addEventListener('online', checkForUpdates);
+    document.addEventListener('visibilitychange', checkForUpdates);
+    const interval = window.setInterval(checkForUpdates, 60_000);
+    return () => {
+      window.removeEventListener('focus', checkForUpdates);
+      window.removeEventListener('online', checkForUpdates);
+      document.removeEventListener('visibilitychange', checkForUpdates);
+      window.clearInterval(interval);
+    };
+  }, []);
+  useEffect(() => {
     const subscription = store.watch({
       next: (next) => {
         try {
@@ -317,7 +339,7 @@ export default function App() {
           <div className="notice update-notice">
             <strong>アプリの更新があります</strong>
             <span>
-              営業終了後、バックアップを保存・確認してから更新してください。
+              会計が終わったら、記録を保存・確認してから更新してください。
             </span>
             <Button
               variant="secondary"

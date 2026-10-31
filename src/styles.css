@@ -782,11 +782,14 @@ main {
 }
 .startup-shell {
   display: grid;
-  grid-template-columns: 0.95fr 1fr;
-  gap: 35px;
-  align-items: center;
-  max-width: 1010px;
-  margin: 35px auto;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  max-width: 600px;
+  margin: 24px auto;
+}
+.startup-art {
+  width: min(280px, 100%);
+  margin: auto;
 }
 .startup-art img {
   display: block;
@@ -848,22 +851,19 @@ dd {
   margin-top: 19px;
   margin-bottom: 17px;
 }
-.startup-restore {
-  margin-top: 22px !important;
-}
 .saved-details {
-  border-top: 0 !important;
-  padding: 0 !important;
-  margin: 10px 0 !important;
+  margin: 12px 0;
   font-size: 12px;
 }
-.startup .data-panel > h3 {
-  display: none;
+.startup-pending h3 {
+  margin-bottom: 8px;
 }
-.startup .data-panel {
-  padding-top: 12px;
-  border: 0;
-  margin-top: 10px;
+.startup-pending p {
+  margin: 8px 0;
+}
+.startup-pending ul {
+  margin: 8px 0;
+  padding-left: 20px;
 }
 .settings > h2 {
   margin-bottom: 24px;
@@ -883,6 +883,16 @@ dd {
 }
 .data-panel .actions {
   margin: 15px 0;
+  align-items: flex-start;
+}
+.data-action {
+  flex: 1;
+}
+.data-action > button {
+  width: 100%;
+}
+.data-action > .hint {
+  margin-bottom: 0;
 }
 .data-panel label {
   font-size: 12px;
@@ -1309,7 +1319,7 @@ dialog > h2 {
     max-width: 480px;
   }
   .startup-art {
-    max-width: 290px;
+    max-width: 240px;
     margin: auto;
   }
   .startup {
@@ -1333,8 +1343,7 @@ dialog > h2 {
   .data-panel .actions {
     align-items: stretch;
   }
-  .data-panel .actions > button {
-    flex: 1;
+  .data-panel .data-action > button {
     font-size: 12px;
     padding: 9px 8px;
     white-space: nowrap;

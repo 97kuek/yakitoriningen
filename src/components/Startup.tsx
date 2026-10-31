@@ -3,8 +3,9 @@ import { today, yen } from '../presentation/format';
 
 import type { Snapshot } from '../domain/model';
 import type { ActionHandler } from '../ui';
+import { commandNames } from '../ui';
 import type { Cashier } from '../application/ports';
-import { Button, Disclosure } from './controls';
+import { Button } from './controls';
 import { getMenu, getUnitPrice } from '../domain/catalog';
 import { DataPanel } from './DataPanel';
 import { Icon } from './Icon';
@@ -32,11 +33,22 @@ export function Startup({
   const price = snapshot?.prices.find(
     (p) => p.id === snapshot.meta.activePriceId,
   );
-  const last = snapshot
-    ? [...snapshot.orders].sort((a, b) =>
-        (b.paidAt ?? b.createdAt).localeCompare(a.paidAt ?? a.createdAt),
-      )[0]
-    : null;
+  const pendingOrders =
+    snapshot?.orders.filter((o) => o.status === 'pending') ?? [];
+  const pendingOperations =
+    snapshot?.operations.filter((operation) => {
+      if (operation.status !== 'pending') return false;
+      const command = operation.command;
+      return !(
+        command.type === 'pay' &&
+        pendingOrders.some(
+          (order) =>
+            order.confirmOperationId === operation.id &&
+            order.id === command.orderId &&
+            order.assignmentId === command.assignmentId,
+        )
+      );
+    }) ?? [];
   return (
     <div className="startup-shell">
       <aside className="startup-art">
@@ -50,10 +62,10 @@ export function Startup({
       <section className="startup panel">
         {snapshot && price ? (
           <>
-            <h2>営業前チェック</h2>
+            <h2>会計を始める前に</h2>
             <p className="startup-event">{snapshot.meta.event}</p>
             <dl className="startup-details">
-              <dt>営業日</dt>
+              <dt>日付</dt>
               <dd>{snapshot.meta.day}</dd>
               <dt>価格</dt>
               <dd>
@@ -73,11 +85,6 @@ export function Startup({
               <dd>
                 確定済み{' '}
                 {snapshot.orders.filter((o) => o.received !== null).length}件
-                <small>
-                  保留会計{' '}
-                  {snapshot.orders.filter((o) => o.status === 'pending').length}
-                  件
-                </small>
               </dd>
               <dt>使用中の札</dt>
               <dd>
@@ -88,23 +95,55 @@ export function Startup({
                 </small>
               </dd>
             </dl>
-            <Disclosure className="saved-details" title="直近の記録・確認待ち">
-              <p>
-                {last
-                  ? `直近：札 ${last.ticket} / ${yen(last.quote.total)} / ${last.day}`
-                  : '注文はまだありません。'}
-              </p>
-              <p>
-                照合待ち{' '}
-                {
-                  snapshot.operations.filter((op) => op.status === 'pending')
-                    .length
-                }
-                件
-              </p>
-            </Disclosure>
+            {(pendingOrders.length > 0 || pendingOperations.length > 0) && (
+              <section
+                className="startup-pending notice"
+                aria-labelledby="startup-pending-heading"
+              >
+                <h3 id="startup-pending-heading">確認が必要な会計</h3>
+                <p>現金と札を確認し、二度受け取らないでください。</p>
+                {pendingOrders.length > 0 && (
+                  <>
+                    <p>途中の会計 {pendingOrders.length}件</p>
+                    <ul>
+                      {pendingOrders.map((order) => (
+                        <li key={order.id}>
+                          札 {order.ticket} / {yen(order.quote.total)}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {pendingOperations.length > 0 && (
+                  <>
+                    <p>結果の確認待ち {pendingOperations.length}件</p>
+                    <ul>
+                      {pendingOperations.map((operation) => {
+                        const command = operation.command;
+                        const order =
+                          'orderId' in command
+                            ? snapshot.orders.find(
+                                (order) => order.id === command.orderId,
+                              )
+                            : null;
+                        return (
+                          <li key={operation.id}>
+                            {commandNames[command.type]}
+                            {order &&
+                              ` / 札 ${order.ticket} / ${yen(order.quote.total)}`}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
+                <p>会計を始めたら、画面の案内に沿って確認してください。</p>
+              </section>
+            )}
             {snapshot.meta.day !== today() && (
-              <p className="hint">営業日が今日と異なります。変更は設定から。</p>
+              <p className="hint">
+                今日と違う日付です。必要なら設定で変更してください。
+              </p>
             )}
             <label className="checkbox">
               <input
@@ -112,7 +151,7 @@ export function Startup({
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
               />
-              価格・営業日・保存件数を確認しました
+              日付・価格・件数を確認した
             </label>
             <Button
               variant="primary"
@@ -121,14 +160,14 @@ export function Startup({
               disabled={!confirmed}
               onClick={onStart}
             >
-              営業を始める
+              会計を始める
               <Icon name="arrow" />
             </Button>
           </>
         ) : (
           <>
             <h2>営業の準備</h2>
-            <p className="muted">初めて使うPCに営業データを作成します。</p>
+            <p className="muted">初めての営業は、ここから準備します。</p>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -173,28 +212,23 @@ export function Startup({
                 className="primary wide"
                 disabled={!event.trim()}
               >
-                データを作成
+                新しく作る
                 <Icon name="arrow" />
               </Button>
             </form>
             <p className="hint">
-              営業の続きなら、新規作成せずバックアップを復元してください。
+              営業の続きは、下の「保存した記録を開く」から。
             </p>
           </>
         )}
-        <Disclosure
-          className="startup-restore"
-          title="バックアップから引き継ぐ"
-        >
-          <DataPanel
-            snapshot={snapshot}
-            store={store}
-            perform={perform}
-            errorMessage={errorMessage}
-            onRestored={onRestored}
-            onVerified={onVerified}
-          />
-        </Disclosure>
+        <DataPanel
+          snapshot={snapshot}
+          store={store}
+          perform={perform}
+          errorMessage={errorMessage}
+          onRestored={onRestored}
+          onVerified={onVerified}
+        />
       </section>
     </div>
   );
