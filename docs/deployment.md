@@ -2,6 +2,8 @@
 
 公開URL：[焼き鳥人間](https://yakitoriningen.pages.dev)
 
+2026-10-31に認証情報を設定し、[GitHub Actionsからの公開成功](https://github.com/97kuek/yakitoriningen/actions/runs/41171116833)を確認しました。以後は`main`へのpushで検証と公開を実行します。
+
 Cloudflare Pagesで`dist/`のアプリ・画像・PWAだけを配信します。注文・売上・経費は各PCのIndexedDBに保存し、Cloudflareへ送信しません。営業では上記のURLを継続利用します。
 
 ## GitHub Actionsによる自動公開
