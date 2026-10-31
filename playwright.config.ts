@@ -9,7 +9,9 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
   },
   webServer: {
-    command: 'npm run build && npm run preview -- --port 4273',
+    command: process.env.CI
+      ? 'npm run preview -- --port 4273'
+      : 'npm run build && npm run preview -- --port 4273',
     url: 'http://127.0.0.1:4273',
     reuseExistingServer: false,
   },

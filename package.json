@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check": "tsc -b",
-    "format:check": "prettier --check src tests *.ts *.json wrangler.jsonc index.html",
+    "format:check": "prettier --check src tests *.ts *.json wrangler.jsonc index.html '.github/**/*.{yml,yaml}'",
     "deploy": "npm run build && wrangler pages deploy dist --project-name yakitoriningen --branch main",
     "preview:cloudflare": "wrangler pages dev dist --ip 127.0.0.1 --port 4373"
   },

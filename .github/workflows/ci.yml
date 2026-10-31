@@ -1,0 +1,142 @@
+name: CI and Pages deployment
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    name: Check, test and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      dist-artifact-id: ${{ steps.dist.outputs.artifact-id }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check types
+        run: npm run check
+      - name: Run unit tests
+        run: npm test
+      - name: Check formatting
+        run: npm run format:check
+      - name: Build production assets
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser tests on port 4273
+        run: npm run test:e2e -- --reporter=line,html
+      - name: Keep browser failure details
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-failure
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+          overwrite: true
+      - name: Keep verified production assets
+        id: dist
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+          overwrite: true
+
+  deploy:
+    name: Deploy Cloudflare Pages
+    needs: verify
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://yakitoriningen.pages.dev
+    steps:
+      - name: Check deployment credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" ]]; then
+            echo '::error::Set the CLOUDFLARE_API_TOKEN repository secret and CLOUDFLARE_ACCOUNT_ID repository variable. See docs/deployment.md.'
+            exit 1
+          fi
+      - name: Check out deployment tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install locked deployment tooling
+        run: npm ci
+      - name: Download verified production assets
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.verify.outputs.dist-artifact-id }}
+          path: dist/
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Prevent publishing an outdated main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$current_main" != "$GITHUB_SHA" ]]; then
+            echo '::error::main has advanced. Run this workflow on the latest main commit instead of publishing an older run.'
+            exit 1
+          fi
+      - name: Deploy the verified artifact
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          npx --no-install wrangler pages deploy dist \
+            --project-name yakitoriningen \
+            --branch main \
+            --commit-hash "$GITHUB_SHA" \
+            --commit-dirty=false \
+            2>&1 | tee "$RUNNER_TEMP/pages-deploy.log"
+          deployment_url=$(grep -Eo 'https://[a-z0-9]+\.yakitoriningen\.pages\.dev' "$RUNNER_TEMP/pages-deploy.log" | tail -n 1 || true)
+          {
+            echo '## Cloudflare Pages deployment'
+            printf '\nCommit: [%s](%s/%s/commit/%s)\n' "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_SHA"
+            printf '\nProduction: https://yakitoriningen.pages.dev\n'
+            if [[ -n "$deployment_url" ]]; then
+              printf '\nDeployment: %s\n' "$deployment_url"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
