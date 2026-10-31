@@ -11,9 +11,8 @@
     "test:e2e": "playwright test",
     "check": "tsc -b",
     "format:check": "prettier --check src tests *.ts *.json wrangler.jsonc index.html",
-    "deploy": "npm run build && wrangler deploy",
-    "deploy:check": "npm run build && wrangler deploy --dry-run",
-    "preview:cloudflare": "wrangler dev --ip 127.0.0.1 --port 4373"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name yakitoriningen --branch main",
+    "preview:cloudflare": "wrangler pages dev dist --ip 127.0.0.1 --port 4373"
   },
   "dependencies": {
     "dexie": "^4.4.7",
