@@ -1,0 +1,106 @@
+.waiting .section-heading {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.waiting .waiting-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.waiting .waiting-tools label {
+  min-width: 0;
+  max-width: 180px;
+}
+
+.waiting .waiting-tools input {
+  width: 100%;
+}
+
+.waiting .waiting-tools .link-button {
+  padding: 4px 0;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.waiting .handoff-feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  height: 56px;
+  min-height: 56px;
+  margin: 0;
+}
+
+.waiting .handoff-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.waiting .handoff-feedback small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.waiting .waiting-totals {
+  flex-shrink: 0;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  align-content: start;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 5px;
+}
+
+.waiting .waiting-totals strong {
+  font-size: 18px;
+}
+
+.waiting .waiting-list {
+  gap: 0;
+  overflow-anchor: none;
+}
+
+.waiting .order-card {
+  min-height: 57px;
+  padding: 8px 0;
+  gap: 9px;
+}
+
+.waiting .handoff-completed {
+  background: var(--surface);
+}
+
+.waiting .handoff-completed .order-content,
+.waiting .handoff-completed .ticket-badge {
+  opacity: 0.6;
+}
+
+.waiting .order-content {
+  position: relative;
+}
+
+.waiting .handoff-completed-note {
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  line-height: 11px;
+  font-size: 10px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.waiting .handoff-completed .complete-button {
+  background: transparent;
+  border-color: var(--line);
+}

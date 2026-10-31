@@ -1,15 +1,18 @@
+import { useRef, useState } from 'react';
 import { IconButton, Button } from './controls';
-import { canUndoHandoff } from '../domain/handoff';
+import { handoffUndoError } from '../domain/handoff';
 import { newId } from '../lib/id';
 import { orderItems, timeText, dayText } from '../presentation/format';
 
 import type { Order, Snapshot } from '../domain/model';
 import type { Shared } from '../ui';
 import { Icon } from './Icon';
+import './Waiting.css';
 export function Waiting({
   snapshot,
   perform,
   saveCommand,
+  busy,
   lastHandoff,
   onHandoffChange,
 }: Shared & {
@@ -19,6 +22,11 @@ export function Waiting({
     value: { orderId: string; completionId: string } | null,
   ) => void;
 }) {
+  const [ticketSearch, setTicketSearch] = useState('');
+  // Keep every completed row until the operator explicitly clears it. Removing
+  // it on a timer would let a later click reach another order at that position.
+  const [heldOrderIds, setHeldOrderIds] = useState<string[]>([]);
+  const completing = useRef(false);
   const waiting = snapshot.orders
     .filter((o) => o.status === 'paid' && !o.delivered)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -36,18 +44,54 @@ export function Waiting({
   const completedOrder = snapshot.orders.find(
     (order) => order.id === lastHandoff?.orderId,
   );
+  const undoError =
+    completedOrder && lastHandoff
+      ? handoffUndoError(
+          completedOrder,
+          lastHandoff.completionId,
+          snapshot,
+          snapshot.tickets.find(
+            (ticket) => ticket.number === completedOrder.ticket,
+          ),
+        )
+      : null;
+  const heldOrders = snapshot.orders.filter(
+    (order) => heldOrderIds.includes(order.id) && order.delivered,
+  );
+  const visibleOrders = snapshot.orders
+    .filter(
+      (order) =>
+        order.status === 'paid' &&
+        (!order.delivered || heldOrderIds.includes(order.id)) &&
+        (!ticketSearch.trim() ||
+          (/^\d+$/.test(ticketSearch.trim()) &&
+            order.ticket === Number(ticketSearch))),
+    )
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   function completeHandoff(order: Order) {
+    if (busy || completing.current || order.delivered) return;
     void perform(async () => {
-      const completionId = newId();
-      await saveCommand(
-        {
-          type: 'complete',
-          orderId: order.id,
-          assignmentId: order.assignmentId,
-        },
-        completionId,
+      if (completing.current) return;
+      completing.current = true;
+      // Retain the position before the committed subscription can update.
+      // The row only changes to completed when the saved snapshot says so.
+      setHeldOrderIds((ids) =>
+        ids.includes(order.id) ? ids : [...ids, order.id],
       );
-      onHandoffChange({ orderId: order.id, completionId });
+      const completionId = newId();
+      try {
+        await saveCommand(
+          {
+            type: 'complete',
+            orderId: order.id,
+            assignmentId: order.assignmentId,
+          },
+          completionId,
+        );
+        onHandoffChange({ orderId: order.id, completionId });
+      } finally {
+        completing.current = false;
+      }
     });
   }
   function recoverTicket(order: Order) {
@@ -71,39 +115,61 @@ export function Waiting({
           <small>/{snapshot.meta.ticketCount}</small>
         </span>
       </div>
+      <div className="waiting-tools">
+        <label>
+          <span className="sr-only">待ち注文の札番号</span>
+          <input
+            type="search"
+            inputMode="numeric"
+            maxLength={3}
+            placeholder="札番号で絞り込み"
+            value={ticketSearch}
+            onChange={(event) => setTicketSearch(event.target.value)}
+          />
+        </label>
+        <Button
+          variant="plain"
+          className="link-button"
+          disabled={!heldOrders.length || busy}
+          onClick={() => setHeldOrderIds([])}
+        >
+          完了表示を片づける
+        </Button>
+      </div>
       <div className="handoff-feedback" role="status">
         {completedOrder && lastHandoff && (
           <>
-            <span>札 {completedOrder.ticket} を受け渡し済みにしました。</span>
-            <Button
-              variant="plain"
-              type="button"
-              className="link-button"
-              disabled={
-                !canUndoHandoff(
-                  completedOrder,
-                  lastHandoff.completionId,
-                  snapshot,
-                )
-              }
-              onClick={() =>
-                void perform(async () => {
-                  await saveCommand({
-                    type: 'undoHandoff',
-                    orderId: completedOrder.id,
-                    assignmentId: completedOrder.assignmentId,
-                    completionId: lastHandoff.completionId,
-                  });
-                  onHandoffChange(null);
-                })
-              }
-            >
-              元に戻す
-            </Button>
+            <div className="handoff-result">
+              <span>札 {completedOrder.ticket} を受け渡し済みにしました。</span>
+              <Button
+                variant="plain"
+                type="button"
+                className="link-button"
+                disabled={busy || undoError !== null}
+                aria-describedby={undoError ? 'handoff-undo-reason' : undefined}
+                onClick={() =>
+                  void perform(async () => {
+                    await saveCommand({
+                      type: 'undoHandoff',
+                      orderId: completedOrder.id,
+                      assignmentId: completedOrder.assignmentId,
+                      completionId: lastHandoff.completionId,
+                    });
+                    setHeldOrderIds((ids) =>
+                      ids.filter((id) => id !== completedOrder.id),
+                    );
+                    onHandoffChange(null);
+                  })
+                }
+              >
+                元に戻す
+              </Button>
+            </div>
+            {undoError && <small id="handoff-undo-reason">{undoError}</small>}
           </>
         )}
       </div>
-      {waiting.length > 0 && (
+      {(waiting.length > 0 || heldOrders.length > 0) && (
         <div
           className="waiting-totals"
           title="調理済み分を含む、未受け渡しの本数"
@@ -119,7 +185,7 @@ export function Waiting({
           ))}
         </div>
       )}
-      {!waiting.length && (
+      {!waiting.length && !heldOrders.length && !ticketSearch && (
         <div className="empty">
           <img
             src="/assets/empty-orders.png"
@@ -131,11 +197,13 @@ export function Waiting({
         </div>
       )}
       <div className="waiting-list">
-        {waiting.map((order) => (
+        {visibleOrders.map((order) => (
           <article
-            className="order-card"
+            className={`order-card${order.delivered ? ' handoff-completed' : ''}`}
             key={order.id}
-            data-testid="waiting-order"
+            data-testid={
+              order.delivered ? 'completed-handoff' : 'waiting-order'
+            }
           >
             <span className="ticket-badge">
               <small>札</small>
@@ -153,6 +221,11 @@ export function Waiting({
                   </span>
                 ))}
               </div>
+              {order.delivered && (
+                <small className="handoff-completed-note">
+                  完了・札回収済み
+                </small>
+              )}
             </div>
             <time>
               {order.day !== snapshot.meta.day
@@ -163,12 +236,30 @@ export function Waiting({
               variant="plain"
               type="button"
               className="icon-button complete-button"
-              onClick={() => completeHandoff(order)}
-              label="受け渡し完了（札も回収）"
+              disabled={busy || order.delivered}
+              onKeyDown={(event) => {
+                if (
+                  event.repeat &&
+                  (event.key === 'Enter' || event.key === ' ')
+                )
+                  event.preventDefault();
+              }}
+              onClick={(event) => {
+                if (event.detail > 1) return;
+                completeHandoff(order);
+              }}
+              label={
+                order.delivered
+                  ? '受け渡し済み（札も回収済み）'
+                  : '受け渡し完了（札も回収）'
+              }
               icon="check"
             />
           </article>
         ))}
+        {ticketSearch && !visibleOrders.length && (
+          <p className="empty-text">この札の待ち注文はありません。</p>
+        )}
       </div>
       {unreturned.length > 0 && (
         <section className="unreturned" data-testid="unreturned">

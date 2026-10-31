@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { dayText, orderText, timeText, yen } from '../presentation/format';
 import { profit, summarizeSales } from '../domain/sales';
 import { historyPage } from '../domain/history';
-import { Button, Select } from './controls';
+import { Button, Dialog, Select } from './controls';
 import { RefundDialog } from './RefundDialog';
 import { SalesCharts } from './SalesCharts';
+import { OrderDetails, receiptNumber } from './OrderDetails';
 
 import type { Order, Snapshot } from '../domain/model';
 import type { Shared } from '../ui';
@@ -26,6 +27,8 @@ export function History({
 }) {
   const [scope, setScope] = useState<'day' | 'event'>('event');
   const [cancel, setCancel] = useState<Order | null>(null);
+  const [detailsId, setDetailsId] = useState<string | null>(null);
+  const detailsTrigger = useRef<HTMLButtonElement | null>(null);
   const [ticketSearch, setTicketSearch] = useState('');
   const [waitingOnly, setWaitingOnly] = useState(false);
   const [page, setPage] = useState(0);
@@ -36,6 +39,7 @@ export function History({
   const total = summarizeSales(snapshot.orders);
   const selected = summarizeSales(orders);
   const earnings = profit(total.sales, snapshot.meta.expenseTotal);
+  const details = snapshot.orders.find((order) => order.id === detailsId);
   return (
     <section className="panel history">
       <div className="section-heading">
@@ -157,7 +161,7 @@ export function History({
               <th>会計額</th>
               <th>状態</th>
               <th>
-                <span className="sr-only">返金</span>
+                <span className="sr-only">詳細・返金</span>
               </th>
             </tr>
           </thead>
@@ -167,6 +171,9 @@ export function History({
                 <td>
                   {timeText(o.createdAt)}
                   {scope === 'event' && <small>{dayText(o.day)}</small>}
+                  <span className="history-receipt-number">
+                    {receiptNumber(o, snapshot)}
+                  </span>
                 </td>
                 <td>
                   <strong>{o.ticket}</strong>
@@ -195,18 +202,31 @@ export function History({
                   </small>
                 </td>
                 <td>
-                  {o.status === 'paid' && (
+                  <div className="history-order-actions">
                     <Button
-                      variant="secondary"
-                      type="button"
-                      className="secondary danger-text"
-                      onClick={() => {
-                        setCancel(o);
+                      variant="plain"
+                      aria-label="注文の詳細"
+                      onClick={(event) => {
+                        detailsTrigger.current = event.currentTarget;
+                        setDetailsId(o.id);
                       }}
                     >
-                      全額返金
+                      詳細
                     </Button>
-                  )}
+                    {o.status === 'paid' && (
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        className="secondary danger-text"
+                        onClick={() => {
+                          detailsTrigger.current = null;
+                          setCancel(o);
+                        }}
+                      >
+                        全額返金
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -237,13 +257,45 @@ export function History({
           </Button>
         </div>
       </div>
+      {details && (
+        <Dialog
+          open
+          title="注文の詳細"
+          onClose={() => setDetailsId(null)}
+          footer={
+            <>
+              <Button onClick={() => setDetailsId(null)}>閉じる</Button>
+              {details.status === 'paid' && (
+                <Button
+                  variant="secondary"
+                  className="danger-text"
+                  onClick={() => {
+                    setDetailsId(null);
+                    setCancel(details);
+                  }}
+                >
+                  全額返金
+                </Button>
+              )}
+            </>
+          }
+        >
+          <OrderDetails order={details} snapshot={snapshot} />
+        </Dialog>
+      )}
       {cancel && (
         <RefundDialog
           key={cancel.id}
           order={snapshot.orders.find((order) => order.id === cancel.id)!}
           snapshot={snapshot}
           store={store}
-          onClose={() => setCancel(null)}
+          onClose={() => {
+            setCancel(null);
+            requestAnimationFrame(() => {
+              if (detailsTrigger.current?.isConnected)
+                detailsTrigger.current.focus();
+            });
+          }}
           perform={perform}
           context={context}
           errorMessage={errorMessage}

@@ -76,8 +76,12 @@ test('価格変更は入力中の注文を変えず次の空注文へ適用す�
   await setup(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '値下げ価格', exact: true }).click();
-  await page.getByRole('button', { name: '変更を保存' }).click();
+  await page
+    .getByRole('button', { name: '値下げ価格に切り替える', exact: true })
+    .click();
+  await expect(
+    page.getByText('販売中：値下げ価格', { exact: true }),
+  ).toBeVisible();
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await expect(page.getByTestId('total')).toHaveText('￥150');
   await pay(page, '150');
@@ -665,12 +669,11 @@ test('追加商品の対象セットと個別値下げを会計し、削除後�
   await expect(page.getByTestId('total')).toHaveText('￥400');
   await pay(page);
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '値下げ価格', exact: true }).click();
-  await page.getByRole('button', { name: '変更を保存', exact: true }).click();
+  await page
+    .getByRole('button', { name: '値下げ価格に切り替える', exact: true })
+    .click();
   await expect(
-    page.getByText('商品と価格を保存しました。次の注文から使います。', {
-      exact: true,
-    }),
+    page.getByText('販売中：値下げ価格', { exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await page.getByRole('button', { name: 'つくねを1本増やす' }).click();
@@ -759,14 +762,13 @@ test('旧値下げプリセットを通常価格へ戻せる', async ({ page }) 
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await expect(page.getByLabel('ももの通常価格（円）')).toHaveValue('150');
   await expect(
-    page.getByRole('button', { name: '値下げ価格', exact: true }),
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: '通常価格', exact: true }).click();
-  await page.getByRole('button', { name: '変更を保存', exact: true }).click();
+  await page
+    .getByRole('button', { name: '通常価格に切り替える', exact: true })
+    .click();
   await expect(
-    page.getByText('商品と価格を保存しました。次の注文から使います。', {
-      exact: true,
-    }),
+    page.getByText('販売中：通常価格', { exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await page

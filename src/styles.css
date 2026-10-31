@@ -2192,3 +2192,141 @@ select {
   scrollbar-gutter: stable;
   padding-right: 4px;
 }
+
+/* Keep the amount and primary action outside the scrolling product list. */
+.settings-content {
+  display: grid;
+}
+.settings-content > section {
+  grid-area: 1 / 1;
+  min-width: 0;
+  align-self: start;
+}
+.settings-content > section[hidden] {
+  display: block;
+  visibility: hidden;
+  pointer-events: none;
+}
+.checkout:not(.payment-mode) {
+  height: var(--counter-height);
+  min-height: var(--counter-height);
+}
+.checkout > :not(.products) {
+  flex-shrink: 0;
+}
+.checkout .products {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  margin: 8px 0;
+  overscroll-behavior: contain;
+}
+.checkout .checkout-total {
+  margin: 0 0 12px;
+  padding-top: 12px;
+  min-height: 68px;
+}
+.checkout .checkout-feedback {
+  height: 32px;
+  min-height: 32px;
+  margin-bottom: 4px;
+}
+.checkout-feedback .link-button {
+  height: 32px;
+  min-height: 32px;
+  padding: 4px 0;
+}
+.checkout .product {
+  margin: 0;
+  padding: 7px 8px;
+  min-height: 54px;
+  background: transparent;
+  border-color: transparent;
+}
+.checkout .price-strip {
+  padding-bottom: 10px;
+}
+.payment .receipt-items {
+  max-height: 72px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.payment .receipt-items > span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 1101px) {
+  :root {
+    --counter-height: clamp(440px, calc(100dvh - 154px), 680px);
+  }
+  .checkout.payment-mode {
+    height: var(--counter-height);
+    min-height: var(--counter-height);
+    overflow-y: auto;
+  }
+  .payment-mode .payment {
+    min-height: calc(var(--counter-height) - 48px);
+  }
+}
+
+@media (min-width: 1101px) and (max-height: 700px) {
+  .checkout.panel {
+    padding: 16px;
+  }
+  .checkout .section-heading {
+    margin-bottom: 4px;
+  }
+  .checkout .checkout-total {
+    min-height: 58px;
+    margin-bottom: 8px;
+    padding-top: 8px;
+  }
+  .checkout .checkout-total > strong {
+    font-size: 40px;
+  }
+  .payment-mode .payment {
+    min-height: calc(var(--counter-height) - 34px);
+  }
+  .payment .payment-total {
+    padding: 8px 0;
+  }
+  .payment .payment-total strong {
+    font-size: 36px;
+  }
+  .payment .settled-total strong {
+    font-size: 25px;
+  }
+  .payment .receipt-items {
+    max-height: 56px;
+    padding: 4px 0 8px;
+  }
+  .payment .cash-buttons {
+    margin: 8px 0 12px;
+  }
+  .payment .payment-back,
+  .payment .payment-edit {
+    margin-top: 4px;
+    margin-bottom: 0;
+  }
+  .payment .change-display {
+    padding: 12px;
+    margin: 8px 0;
+  }
+  .payment .payment-instruction {
+    margin: 8px 0;
+  }
+  .startup-shell {
+    margin-top: 12px;
+    gap: 12px;
+  }
+  .startup-art {
+    width: 200px;
+  }
+  .startup-details {
+    gap: 8px 14px;
+    margin: 14px 0;
+  }
+}

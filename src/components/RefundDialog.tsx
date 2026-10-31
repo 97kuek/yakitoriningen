@@ -3,8 +3,9 @@ import type { Order, Snapshot } from '../domain/model';
 import type { Cashier } from '../application/ports';
 import type { Shared } from '../ui';
 import { newId } from '../lib/id';
-import { orderText, yen } from '../presentation/format';
+import { yen } from '../presentation/format';
 import { Button, Dialog } from './controls';
+import { OrderDetails } from './OrderDetails';
 
 export function RefundDialog({
   order,
@@ -82,7 +83,7 @@ export function RefundDialog({
           <span>札 {order.ticket} の返金</span>
           <strong>{yen(order.quote.total)}</strong>
         </div>
-        <p className="refund-items">{orderText(order)}</p>
+        <OrderDetails order={order} snapshot={snapshot} />
         {!prepared ? (
           <>
             <p className="hint">
