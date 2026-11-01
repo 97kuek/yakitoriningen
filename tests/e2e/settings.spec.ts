@@ -34,6 +34,7 @@ test('販売価格の切り替えは未保存の商品編集を保持し、入�
   await expect(page.getByLabel('ももの通常価格（円）')).toHaveValue('220');
   await expect(page.getByLabel('ももの値下げ価格（円）')).toHaveValue('80');
   await openScreen(page, '会計');
+  await page.getByRole('button', { name: '未保存のまま移動' }).click();
   await expect(page.getByTestId('total')).toHaveText('￥150');
   await pay(page, '150');
   await addSkewers(page, 'もも');
@@ -77,6 +78,7 @@ test('未入力の商品があっても販売価格だけ切り替えられ、�
   );
   await expect(page.getByLabel('商品4の名前', { exact: true })).toHaveValue('');
   await openScreen(page, '会計');
+  await page.getByRole('button', { name: '未保存のまま移動' }).click();
   await addSkewers(page, 'もも');
   await expect(page.getByTestId('total')).toHaveText('￥50');
   await expect(page.getByLabel('名前未入力の本数')).toHaveCount(0);
@@ -192,6 +194,12 @@ test('未保存の商品編集は画面の往復・ダイアログ・再読み�
   await price.fill('177');
   await expect(save).toBeInViewport({ ratio: 1 });
   await openScreen(page, '会計');
+  const leave = page.getByRole('dialog', { name: '変更が保存されていません' });
+  await expect(leave).toBeVisible();
+  await leave.getByRole('button', { name: '編集に戻る' }).click();
+  await expect(price).toHaveValue('177');
+  await page.getByRole('link', { name: '焼き鳥人間・会計へ戻る' }).click();
+  await leave.getByRole('button', { name: '未保存のまま移動' }).click();
   await openScreen(page, '設定');
   await expect(page.getByLabel('会計に記録する日付')).toBeVisible();
   await expect(price).toHaveValue('177');
@@ -216,6 +224,7 @@ test('未保存の商品編集は画面の往復・ダイアログ・再読み�
   await page.getByLabel('商品1の名前').fill('炭火もも');
   await expect.poll(() => leaveIsBlocked(page)).toBe(true);
   await openScreen(page, '会計');
+  await leave.getByRole('button', { name: '未保存のまま移動' }).click();
   await expect.poll(() => leaveIsBlocked(page)).toBe(true);
   const prompt = page.waitForEvent('dialog');
   const reloading = page.evaluate(() => window.location.reload());

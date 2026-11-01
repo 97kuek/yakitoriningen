@@ -32,25 +32,18 @@ test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認
   await expect(table.locator('tfoot')).toContainText('￥450');
 
   const charts = page.getByRole('region', { name: '日別のグラフ' });
-  // Both bar charts span business hours 10:00–17:00 in 30-minute slots.
+  // Sales span business hours 10:00–17:00 in 30-minute slots.
   const sales = charts
     .getByRole('figure', { name: '30分ごとの売上' })
     .locator('.bar-track');
-  const quantities = charts
-    .getByRole('figure', { name: '30分ごとの販売本数' })
-    .locator('.bar-track');
   await expect(sales).toHaveCount(14);
-  await expect(quantities).toHaveCount(14);
+  await expect(charts.getByRole('figure')).toHaveCount(2);
   await expect(sales.nth(0)).toHaveAttribute('aria-label', '10:00〜10:30 ￥0');
   await expect(sales.nth(1)).toHaveAttribute(
     'aria-label',
     '10:30〜11:00 ￥150',
   );
   await expect(sales.last()).toHaveAttribute('aria-label', '16:30〜17:00 ￥0');
-  await expect(quantities.nth(1)).toHaveAttribute(
-    'aria-label',
-    '10:30〜11:00 1本（もも 1本）',
-  );
   await expect(charts.getByRole('img')).toHaveAccessibleName('もも 1本');
   await charts.getByRole('combobox', { name: 'グラフの日付' }).click();
   await page.getByRole('option', { name: '11/7', exact: true }).click();
@@ -78,6 +71,10 @@ test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認
   await expense.fill('00100');
   await expect.poll(() => leaveIsBlocked(page)).toBe(true);
   await openScreen(page, '会計');
+  await page
+    .getByRole('dialog', { name: '変更が保存されていません' })
+    .getByRole('button', { name: '未保存のまま移動' })
+    .click();
   await openScreen(page, '集計');
   await expect(expense).toHaveValue('00100');
   await page.getByRole('button', { name: '経費を保存', exact: true }).click();

@@ -2,12 +2,6 @@ import { useState } from 'react';
 import { today, yen } from '../presentation/format';
 import type { Snapshot } from '../domain/model';
 import {
-  bundleApplies,
-  findActivePrice,
-  getMenu,
-  getUnitPrice,
-} from '../domain/catalog';
-import {
   DEFAULT_TICKET_COUNT,
   MAX_EVENT_NAME_LENGTH,
   MAX_TICKETS,
@@ -38,8 +32,6 @@ export function Startup({
   const [event, setEvent] = useState('');
   const [day, setDay] = useState(today());
   const [tickets, setTickets] = useState(DEFAULT_TICKET_COUNT);
-  const [confirmed, setConfirmed] = useState(false);
-  const price = snapshot ? findActivePrice(snapshot) : undefined;
   const reserved = snapshot ? pendingOrders(snapshot) : [];
   const pendingOperations = snapshot ? unresolvedOperations(snapshot) : [];
   return (
@@ -53,26 +45,14 @@ export function Startup({
         />
       </aside>
       <section className="startup panel">
-        {snapshot && price ? (
+        {snapshot ? (
           <>
-            <h2>会計を始める前に</h2>
-            <p className="startup-event">{snapshot.meta.event}</p>
+            <h2>前回のデータで始めますか？</h2>
             <dl className="startup-details">
+              <dt>タイトル</dt>
+              <dd className="startup-event">{snapshot.meta.event}</dd>
               <dt>日付</dt>
               <dd>{snapshot.meta.day}</dd>
-              <dt>価格</dt>
-              <dd>
-                {getMenu(price).map((item) => (
-                  <span className="startup-menu-price" key={item.id}>
-                    {item.name} {yen(getUnitPrice(item, price))}
-                  </span>
-                ))}
-                {bundleApplies(price) && (
-                  <small>
-                    対象商品 {price.bundleSize}本 {yen(price.bundlePrice)}
-                  </small>
-                )}
-              </dd>
             </dl>
             {(reserved.length > 0 || pendingOperations.length > 0) && (
               <section
@@ -124,19 +104,10 @@ export function Startup({
                 今日と違う日付です。必要なら設定で変更してください。
               </p>
             )}
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-              />
-              日付・価格を確認した
-            </label>
             <Button
               variant="primary"
               type="button"
               className="primary wide"
-              disabled={!confirmed}
               onClick={onStart}
             >
               会計を始める

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { Snapshot } from '../domain/model';
-import { MAX_EVENT_NAME_LENGTH } from '../domain/constants';
+import { MAX_EVENT_NAME_LENGTH, MAX_TICKETS } from '../domain/constants';
+import { findActivePrice } from '../domain/catalog';
+import { menuForm, menuPrice, type MenuForm } from '../presentation/menu-form';
+import { MenuFields } from './MenuFields';
 import { summarizeSales } from '../domain/sales';
 import { pendingOrders } from '../domain/snapshot';
 import type { ActionHandler } from '../ui';
@@ -48,6 +51,8 @@ export function DataPanel({
   const [newEventOpen, setNewEventOpen] = useState(false);
   const [eventName, setEventName] = useState('');
   const [eventDay, setEventDay] = useState(today());
+  const [eventMenu, setEventMenu] = useState<MenuForm | null>(null);
+  const [eventTickets, setEventTickets] = useState('');
   const incomingSales = incoming ? summarizeSales(incoming.orders) : null;
   return (
     <section className="data-panel" aria-labelledby="backup-heading">
@@ -104,6 +109,8 @@ export function DataPanel({
                 const current = await store.read();
                 if (!current) throw new Error('営業の記録がありません。');
                 setEventBase(current);
+                setEventMenu(menuForm(findActivePrice(current)!));
+                setEventTickets(String(current.meta.ticketCount));
                 setNewEventOpen(true);
               })
             }
@@ -117,7 +124,7 @@ export function DataPanel({
           open={newEventOpen}
           onClose={() => setNewEventOpen(false)}
           title="新しい開催回を準備"
-          className="restore-dialog"
+          className="restore-dialog new-event-dialog"
         >
           <InlineError message={errorMessage} />
           <div className="restore">
@@ -133,9 +140,12 @@ export function DataPanel({
               className="new-event-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!eventBase || hasDraft) return;
+                if (!eventBase || !eventMenu || hasDraft) return;
                 void perform(async () => {
-                  const next = newEvent(eventBase, eventName, eventDay, newId);
+                  const next = newEvent(eventBase, eventName, eventDay, newId, {
+                    price: menuPrice({ ...eventMenu, mix: true }),
+                    ticketCount: Number(eventTickets),
+                  });
                   await store.restore(next, eventBase);
                   setNewEventOpen(false);
                   setEventBase(null);
@@ -162,6 +172,24 @@ export function DataPanel({
                   onChange={(event) => setEventDay(event.target.value)}
                 />
               </label>
+              <label>
+                番号札の枚数
+                <input
+                  type="number"
+                  min="1"
+                  max={MAX_TICKETS}
+                  required
+                  value={eventTickets}
+                  onChange={(event) => setEventTickets(event.target.value)}
+                />
+              </label>
+              {eventMenu && (
+                <div className="menu-pricing-settings">
+                  <div className="menu-settings">
+                    <MenuFields draft={eventMenu} onChange={setEventMenu} />
+                  </div>
+                </div>
+              )}
               <Button
                 type="submit"
                 variant="danger"

@@ -248,7 +248,15 @@ export function History({
           </tbody>
         </table>
         {!history.total && (
-          <p className="empty-text">条件に合う注文はありません。</p>
+          <div className="history-empty">
+            <img
+              src="/assets/history-empty.webp"
+              alt=""
+              width="150"
+              height="125"
+            />
+            <p>条件に合う注文はありません。</p>
+          </div>
         )}
       </div>
       <div className="history-pagination">

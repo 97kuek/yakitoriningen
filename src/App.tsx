@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, IconButton } from './components/controls';
+import { Button, Dialog, IconButton } from './components/controls';
 import { count } from './domain/model';
 import type { Snapshot } from './domain/model';
 import {
@@ -51,6 +51,7 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null | undefined>();
   const [started, setStarted] = useState(false);
   const [screen, setScreen] = useState<Screen>('checkout');
+  const [nextScreen, setNextScreen] = useState<Screen | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [summaryDirty, setSummaryDirty] = useState(false);
@@ -65,6 +66,18 @@ export default function App() {
   const previousGeneration = useRef<string | null>(null);
   const update = useAppUpdate(setError);
   useLeaveConfirmation(settingsDirty || summaryDirty);
+
+  function navigate(next: Screen) {
+    if (next === screen) return;
+    if (
+      (screen === 'settings' && settingsDirty) ||
+      (screen === 'summary' && summaryDirty)
+    ) {
+      setNextScreen(next);
+      return;
+    }
+    setScreen(next);
+  }
 
   useEffect(
     () =>
@@ -90,6 +103,7 @@ export default function App() {
     setDraft(emptyDraft());
     setSettingsDirty(false);
     setSummaryDirty(false);
+    setNextScreen(null);
   };
   useEffect(() => {
     if (!snapshot) return;
@@ -173,10 +187,13 @@ export default function App() {
           href="#main"
           className="brand"
           aria-label="焼き鳥人間・会計へ戻る"
-          onClick={() => setScreen('checkout')}
+          onClick={(event) => {
+            event.preventDefault();
+            if (!locked) navigate('checkout');
+          }}
         >
-          <img src="/assets/shop-logo.webp" alt="" width="232" height="58" />
-          <h1 className="sr-only">焼き鳥人間</h1>
+          <img src="/assets/flight-mark.webp" alt="" width="100" height="50" />
+          <h1>焼き鳥人間</h1>
         </a>
         {started && snapshot && (
           <nav className="tabs" aria-label="画面の切り替え">
@@ -187,7 +204,7 @@ export default function App() {
                 disabled={locked}
                 className={screen === item.key ? 'active' : ''}
                 aria-current={screen === item.key ? 'page' : undefined}
-                onClick={() => setScreen(item.key)}
+                onClick={() => navigate(item.key)}
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
@@ -229,6 +246,29 @@ export default function App() {
         </div>
       </header>
       <Help open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <Dialog
+        open={nextScreen !== null}
+        onClose={() => setNextScreen(null)}
+        title="変更が保存されていません"
+        footer={
+          <>
+            <Button onClick={() => setNextScreen(null)}>編集に戻る</Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (nextScreen) setScreen(nextScreen);
+                setNextScreen(null);
+              }}
+            >
+              未保存のまま移動
+            </Button>
+          </>
+        }
+      >
+        <p>
+          入力内容は残ります。変更を反映するには、元の画面で保存してください。
+        </p>
+      </Dialog>
       <main id="main">
         {tabOwnership.state === 'blocked' && (
           <div className="error-banner" role="alert">

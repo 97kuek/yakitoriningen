@@ -50,8 +50,20 @@
   flex-shrink: 0;
 }
 
-.history .table-scroll > .empty-text {
-  width: 100%;
-  max-width: none;
+.history-empty {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 12px;
+  min-height: 230px;
+  padding: 24px 0;
   text-align: center;
+  color: var(--muted);
+}
+.history-empty img {
+  object-fit: contain;
+}
+.history-empty p {
+  margin: 0;
+  font-size: var(--font-body);
 }

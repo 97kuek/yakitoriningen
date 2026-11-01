@@ -118,7 +118,7 @@ test('会計画面は空の通知行を作らず価格を揃え、ロゴで入�
 
   await page.getByLabel('ももの本数', { exact: true }).fill('2');
   await openScreen(page, '注文履歴');
-  await expect(page.locator('.history .empty-text')).toHaveCSS(
+  await expect(page.locator('.history-empty')).toHaveCSS(
     'text-align',
     'center',
   );

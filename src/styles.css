@@ -697,11 +697,8 @@ main {
 .startup > p {
   font-size: var(--font-small);
 }
-.startup > .startup-event {
+.startup-details .startup-event {
   font-size: var(--font-large);
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 20px !important;
 }
 .startup-details,
 dl {
@@ -1267,7 +1264,16 @@ dialog {
 }
 .new-event-form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
+}
+.control-dialog .new-event-form > label {
+  margin: 0;
+}
+.new-event-form > :first-child,
+.new-event-form > .menu-pricing-settings,
+.new-event-form > button {
+  grid-column: 1 / -1;
 }
 .new-event-form .hint {
   margin: 0;
@@ -1472,41 +1478,29 @@ input:not([type='checkbox']) {
   font-size: var(--font-large);
 }
 
-/* Crop only transparent padding around the generated wordmark. */
+/* The wordmark uses the same Japanese typeface as the interface. */
 .brand {
-  width: 232px;
-  height: 62px;
-  position: relative;
-  overflow: hidden;
+  gap: 8px;
+  min-height: 58px;
+  color: var(--ink);
+  text-decoration: none;
 }
 .brand img {
-  mix-blend-mode: multiply;
-  position: absolute;
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%);
-  width: 232px;
-  height: auto;
+  width: 100px;
+  height: 50px;
   object-fit: contain;
 }
-@media (max-width: 1100px) {
-  .brand {
-    width: 203px;
-    height: 54px;
-  }
-  .brand img {
-    width: 203px;
-    height: auto;
-  }
+.brand h1 {
+  margin: 0;
+  font: inherit;
+  font-size: var(--font-large);
+  font-weight: 700;
+  white-space: nowrap;
 }
-@media (max-width: 780px) {
-  .brand {
-    width: 195px;
-    height: 50px;
-  }
+@media (max-width: 1100px) {
   .brand img {
-    width: 195px;
-    height: auto;
+    width: 76px;
+    height: 48px;
   }
 }
 
@@ -2073,4 +2067,12 @@ input:not([type='checkbox']) {
   border-top: 1px solid var(--ink);
   margin-top: 8px;
   padding-top: 16px;
+}
+
+dialog.control-dialog.new-event-dialog {
+  width: min(900px, calc(100vw - 32px));
+}
+.new-event-form > .menu-pricing-settings {
+  width: 100%;
+  max-width: none;
 }

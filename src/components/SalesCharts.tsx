@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import type { Snapshot } from '../domain/model';
 import { TIME_SLOT_MINUTES } from '../domain/constants';
-import {
-  quantitiesByHalfHour,
-  quantitiesByProduct,
-  salesByHalfHour,
-} from '../domain/sales';
+import { quantitiesByProduct, salesByHalfHour } from '../domain/sales';
 import { clockText } from '../domain/time';
 import { festivalDays } from '../presentation/festival';
 import { dayText, yen } from '../presentation/format';
@@ -22,7 +18,6 @@ const colors = [
 const NAMED_SLICES = colors.length - 1;
 // Yen labels need wider columns than skewer counts.
 const SALES_BAR_WIDTH_PX = 48;
-const QUANTITY_BAR_WIDTH_PX = 40;
 const OTHER = 'other';
 
 type Segment = { key: string; color: string; value: number };
@@ -119,41 +114,12 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
         },
       ]
     : products;
-  const sliceOf = (productId: string) => {
-    const index = slices.findIndex((slice) => slice.id === productId);
-    return index === -1 ? slices.length - 1 : index;
-  };
-  const nameOf = (productId: string) =>
-    products.find((product) => product.id === productId)?.name ?? '商品';
-
   const salesSlots: Slot[] = salesByHalfHour(orders).map((slot) => ({
     minute: slot.minute,
     value: slot.sales,
     text: yen(slot.sales),
     segments: [{ key: 'sales', color: 'var(--ink)', value: slot.sales }],
   }));
-  const quantitySlots: Slot[] = quantitiesByHalfHour(orders).map((slot) => {
-    const bySlice = slices.map(() => 0);
-    for (const [id, quantity] of Object.entries(slot.quantities))
-      bySlice[sliceOf(id)] += quantity;
-    return {
-      minute: slot.minute,
-      value: slot.total,
-      text: `${slot.total}本`,
-      detail: Object.entries(slot.quantities)
-        .map(([id, quantity]) => `${nameOf(id)} ${quantity}本`)
-        .join('、'),
-      // Stack from the bottom in legend order.
-      segments: slices
-        .map((slice, index) => ({
-          key: slice.id,
-          color: colors[index],
-          value: bySlice[index],
-        }))
-        .filter((segment) => segment.value > 0)
-        .reverse(),
-    };
-  });
 
   let offset = 0;
   const gradient = slices
@@ -178,7 +144,7 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
         />
       </div>
       <div className="chart-grid">
-        <figure className="chart-wide">
+        <figure>
           <figcaption>{TIME_SLOT_MINUTES}分ごとの売上</figcaption>
           {salesSlots.length ? (
             <SlotBars
@@ -189,21 +155,6 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
             />
           ) : (
             <p className="chart-empty">売上はまだありません</p>
-          )}
-        </figure>
-        <figure>
-          <figcaption>
-            {TIME_SLOT_MINUTES}分ごとの販売本数<span>商品別</span>
-          </figcaption>
-          {total ? (
-            <SlotBars
-              label={`${TIME_SLOT_MINUTES}分ごとの販売本数グラフ`}
-              slots={quantitySlots}
-              scale={(value) => `${value}本`}
-              minBarWidth={QUANTITY_BAR_WIDTH_PX}
-            />
-          ) : (
-            <p className="chart-empty">販売はまだありません</p>
           )}
         </figure>
         <figure>

@@ -153,9 +153,8 @@ export async function openFixture(
   await startCounter(page);
 }
 
-/** Confirms the date and prices on the resume screen. */
+/** Resumes the ledger shown on the startup screen. */
 export async function startCounter(page: Page) {
-  await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める', exact: true }).click();
 }
 
