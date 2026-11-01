@@ -199,6 +199,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z
     .object({
       type: z.literal('reserve'),
+      ticket: ticketNumberSchema.optional(),
       orderId: id,
       assignmentId: id,
       confirmOperationId: id,

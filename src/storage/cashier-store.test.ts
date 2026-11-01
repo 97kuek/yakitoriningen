@@ -31,6 +31,35 @@ beforeEach(async () => {
 afterEach(async () => {
   await db.delete();
 });
+it('指定した札を会計・再試行・バックアップでも保ち、使用中の番号へ二重割当しない', async () => {
+  const command: Command = {
+    type: 'reserve',
+    orderId: newId(),
+    assignmentId: newId(),
+    confirmOperationId: newId(),
+    quantities: q,
+    price,
+    ticket: 2,
+  };
+  const id = newId();
+  await run(command, id);
+  await store.execute(id, ctx);
+  expect((await store.read())!.orders[0].ticket).toBe(2);
+  expect((await store.read())!.orders).toHaveLength(1);
+  await expect(
+    run({
+      ...command,
+      orderId: newId(),
+      assignmentId: newId(),
+      confirmOperationId: newId(),
+    }),
+  ).rejects.toThrow('使用中');
+  expect((await store.read())!.orders).toHaveLength(1);
+  const { encodeBackup, parseBackup } = await import('../application/backup');
+  expect(
+    parseBackup(encodeBackup((await store.read())!)).orders[0].ticket,
+  ).toBe(2);
+});
 it('メニュー更新後も過去の注文・価格を保ち、新しい商品名・単価を固定する', async () => {
   await reserve();
   const oldOrder = (await store.read())!.orders[0];

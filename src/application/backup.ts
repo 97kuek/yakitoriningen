@@ -161,6 +161,8 @@ function validate(data: Snapshot): void {
           canonical(reservation.command.price) === canonical(order.price) &&
           reservation.event === order.event &&
           reservation.day === order.day &&
+          (reservation.command.ticket === undefined ||
+            reservation.command.ticket === order.ticket) &&
           reservation.command.assignmentId === order.assignmentId,
         '注文と作成操作の内容',
       );

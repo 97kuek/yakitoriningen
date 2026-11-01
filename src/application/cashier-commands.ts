@@ -31,7 +31,12 @@ import { getMenu } from '../domain/catalog';
 import { handoffUndoError } from '../domain/handoff';
 import { applyOrderAction } from '../domain/order';
 import { contextOf } from '../domain/snapshot';
-import { freeTickets, ownsTicket, releasesTicket } from '../domain/ticket';
+import {
+  freeTickets,
+  ownsTicket,
+  releasesTicket,
+  chooseTicket,
+} from '../domain/ticket';
 import { validateSnapshot } from './backup';
 import type { LedgerRepository, LedgerTransaction } from './ports';
 import { canonical } from './serialization';
@@ -347,13 +352,11 @@ export class CashierCommands {
       (await tx.operations.get(command.confirmOperationId))
     )
       throw new Error('確定操作IDが既に使用されています。');
-    const ticket = (await tx.tickets.toArray()).find(
-      (t) => t.orderId === null && t.number <= meta.ticketCount,
+    const ticket = chooseTicket(
+      await tx.tickets.toArray(),
+      meta.ticketCount,
+      command.ticket,
     );
-    if (!ticket)
-      throw new Error(
-        '空き札がありません。現金を受け取らず、札の回収を待ってください。',
-      );
     const order: Order = {
       id: command.orderId,
       assignmentId: command.assignmentId,
