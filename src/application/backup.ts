@@ -193,6 +193,10 @@ function validate(data: Snapshot): void {
   }
   for (const ticket of data.tickets) {
     requireValid(
+      (ticket.reuseSequence ?? 0) <= data.meta.sequence,
+      '札の再利用記録',
+    );
+    requireValid(
       (ticket.orderId === null) === (ticket.assignmentId === null),
       '札の割り当て',
     );
@@ -206,11 +210,20 @@ function validate(data: Snapshot): void {
       );
     }
   }
-  requireValid(data.logs.length === data.meta.sequence, 'ログの上限と件数');
+  requireValid(
+    data.logs.length + (data.meta.omittedLogs ?? 0) === data.meta.sequence,
+    'ログの上限と件数',
+  );
   const sequences = new Set(data.logs.map((l) => l.sequence));
   requireValid(sequences.size === data.logs.length, 'ログ連番の重複');
-  for (let i = 1; i <= data.meta.sequence; i++)
-    requireValid(sequences.has(i), 'ログ連番の欠落');
+  requireValid(
+    data.logs.every((log) => log.sequence <= data.meta.sequence),
+    'ログ連番の範囲',
+  );
+  if (!data.meta.omittedLogs) {
+    for (let i = 1; i <= data.meta.sequence; i++)
+      requireValid(sequences.has(i), 'ログ連番の欠落');
+  }
   for (const op of data.operations) {
     const log = logs.get(op.id);
     requireValid(

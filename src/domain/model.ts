@@ -12,6 +12,7 @@ import {
   MAX_PRODUCT_NAME_LENGTH,
   MAX_PRODUCTS,
   MAX_QUANTITY,
+  MAX_STOCK,
   MAX_TICKETS,
   PRICE_LABELS,
 } from './constants';
@@ -54,6 +55,12 @@ export const quantitySchema = z.preprocess(
       (value) => Object.keys(value).length <= MAX_PRODUCTS,
       `商品は${MAX_PRODUCTS}種類までです`,
     ),
+);
+export const stockSchema = z.preprocess(
+  rejectUnsafeKeys,
+  z
+    .record(productIdSchema, z.number().int().min(0).max(MAX_STOCK))
+    .refine((value) => Object.keys(value).length <= MAX_PRODUCTS),
 );
 export type Quantities = z.infer<typeof quantitySchema>;
 export const moneySchema = z.number().int().min(0).max(MAX_MONEY);
@@ -132,6 +139,7 @@ export const metaSchema = contextSchema
     activePriceId: id,
     ticketCount: ticketNumberSchema,
     sequence: z.number().int().nonnegative(),
+    omittedLogs: z.number().int().nonnegative().optional(),
     expenseTotal: moneySchema.nullable().default(null),
   })
   .strict();
@@ -179,6 +187,7 @@ export type Order = z.infer<typeof orderSchema>;
 export const ticketSchema = z
   .object({
     number: ticketNumberSchema,
+    reuseSequence: z.number().int().nonnegative().optional(),
     orderId: id.nullable(),
     assignmentId: id.nullable(),
   })
@@ -214,6 +223,7 @@ export const commandSchema = z.discriminatedUnion('type', [
     .strict(),
   z.object({ type: z.literal('price'), price: priceSchema }).strict(),
   z.object({ type: z.literal('expense'), amount: moneySchema }).strict(),
+  z.object({ type: z.literal('stock'), quantities: stockSchema }).strict(),
   z.object({ type: z.literal('day'), day: dateSchema }).strict(),
   z.object({ type: z.literal('tickets'), count: ticketNumberSchema }).strict(),
 ]);

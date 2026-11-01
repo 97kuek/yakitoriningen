@@ -4,6 +4,7 @@
  */
 export const MAX_PRODUCTS = 30;
 export const MAX_QUANTITY = 999;
+export const MAX_STOCK = 1_000_000;
 export const MAX_BUNDLE_SIZE = 999;
 export const MAX_MONEY = 100_000_000;
 export const MAX_TICKETS = 100;

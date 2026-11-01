@@ -46,7 +46,12 @@ export function handoffUndoError(
       (log) => log.operationId === op.id && log.sequence > completedAt,
     ),
   );
-  if (!ticket || ticket.orderId !== null || reused)
+  if (
+    !ticket ||
+    ticket.orderId !== null ||
+    reused ||
+    (ticket.reuseSequence ?? 0) > completedAt
+  )
     return 'この札は既に再利用されています。完了を取り消せません。';
   return null;
 }

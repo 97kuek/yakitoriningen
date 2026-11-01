@@ -160,7 +160,7 @@ export class CashierCommands {
       } else if (command.type === 'day') {
         meta.day = command.day;
       } else if (command.type === 'tickets') {
-        await this.resizeTickets(tx, command.count);
+        await this.resizeTickets(tx, command.count, meta.sequence + 1);
         meta.ticketCount = command.count;
       }
       await this.appendLog(tx, meta, id, command.type, result);
@@ -267,6 +267,7 @@ export class CashierCommands {
       ...ticket,
       orderId: order.id,
       assignmentId: order.assignmentId,
+      reuseSequence: meta.sequence + 1,
     });
     return order.id;
   }
@@ -306,6 +307,7 @@ export class CashierCommands {
       );
       if (error) throw new Error(error);
       await tx.tickets.put({
+        ...ticket,
         number: order.ticket,
         orderId: order.id,
         assignmentId: order.assignmentId,
@@ -317,6 +319,7 @@ export class CashierCommands {
       );
     if (owns && releasesTicket(order))
       await tx.tickets.put({
+        ...ticket,
         number: order.ticket,
         orderId: null,
         assignmentId: null,
@@ -325,7 +328,11 @@ export class CashierCommands {
     return order.id;
   }
 
-  private async resizeTickets(tx: LedgerTransaction, count: number) {
+  private async resizeTickets(
+    tx: LedgerTransaction,
+    count: number,
+    sequence: number,
+  ) {
     const all = await tx.tickets.toArray();
     if (all.some((t) => t.number > count && t.orderId !== null))
       throw new Error('使用中の札を番号範囲から外すことはできません。');
@@ -333,7 +340,9 @@ export class CashierCommands {
       if (t.number > count) await tx.tickets.delete(t.number);
     const existing = new Set(all.map((t) => t.number));
     for (const ticket of freeTickets(count))
-      if (!existing.has(ticket.number)) await tx.tickets.add(ticket);
+      if (!existing.has(ticket.number))
+        // Reintroduced numbers must not revive an old completion's undo action.
+        await tx.tickets.add({ ...ticket, reuseSequence: sequence });
   }
 
   /** Every committed change gets the next sequence number in the same transaction. */
