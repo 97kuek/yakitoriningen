@@ -190,12 +190,17 @@ export function Waiting({
               </span>
             )}
           </span>
-          <IconButton
-            icon="clearCompleted"
-            label="完了表示を片づける"
-            disabled={!heldOrders.length || busy}
-            onClick={() => setHeldOrderIds([])}
-          />
+          {heldOrders.length > 0 && (
+            <Button
+              variant="plain"
+              className="clear-completed"
+              aria-label="完了表示を片づける"
+              disabled={busy}
+              onClick={() => setHeldOrderIds([])}
+            >
+              完了を隠す
+            </Button>
+          )}
         </div>
       </div>
       {(waiting.length > 0 || heldOrders.length > 0) && (
@@ -216,12 +221,18 @@ export function Waiting({
       )}
       {!waiting.length && !heldOrders.length && !ticketSearch && (
         <div className="empty">
-          <img
-            src="/assets/empty-orders.png"
-            alt=""
-            width="1536"
-            height="1024"
-          />
+          <picture>
+            <source
+              media="(prefers-reduced-motion: reduce)"
+              srcSet="/assets/empty-orders-still.png"
+            />
+            <img
+              src="/assets/empty-orders.gif"
+              alt=""
+              width="384"
+              height="270"
+            />
+          </picture>
           <h3>待っている注文はありません</h3>
         </div>
       )}

@@ -6,6 +6,11 @@ import {
   ClipboardList,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   CircleHelp,
   Download,
   HandPlatter,
@@ -43,6 +48,11 @@ const icons = {
   shield: ShieldCheck,
   chevron: ChevronDown,
   close: X,
+  left: ChevronLeft,
+  right: ChevronRight,
+  up: ArrowUp,
+  down: ArrowDown,
+  sort: ArrowUpDown,
 };
 export type IconName = keyof typeof icons | 'skewer';
 export function Icon({

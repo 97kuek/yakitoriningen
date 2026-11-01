@@ -2185,3 +2185,164 @@ select {
 .payment .payment-secondary > button {
   margin: 0;
 }
+
+/* History controls share a baseline; the title never competes with a select. */
+.history .section-heading h2 {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.history-filters {
+  gap: 12px 20px;
+}
+.history-filters > .control-select {
+  width: 180px;
+  flex: 0 0 180px;
+}
+.history-filters label,
+.history-filters .checkbox,
+.history-filters > label:first-child {
+  font-size: var(--font-body);
+  font-weight: 400;
+  flex-direction: row;
+  align-items: center;
+}
+.history-time-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+  margin-bottom: 16px;
+}
+.history-time-filter input {
+  width: 130px;
+}
+.history-time-filter [role='alert'] {
+  color: var(--red);
+}
+.history table th,
+.history table td,
+.history td small,
+.history .state-label,
+.history .history-receipt-number {
+  font-size: var(--font-body);
+  font-weight: 400;
+  color: var(--ink);
+}
+.history .history-receipt-number {
+  display: table-cell;
+  margin: 0;
+  white-space: nowrap;
+}
+.history th,
+.history td {
+  padding: 12px 6px;
+}
+.history th {
+  white-space: nowrap;
+}
+.history th .control-button {
+  padding: 0;
+  gap: 4px;
+  font-weight: 400;
+}
+.history th .icon {
+  width: 16px;
+  height: 16px;
+}
+.history-time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.history .state-label {
+  white-space: nowrap;
+}
+.data-secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+.data-secondary-actions .control-button {
+  margin: 0;
+  width: 100%;
+}
+.operation-save {
+  height: 40px;
+  margin-top: 12px;
+}
+.price-strip,
+.price-strip small,
+.price-strip b {
+  font-size: var(--font-body);
+  font-weight: 400;
+  color: var(--ink);
+}
+.price-strip > span {
+  white-space: normal;
+}
+.price-strip small {
+  display: inline-block;
+  margin-left: 8px;
+}
+.checkout .section-heading {
+  flex-wrap: nowrap;
+  min-height: 40px;
+}
+.checkout .section-heading h2 {
+  white-space: nowrap;
+}
+.checkout .checkout-feedback {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  min-height: 40px;
+  margin: 0;
+  justify-content: flex-end;
+  font-size: var(--font-body);
+}
+.checkout-feedback .link-button {
+  white-space: nowrap;
+}
+.about-details {
+  display: grid;
+  gap: 8px;
+  font-size: var(--font-body);
+}
+.about-details dt {
+  margin-top: 12px;
+  font-weight: 400;
+}
+.about-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.help-dialog p {
+  font-size: var(--font-body);
+}
+@media (max-width: 600px) {
+  .data-secondary-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkout .product-name {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.checkout .product-name strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.checkout .product-name small {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.checkout .stepper {
+  flex-shrink: 0;
+}

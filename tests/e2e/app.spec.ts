@@ -59,7 +59,7 @@ test('会計・受け渡し・札回収・入力保持・再起動・取消', as
   await expect(page.getByTestId('unreturned')).toHaveCount(0);
   await expect(page.getByText('別々に記録', { exact: true })).toHaveCount(0);
   await page.reload();
-  await expect(page.getByText('確定済み 1件')).toBeVisible();
+  await expect(page.locator('.startup-details')).not.toContainText('確定済み');
   await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める' }).click();
   await page.getByRole('button', { name: '注文履歴', exact: true }).click();
@@ -142,7 +142,7 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
   });
   await page.getByLabel('開く内容と現在の記録の保存を確認した').check();
   await page.getByRole('button', { name: 'この記録に置き換える' }).click();
-  await expect(page.getByText('確定済み 1件')).toBeVisible();
+  await expect(page.locator('.startup-details')).not.toContainText('確定済み');
   await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める' }).click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
@@ -488,7 +488,7 @@ test('営業日の切り替え後も注文履歴を日ごとに確認できる',
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await page.getByLabel('会計に記録する日付').fill('2026-11-08');
-  await page.getByRole('button', { name: '日付を変更', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
   await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   const select = page.getByRole('combobox', { name: '表示する日' });
   await select.click();
@@ -651,12 +651,12 @@ test('履歴が51件以上あっても50件ずつ表示し、全体の売上は�
   await openFixture(page, await historyFixture(51));
   await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(50);
-  await page.getByRole('button', { name: '前の50件', exact: true }).click();
+  await page.getByRole('button', { name: '次のページ', exact: true }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
   await expect(
     page.getByText('51〜51件 / 51件', { exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: '新しい50件', exact: true }).click();
+  await page.getByRole('button', { name: '前のページ', exact: true }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(50);
 });
 test('既定商品を置き換えた30商品でも数量上限と旧IDが干渉しない', async ({

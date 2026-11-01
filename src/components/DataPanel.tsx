@@ -166,24 +166,26 @@ export function DataPanel({
           {status}
         </p>
       )}
-      <Button
-        variant="secondary"
-        type="button"
-        className="secondary restore-trigger"
-        onClick={() => setRestoreOpen(true)}
-      >
-        <Icon name="upload" />
-        保存した記録を開く
-      </Button>
-      {snapshot && (
+      <div className="data-secondary-actions">
         <Button
           variant="secondary"
-          className="new-event-trigger"
-          onClick={() => setNewEventOpen(true)}
+          type="button"
+          className="secondary restore-trigger"
+          onClick={() => setRestoreOpen(true)}
         >
-          新しい開催回を準備
+          <Icon name="upload" />
+          保存した記録を開く
         </Button>
-      )}
+        {snapshot && (
+          <Button
+            variant="secondary"
+            className="new-event-trigger"
+            onClick={() => setNewEventOpen(true)}
+          >
+            新しい開催回を準備
+          </Button>
+        )}
+      </div>
       {newEventOpen && (
         <Dialog
           open={newEventOpen}

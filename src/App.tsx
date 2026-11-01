@@ -294,7 +294,7 @@ export default function App() {
             type="button"
             className="icon-button"
             onClick={() => setHelpOpen(true)}
-            label="使い方"
+            label="このアプリについて"
             icon="help"
           />
         </div>

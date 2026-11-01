@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { dayText, orderText, timeText, yen } from '../presentation/format';
-import { historyPage } from '../domain/history';
+import { historyPage, type HistorySort } from '../domain/history';
 import { Button, Dialog, IconButton, Select } from './controls';
 import { RefundDialog } from './RefundDialog';
 import { OrderDetails, receiptNumber } from './OrderDetails';
@@ -21,13 +21,42 @@ export function History({
   snapshot: Snapshot;
   store: Cashier;
 }) {
-  const [scope, setScope] = useState('event');
+  const [scope, setScope] = useState(snapshot.meta.day);
   const [cancel, setCancel] = useState<Order | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const detailsTrigger = useRef<HTMLButtonElement | null>(null);
   const [ticketSearch, setTicketSearch] = useState('');
   const [waitingOnly, setWaitingOnly] = useState(false);
   const [page, setPage] = useState(0);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [sort, setSort] = useState<HistorySort>('time');
+  const [direction, setDirection] = useState<'asc' | 'desc'>('desc');
+  function sortBy(key: HistorySort) {
+    setDirection(sort === key && direction === 'asc' ? 'desc' : 'asc');
+    setSort(key);
+    setPage(0);
+  }
+  function sortHeading(key: HistorySort, label: string) {
+    return (
+      <th
+        aria-sort={
+          sort === key
+            ? direction === 'asc'
+              ? 'ascending'
+              : 'descending'
+            : 'none'
+        }
+      >
+        <Button variant="plain" onClick={() => sortBy(key)}>
+          {label}
+          <Icon
+            name={sort === key ? (direction === 'asc' ? 'up' : 'down') : 'sort'}
+          />
+        </Button>
+      </th>
+    );
+  }
   const days = [
     ...new Set([
       snapshot.meta.day,
@@ -42,7 +71,12 @@ export function History({
   const orders = snapshot.orders.filter(
     (order) => scope === 'event' || order.day === scope,
   );
-  const history = historyPage(orders, ticketSearch, waitingOnly, page);
+  const history = historyPage(orders, ticketSearch, waitingOnly, page, 50, {
+    from,
+    to,
+    sort,
+    direction,
+  });
   const details = snapshot.orders.find((order) => order.id === detailsId);
   return (
     <section className="panel history">
@@ -51,6 +85,8 @@ export function History({
           <Icon name="chart" />
           注文履歴
         </h2>
+      </div>
+      <div className="history-filters">
         <Select
           value={scope}
           label="表示する日"
@@ -69,8 +105,7 @@ export function History({
             })),
           ]}
         />
-      </div>
-      <div className="history-filters">
+
         <label>
           札番号で検索
           <input
@@ -97,15 +132,52 @@ export function History({
           未受け渡しだけ表示
         </label>
       </div>
+      <div className="history-time-filter">
+        <span>時間帯</span>
+        <input
+          type="time"
+          aria-label="開始時刻"
+          value={from}
+          onChange={(event) => {
+            setFrom(event.target.value);
+            setPage(0);
+          }}
+        />
+        <span>〜</span>
+        <input
+          type="time"
+          aria-label="終了時刻"
+          value={to}
+          onChange={(event) => {
+            setTo(event.target.value);
+            setPage(0);
+          }}
+        />
+        {(from || to) && (
+          <IconButton
+            icon="close"
+            label="時間帯をクリア"
+            onClick={() => {
+              setFrom('');
+              setTo('');
+              setPage(0);
+            }}
+          />
+        )}
+        {from && to && from > to && (
+          <span role="alert">終了時刻は開始時刻以降にしてください。</span>
+        )}
+      </div>
       <div className="table-scroll">
         <table>
           <caption className="sr-only">注文履歴</caption>
           <thead>
             <tr>
-              <th>{scope === 'event' ? '日時' : '時刻'}</th>
-              <th>札</th>
+              {sortHeading('time', scope === 'event' ? '日時' : '時刻')}
+              <th>会計番号</th>
+              {sortHeading('ticket', '札')}
               <th>内容</th>
-              <th>会計額</th>
+              {sortHeading('amount', '会計額')}
               <th>状態</th>
               <th>
                 <span className="sr-only">詳細・返金</span>
@@ -115,16 +187,14 @@ export function History({
           <tbody>
             {history.orders.map((o) => (
               <tr key={o.id}>
-                <td>
+                <td className="history-time">
+                  {scope === 'event' && <span>{dayText(o.day)} </span>}
                   {timeText(o.createdAt)}
-                  {scope === 'event' && <small>{dayText(o.day)}</small>}
-                  <span className="history-receipt-number">
-                    {receiptNumber(o, snapshot)}
-                  </span>
                 </td>
-                <td>
-                  <strong>{o.ticket}</strong>
+                <td className="history-receipt-number">
+                  {receiptNumber(o, snapshot).replace('会計 ', '')}
                 </td>
+                <td>{o.ticket}</td>
                 <td>{orderText(o)}</td>
                 <td>
                   {yen(o.quote.total)}
@@ -140,7 +210,7 @@ export function History({
                       : o.status === 'cancelled'
                         ? '取消済み'
                         : o.delivered
-                          ? '受け渡し済み'
+                          ? '完了'
                           : '受け渡し待ち'}
                   </span>
                   <small>
@@ -150,14 +220,16 @@ export function History({
                 </td>
                 <td>
                   <div className="history-order-actions">
-                    <IconButton
-                      icon="details"
-                      label="注文の詳細"
+                    <Button
+                      variant="plain"
+                      aria-label="注文の詳細"
                       onClick={(event) => {
                         detailsTrigger.current = event.currentTarget;
                         setDetailsId(o.id);
                       }}
-                    />
+                    >
+                      詳細
+                    </Button>
                     {o.status === 'paid' && (
                       <Button
                         variant="secondary"
@@ -188,18 +260,18 @@ export function History({
             : '0件'}
         </span>
         <div>
-          <Button
+          <IconButton
+            icon="left"
+            label="前のページ"
             disabled={history.page === 0}
             onClick={() => setPage(history.page - 1)}
-          >
-            新しい50件
-          </Button>
-          <Button
+          />
+          <IconButton
+            icon="right"
+            label="次のページ"
             disabled={history.page + 1 >= history.pages}
             onClick={() => setPage(history.page + 1)}
-          >
-            前の50件
-          </Button>
+          />
         </div>
       </div>
       {details && (

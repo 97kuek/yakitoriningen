@@ -93,10 +93,32 @@ export function Checkout({
   return (
     <section className="checkout panel" aria-labelledby="checkout-title">
       <div className="section-heading">
-        <h2 id="checkout-title">
-          <Icon name="skewer" />
-          注文
-        </h2>
+        <h2 id="checkout-title">注文</h2>
+        <div
+          className={`checkout-feedback${lastPaidTicket !== null ? ' success' : ''}`}
+          role="status"
+          data-testid="checkout-feedback"
+        >
+          {clearedDraft ? (
+            <>
+              <Button
+                variant="plain"
+                className="link-button"
+                onClick={() => {
+                  setDraft(clearedDraft);
+                  setClearedDraft(null);
+                }}
+              >
+                元に戻す
+              </Button>
+            </>
+          ) : lastPaidTicket !== null ? (
+            <>
+              <Icon name="check" />
+              <span>札 {lastPaidTicket} 会計済み</span>
+            </>
+          ) : null}
+        </div>
         <IconButton
           variant="plain"
           type="button"
@@ -110,32 +132,6 @@ export function Checkout({
           label="注文をクリア"
           icon="reset"
         />
-      </div>
-      <div
-        className={`checkout-feedback${lastPaidTicket !== null ? ' success' : ''}`}
-        role="status"
-        data-testid="checkout-feedback"
-      >
-        {clearedDraft ? (
-          <>
-            <span>注文を消しました。</span>
-            <Button
-              variant="plain"
-              className="link-button"
-              onClick={() => {
-                setDraft(clearedDraft);
-                setClearedDraft(null);
-              }}
-            >
-              元に戻す
-            </Button>
-          </>
-        ) : lastPaidTicket !== null ? (
-          <>
-            <Icon name="check" />
-            <span>札 {lastPaidTicket} 会計済み。番号札を渡してください。</span>
-          </>
-        ) : null}
       </div>
       <div className="price-strip">
         {price.discounted && <span className="price-label">値下げ中</span>}

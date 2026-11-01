@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Snapshot } from '../domain/model';
+import { dateSchema, type Snapshot } from '../domain/model';
 import { yen } from '../presentation/format';
 import type { Shared } from '../ui';
 import type { Cashier } from '../application/ports';
@@ -31,7 +31,7 @@ export function Settings({
     (price) => price.id === snapshot.meta.activePriceId,
   )!;
   const [day, setDay] = useState(snapshot.meta.day);
-  const [tickets, setTickets] = useState(snapshot.meta.ticketCount);
+  const [tickets, setTickets] = useState(String(snapshot.meta.ticketCount));
   const [expense, setExpense] = useState(
     snapshot.meta.expenseTotal == null
       ? ''
@@ -43,7 +43,7 @@ export function Settings({
   const dirty =
     menuDirty ||
     day !== snapshot.meta.day ||
-    tickets !== snapshot.meta.ticketCount ||
+    tickets !== String(snapshot.meta.ticketCount) ||
     expense !==
       (snapshot.meta.expenseTotal == null
         ? ''
@@ -137,16 +137,24 @@ export function Settings({
           />
           <section className="operation-section">
             <h3>日付・番号札</h3>
-            <div className="operation-settings">
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void shared.perform(async () => {
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void shared.perform(async () => {
+                  dateSchema.parse(day);
+                  if (tickets !== String(snapshot.meta.ticketCount))
+                    await shared.saveCommand({
+                      type: 'tickets',
+                      count: Number(tickets),
+                    });
+                  if (day !== snapshot.meta.day)
                     await shared.saveCommand({ type: 'day', day });
-                    setSaved('日付を変更しました。');
-                  });
-                }}
-              >
+                  setTickets(String(Number(tickets)));
+                  setSaved('保存しました。');
+                });
+              }}
+            >
+              <div className="operation-settings">
                 <label>
                   会計に記録する日付
                   <input
@@ -156,25 +164,6 @@ export function Settings({
                     onChange={(event) => setDay(event.target.value)}
                   />
                 </label>
-                <p className="hint">
-                  翌日の営業を始めるときに変更します。注文履歴は残ります。
-                </p>
-                <Button type="submit" disabled={day === snapshot.meta.day}>
-                  日付を変更
-                </Button>
-              </form>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void shared.perform(async () => {
-                    await shared.saveCommand({
-                      type: 'tickets',
-                      count: tickets,
-                    });
-                    setSaved('札の枚数を変更しました。');
-                  });
-                }}
-              >
                 <label>
                   番号札の枚数
                   <input
@@ -183,26 +172,26 @@ export function Settings({
                     max="100"
                     required
                     value={tickets}
-                    onChange={(event) => setTickets(Number(event.target.value))}
+                    onChange={(event) => setTickets(event.target.value)}
                   />
                 </label>
-                <p className="hint">
-                  1番から順に使います。使用中の札は減らせません。
-                </p>
-                <Button
-                  type="submit"
-                  disabled={tickets === snapshot.meta.ticketCount}
-                >
-                  札の枚数を変更
-                </Button>
-              </form>
-            </div>
+              </div>
+              <div className="operation-save">
+                {(day !== snapshot.meta.day ||
+                  tickets !== String(snapshot.meta.ticketCount)) && (
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    disabled={shared.busy}
+                  >
+                    保存
+                  </Button>
+                )}
+              </div>
+            </form>
           </section>
           <section className="operation-section">
             <h3>記録の保護</h3>
-            <p className="hint">
-              ブラウザによる自動削除を防ぎます。故障に備え、記録の保存も必要です。
-            </p>
             <Button
               onClick={() =>
                 shared.perform(async () => {

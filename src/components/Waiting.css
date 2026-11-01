@@ -135,21 +135,6 @@
   min-width: 42px;
   min-height: 42px;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .waiting .empty img {
-    animation: mascot-sway 3s ease-in-out infinite;
-  }
-  @keyframes mascot-sway {
-    0%,
-    100% {
-      transform: rotate(0deg);
-    }
-    50% {
-      transform: rotate(2deg);
-    }
-  }
-}
-
 .waiting-undo-slot {
   width: var(--control-size);
   height: var(--control-size);
