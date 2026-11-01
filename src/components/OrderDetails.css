@@ -76,10 +76,11 @@
 }
 
 .history .history-order-actions {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: 56px 100px;
+  justify-content: start;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   white-space: nowrap;
 }
 

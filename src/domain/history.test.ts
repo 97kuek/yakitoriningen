@@ -85,21 +85,16 @@ it('日本時間の範囲を分単位で絞り、並べ替えてからページ�
   expect(orders[0].id).toBe('a');
 });
 
-it('完了・未完了・保留・取消を混ぜずに絞り込む', () => {
+it('未完了に入金前と受け渡し前を含み、完了・取消と分ける', () => {
   const orders = [
     { id: 'waiting', status: 'paid', delivered: false },
     { id: 'complete', status: 'paid', delivered: true },
     { id: 'pending', status: 'pending', delivered: false },
     { id: 'cancelled', status: 'cancelled', delivered: true },
   ].map((o) => ({ ...o, createdAt: '2026-11-01T01:00:00Z' })) as Order[];
-  for (const state of [
-    'waiting',
-    'complete',
-    'pending',
-    'cancelled',
-  ] as const) {
+  for (const state of ['waiting', 'complete', 'cancelled'] as const) {
     expect(historyPage(orders, '', state, 0).orders.map((o) => o.id)).toEqual([
-      state,
+      ...(state === 'waiting' ? ['waiting', 'pending'] : [state]),
     ]);
   }
   expect(historyPage(orders, '', 'all', 0).total).toBe(4);

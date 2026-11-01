@@ -7,6 +7,7 @@ import { orderItems, timeText, dayText } from '../presentation/format';
 import type { Order, Snapshot } from '../domain/model';
 import type { Shared } from '../ui';
 import { Icon } from './Icon';
+import { Ticket } from './Ticket';
 import './Waiting.css';
 export function Waiting({
   snapshot,
@@ -220,16 +221,17 @@ export function Waiting({
           <h3>待っている注文はありません</h3>
         </div>
       )}
-      <div className="waiting-list">
+      <div
+        className="waiting-list"
+        hidden={!visibleOrders.length && !ticketSearch}
+      >
         {visibleOrders.map((order) => (
           <article
             className="order-card"
             key={order.id}
             data-testid="waiting-order"
           >
-            <span className="ticket-badge">
-              <strong aria-label={`札 ${order.ticket}`}>{order.ticket}</strong>
-            </span>
+            <Ticket number={order.ticket} />
             <div className="order-content">
               <div className="order-quantities">
                 {orderItems(order).map((item) => (

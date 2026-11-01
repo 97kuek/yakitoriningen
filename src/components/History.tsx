@@ -131,8 +131,7 @@ export function History({
             { value: 'all', label: 'すべての状態' },
             { value: 'waiting', label: '未完了' },
             { value: 'complete', label: '完了' },
-            { value: 'pending', label: '保留' },
-            { value: 'cancelled', label: '取消済み' },
+            { value: 'cancelled', label: '取消' },
           ]}
           onChange={(value) => {
             setState(value as HistoryState);
@@ -195,18 +194,12 @@ export function History({
                 </td>
                 <td>
                   <span className={`state-label${o.delivered ? ' done' : ''}`}>
-                    {o.status === 'pending'
-                      ? '保留'
-                      : o.status === 'cancelled'
-                        ? '取消済み'
-                        : o.delivered
-                          ? '完了'
-                          : '受け渡し待ち'}
+                    {o.status === 'cancelled'
+                      ? '取消'
+                      : o.status === 'paid' && o.delivered
+                        ? '完了'
+                        : '未完了'}
                   </span>
-                  <small>
-                    {o.cancelReason ??
-                      (!o.returned && o.delivered ? '札未回収' : null)}
-                  </small>
                 </td>
                 <td>
                   <div className="history-order-actions">

@@ -70,7 +70,7 @@ test('会計・受け渡し・札回収・入力保持・再起動・取消', as
   await expect(page.getByText('返金の準備ができました。')).toBeVisible();
   await page.getByLabel('全額返金し、現金を確認しました').check();
   await page.getByRole('button', { name: '返金を記録' }).click();
-  await expect(page.getByRole('table')).toContainText('取消済み');
+  await expect(page.getByRole('table')).toContainText('取消');
 });
 test('価格変更は入力中の注文を変えず次の空注文へ適用する', async ({ page }) => {
   await setup(page);
@@ -80,8 +80,8 @@ test('価格変更は入力中の注文を変えず次の空注文へ適用す�
     .getByRole('button', { name: '値下げ価格に切り替える', exact: true })
     .click();
   await expect(
-    page.getByText('販売中：値下げ価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await expect(page.getByTestId('total')).toHaveText('￥150');
   await pay(page, '150');
@@ -280,7 +280,7 @@ test('普段の受け渡しは1回で記録し、次の注文と画面位置を�
   await setup(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await pay(page, '1000');
-  await expect(page.getByTestId('checkout-feedback')).toContainText('札 1');
+  await expect(page.getByTestId('checkout-feedback')).toBeEmpty();
   await page.getByRole('button', { name: 'ねぎまを1本増やす' }).click();
   const complete = page.getByRole('button', {
     name: '受け渡し完了（札も回収）',
@@ -593,8 +593,8 @@ test('追加商品の対象セットと個別値下げを会計し、削除後�
     .getByRole('button', { name: '値下げ価格に切り替える', exact: true })
     .click();
   await expect(
-    page.getByText('販売中：値下げ価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await page.getByRole('button', { name: 'つくねを1本増やす' }).click();
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
@@ -683,8 +683,8 @@ test('旧値下げプリセットを通常価格へ戻せる', async ({ page }) 
     .getByRole('button', { name: '通常価格に切り替える', exact: true })
     .click();
   await expect(
-    page.getByText('販売中：通常価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '通常価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await page
     .getByRole('button', { name: 'ももを1本増やす', exact: true })

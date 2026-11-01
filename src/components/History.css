@@ -25,6 +25,7 @@
 .history table th,
 .history table td {
   padding: 14px 8px;
+  text-align: left;
 }
 .history table th:nth-child(5),
 .history table td:nth-child(5) {

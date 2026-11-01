@@ -32,8 +32,8 @@ test('販売価格の切り替えは未保存の商品編集を保持し、入�
     .getByRole('button', { name: '値下げ価格に切り替える', exact: true })
     .click();
   await expect(
-    page.getByText('販売中：値下げ価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('ももの通常価格（円）')).toHaveValue('220');
   await expect(page.getByLabel('ももの値下げ価格（円）')).toHaveValue('80');
   await checkout(page);
@@ -50,8 +50,8 @@ test('販売価格の切り替えは未保存の商品編集を保持し、入�
     }),
   ).toBeVisible();
   await expect(
-    page.getByText('販売中：値下げ価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(
     page.getByText('未保存の変更があります。', { exact: true }),
   ).toHaveCount(0);
@@ -66,8 +66,8 @@ test('販売価格の切り替えは未保存の商品編集を保持し、入�
     .getByRole('button', { name: '通常価格に切り替える', exact: true })
     .click();
   await expect(
-    page.getByText('販売中：通常価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '通常価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await checkout(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await expect(page.getByTestId('total')).toHaveText('￥220');
@@ -83,8 +83,8 @@ test('未入力の商品があっても販売価格だけ切り替えられ、�
     .getByRole('button', { name: '値下げ価格に切り替える', exact: true })
     .click();
   await expect(
-    page.getByText('販売中：値下げ価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('商品4の名前', { exact: true })).toHaveValue('');
   await checkout(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
@@ -112,15 +112,15 @@ test('旧値下げ価格を通常へ切り替えても単価50円を通常価格
   );
   await settings(page);
   await expect(
-    page.getByText('販売中：値下げ価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('ももの通常価格（円）')).toHaveValue('150');
   await page
     .getByRole('button', { name: '通常価格に切り替える', exact: true })
     .click();
   await expect(
-    page.getByText('販売中：通常価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '通常価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await checkout(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await expect(page.getByTestId('total')).toHaveText('￥150');

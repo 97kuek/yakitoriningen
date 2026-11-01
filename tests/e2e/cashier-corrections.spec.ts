@@ -16,8 +16,8 @@ test('注文を消しても元の本数と価格へ戻せ、新しい入力は�
     .getByRole('button', { name: '値下げ価格に切り替える', exact: true })
     .click();
   await expect(
-    page.getByText('販売中：値下げ価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await page.getByRole('button', { name: '注文をクリア', exact: true }).click();
   await expect(page.getByTestId('total')).toHaveText('￥0');

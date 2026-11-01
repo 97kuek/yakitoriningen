@@ -77,8 +77,8 @@ test('販売価格を切り替えても商品編集欄は動かない', async ({
   const before = (await heading.boundingBox())!;
   await page.getByRole('button', { name: '値下げ価格に切り替える' }).click();
   await expect(
-    page.getByText('販売中：値下げ価格', { exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '値下げ価格に切り替える', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   const after = (await heading.boundingBox())!;
   expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
 });

@@ -206,6 +206,6 @@ test('会計番号を先頭列に置き、完了と未完了を切り替えら�
   await expect(page.locator('.history tbody tr')).toHaveCount(1);
   await expect(page.locator('.history tbody')).toContainText('￥300');
   await state.click();
-  await page.getByRole('option', { name: '取消済み', exact: true }).click();
+  await page.getByRole('option', { name: '取消', exact: true }).click();
   await expect(page.locator('.history tbody tr')).toHaveCount(0);
 });

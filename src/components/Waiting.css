@@ -125,12 +125,9 @@
   position: relative;
 }
 
-.waiting .ticket-badge {
-  border: 1px solid var(--control-border);
-  border-radius: 4px;
-  background: var(--selected-surface);
-  min-width: 42px;
-  min-height: 42px;
+.waiting .ticket-chip {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .waiting-undo-slot {
   width: var(--control-size);
@@ -142,4 +139,13 @@
 }
 .waiting .empty img {
   mix-blend-mode: normal;
+}
+
+.waiting .waiting-list[hidden] {
+  display: none;
+}
+.waiting .empty {
+  flex: 1;
+  margin: 0;
+  justify-content: center;
 }

@@ -1,7 +1,6 @@
 import type { Order } from './model';
 
-export type HistoryState =
-  'all' | 'waiting' | 'complete' | 'pending' | 'cancelled';
+export type HistoryState = 'all' | 'waiting' | 'complete' | 'cancelled';
 export type HistorySort = 'time' | 'ticket' | 'amount';
 export type HistoryOptions = {
   from?: string;
@@ -32,12 +31,11 @@ export function historyPage(
           (/^\d+$/.test(ticket.trim()) && order.ticket === Number(ticket))) &&
         (state === 'all' ||
           (state === 'waiting' &&
-            order.status === 'paid' &&
-            !order.delivered) ||
+            (order.status === 'pending' ||
+              (order.status === 'paid' && !order.delivered))) ||
           (state === 'complete' &&
             order.status === 'paid' &&
             order.delivered) ||
-          (state === 'pending' && order.status === 'pending') ||
           (state === 'cancelled' && order.status === 'cancelled')) &&
         (!from || japanTime.format(new Date(order.createdAt)) >= from) &&
         (!to || japanTime.format(new Date(order.createdAt)) <= to),

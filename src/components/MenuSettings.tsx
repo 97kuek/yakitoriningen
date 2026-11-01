@@ -69,9 +69,6 @@ export function MenuSettings({
         className="menu-selling-settings"
         aria-label="販売価格の切り替え"
       >
-        <p className="menu-selling-current" role="status">
-          販売中：{current.discounted ? '値下げ価格' : '通常価格'}
-        </p>
         <div className="menu-selling-actions">
           <Button
             disabled={busy || !current.discounted}
@@ -138,19 +135,33 @@ export function MenuSettings({
               </Button>
             </div>
           </div>
-          <p className="menu-draft-status" role="status">
-            {dirty ? '未保存の変更があります。' : ''}
-          </p>
+          <span className="sr-only" role="status">
+            {dirty ? '未保存の変更があります。' : saved}
+          </span>
         </div>
         <div className="menu-columns" aria-hidden="true">
+          <span />
           <span>セット対象・商品名</span>
           <span>通常価格</span>
           <span>値下げ価格</span>
-          <span />
         </div>
         <div className="menu-rows">
           {items.map((item, index) => (
             <div className="menu-row" key={item.id}>
+              <IconButton
+                icon="minus"
+                label={`${item.name || '商品'}を削除`}
+                disabled={items.length <= 1}
+                onClick={() => {
+                  editDraft({
+                    ...draft,
+                    items: items.filter((other) => other.id !== item.id),
+                    bundleItems: draft.bundleItems?.filter(
+                      (id) => id !== item.id,
+                    ),
+                  });
+                }}
+              />
               <div className="menu-item-name">
                 <input
                   type="checkbox"
@@ -205,20 +216,6 @@ export function MenuSettings({
                   }
                 />
               </label>
-              <IconButton
-                icon="minus"
-                label={`${item.name || '商品'}を削除`}
-                disabled={items.length <= 1}
-                onClick={() => {
-                  editDraft({
-                    ...draft,
-                    items: items.filter((other) => other.id !== item.id),
-                    bundleItems: draft.bundleItems?.filter(
-                      (id) => id !== item.id,
-                    ),
-                  });
-                }}
-              />
             </div>
           ))}
         </div>
@@ -286,9 +283,6 @@ export function MenuSettings({
             </label>
           </fieldset>
         </section>
-        <p role="status" className="settings-result">
-          {saved}
-        </p>
       </form>
     </div>
   );

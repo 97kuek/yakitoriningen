@@ -8,12 +8,6 @@
   padding-bottom: 12px;
 }
 
-.menu-pricing-settings .menu-selling-current {
-  font-size: var(--font-body);
-  font-weight: 600;
-  margin: 0 0 8px;
-}
-
 .menu-pricing-settings .menu-selling-actions {
   display: flex;
   flex-wrap: wrap;
@@ -47,13 +41,6 @@
 .menu-pricing-settings .menu-setting-heading h3 {
   margin: 0;
   font-size: var(--font-body);
-}
-
-.menu-pricing-settings .menu-draft-status {
-  min-height: 20px;
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: var(--font-small);
 }
 
 .menu-pricing-settings .menu-settings input,

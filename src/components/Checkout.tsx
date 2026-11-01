@@ -16,6 +16,7 @@ import { quote } from '../domain/pricing';
 import type { Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { Icon } from './Icon';
+import { Ticket } from './Ticket';
 
 type Draft = { quantities: Quantities; price: Price | null };
 export function Checkout({
@@ -32,7 +33,6 @@ export function Checkout({
   store: Cashier;
   resumeOrderIds: string[];
 }) {
-  const [lastPaidTicket, setLastPaidTicket] = useState<number | null>(null);
   const [clearedDraft, setClearedDraft] = useState<Draft | null>(null);
   const activePrice = snapshot.prices.find(
     (p) => p.id === snapshot.meta.activePriceId,
@@ -56,7 +56,6 @@ export function Checkout({
   const hasTicket = snapshot.tickets.some((t) => !t.orderId);
   const changeQuantity = (id: keyof Quantities, value: number) => {
     if (!Number.isInteger(value) || value < 0 || value > 999) return;
-    setLastPaidTicket(null);
     setClearedDraft(null);
     const quantities = Object.fromEntries(
       products.map((product) => [
@@ -77,7 +76,6 @@ export function Checkout({
               (op) => op.id === order.confirmOperationId,
             )}
             store={store}
-            onConfirmed={() => setLastPaidTicket(order.ticket)}
             onEdit={() =>
               setDraft({
                 quantities: { ...order.quantities },
@@ -95,7 +93,7 @@ export function Checkout({
       <div className="section-heading">
         <h2 id="checkout-title">注文</h2>
         <div
-          className={`checkout-feedback${lastPaidTicket !== null ? ' success' : ''}`}
+          className="checkout-feedback"
           role="status"
           data-testid="checkout-feedback"
         >
@@ -112,11 +110,6 @@ export function Checkout({
                 元に戻す
               </Button>
             </>
-          ) : lastPaidTicket !== null ? (
-            <>
-              <Icon name="check" />
-              <span>札 {lastPaidTicket} 会計済み</span>
-            </>
           ) : null}
         </div>
         <IconButton
@@ -126,7 +119,6 @@ export function Checkout({
           disabled={!count(draft.quantities)}
           onClick={() => {
             setClearedDraft(draft);
-            setLastPaidTicket(null);
             setDraft({ quantities: emptyQuantities(), price: null });
           }}
           label="注文をクリア"
@@ -134,7 +126,9 @@ export function Checkout({
         />
       </div>
       <div className="price-strip">
-        {price.discounted && <span className="price-label">値下げ中</span>}
+        <span className="price-label">
+          {price.discounted ? '値下げ価格' : '通常価格'}
+        </span>
         {price.bundleEnabled &&
           (!price.discounted || price.bundleDuringDiscount) && (
             <span>
@@ -260,7 +254,6 @@ function Payment({
   context,
   saveCommand,
   resumed,
-  onConfirmed,
   onEdit,
   busy,
 }: Shared & {
@@ -268,7 +261,6 @@ function Payment({
   operation?: Operation;
   store: Cashier;
   resumed: boolean;
-  onConfirmed: () => void;
   onEdit: () => void;
 }) {
   const products = getMenu(order.price);
@@ -310,9 +302,7 @@ function Payment({
           <Icon name="cash" />
           お会計
         </h2>
-        <span className="ticket-chip">
-          <Icon name="ticket" />札 {order.ticket}
-        </span>
+        <Ticket number={order.ticket} />
       </div>
       {resumed && (
         <p className="notice">
@@ -329,10 +319,12 @@ function Payment({
             </span>
           ))}
       </div>
-      <div className={`payment-total${staged ? ' settled-total' : ''}`}>
-        <span>お会計</span>
-        <strong data-testid="payment-total">{yen(order.quote.total)}</strong>
-      </div>
+      {!staged && (
+        <div className="payment-total">
+          <span>お会計</span>
+          <strong data-testid="payment-total">{yen(order.quote.total)}</strong>
+        </div>
+      )}
       {!staged ? (
         <form
           id={`payment-${order.id}`}
@@ -391,18 +383,24 @@ function Payment({
           </div>
         </form>
       ) : (
-        <>
-          <div className="received-summary">
+        <div className="cash-calculation" aria-label="お釣りの計算">
+          <div>
             <span>お預かり</span>
             <strong>{yen(amount)}</strong>
           </div>
-          <div className="change-display">
+          <div>
+            <span>− お会計</span>
+            <strong data-testid="payment-total">
+              {yen(order.quote.total)}
+            </strong>
+          </div>
+          <div className="cash-change">
             <span>お釣り</span>
             <strong data-testid="change">
               {yen(amount - order.quote.total)}
             </strong>
           </div>
-        </>
+        </div>
       )}
       <div className="payment-controls">
         {staged ? (
@@ -419,7 +417,6 @@ function Payment({
               if (event.detail > 1) return;
               void perform(async () => {
                 await store.execute(order.confirmOperationId, context);
-                onConfirmed();
               });
             }}
           >
