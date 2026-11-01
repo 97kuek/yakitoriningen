@@ -6,6 +6,7 @@ import { dayText, yen } from '../presentation/format';
 import type { Shared } from '../ui';
 import { Button } from './controls';
 import './Summary.css';
+import { SalesCharts } from './SalesCharts';
 
 export function Summary({
   snapshot,
@@ -78,6 +79,7 @@ export function Summary({
           返金 {yen(total.refunds)}を差し引いています。
         </p>
       )}
+      <SalesCharts snapshot={snapshot} />
       <div className="summary-closing">
         <form
           onSubmit={(event) => {

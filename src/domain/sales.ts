@@ -51,3 +51,49 @@ export function salesByHour(
     .sort(([a], [b]) => a - b)
     .map(([hour, sales]) => ({ hour, sales }));
 }
+
+/** Net receipts grouped by half-hour in Japan, using each order's paid time. */
+export function salesByHalfHour(orders: readonly Order[]) {
+  const groups = new Map<number, number>();
+  for (const order of orders) {
+    if (order.received === null || !order.paidAt) continue;
+    const date = new Date(order.paidAt);
+    const minute =
+      ((date.getUTCHours() + 9) % 24) * 60 +
+      Math.floor(date.getUTCMinutes() / 30) * 30;
+    if (!Number.isFinite(minute)) continue;
+    groups.set(
+      minute,
+      (groups.get(minute) ?? 0) + order.quote.total - order.refunded,
+    );
+  }
+  if (!groups.size) return [];
+  const first = Math.min(...groups.keys()),
+    last = Math.max(...groups.keys());
+  return Array.from({ length: (last - first) / 30 + 1 }, (_, index) => {
+    const minute = first + index * 30;
+    return { minute, sales: groups.get(minute) ?? 0 };
+  });
+}
+
+export function quantitiesByProduct(orders: readonly Order[]) {
+  const products = new Map<
+    string,
+    { id: string; name: string; quantity: number }
+  >();
+  for (const order of orders) {
+    if (order.status !== 'paid') continue;
+    for (const [id, quantity] of Object.entries(order.quantities)) {
+      if (!quantity) continue;
+      const previous = products.get(id);
+      products.set(id, {
+        id,
+        name: order.names[id] ?? previous?.name ?? '商品',
+        quantity: (previous?.quantity ?? 0) + quantity,
+      });
+    }
+  }
+  return [...products.values()].sort(
+    (a, b) => b.quantity - a.quantity || a.id.localeCompare(b.id),
+  );
+}

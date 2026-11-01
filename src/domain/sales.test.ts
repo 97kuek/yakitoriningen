@@ -105,3 +105,38 @@ it('追加商品・削除済み商品も過去注文から集計する', () => {
   });
   expect(result.count).toBe(6);
 });
+
+it('30分区切りは日本時間の会計時刻で集計し、空の区間と返金を反映する', async () => {
+  const { salesByHalfHour } = await import('./sales');
+  const rows = [
+    order({ paidAt: '2026-11-07T01:29:59Z' }),
+    order({ paidAt: '2026-11-07T01:30:00Z' }),
+    order({ paidAt: '2026-11-07T02:30:00Z' }),
+    order({ status: 'cancelled', refunded: 600 }),
+    order({ status: 'pending', received: null, paidAt: null }),
+  ];
+  expect(salesByHalfHour(rows)).toEqual([
+    { minute: 600, sales: 600 },
+    { minute: 630, sales: 600 },
+    { minute: 660, sales: 0 },
+    { minute: 690, sales: 600 },
+  ]);
+  expect(salesByHalfHour([])).toEqual([]);
+  expect(
+    salesByHalfHour([order({ paidAt: '2026-11-07T15:00:00Z' })])[0].minute,
+  ).toBe(0);
+});
+it('商品別本数は保存された名前でまとめ、保留と返金を含めない', async () => {
+  const { quantitiesByProduct } = await import('./sales');
+  expect(
+    quantitiesByProduct([
+      order(),
+      order({ status: 'cancelled', refunded: 600 }),
+      order({ quantities: { tsukune: 4 }, names: { tsukune: 'つくね' } }),
+    ]),
+  ).toEqual([
+    { id: 'tsukune', name: 'つくね', quantity: 4 },
+    { id: 'momo', name: 'もも', quantity: 3 },
+    { id: 'kawa', name: 'かわ', quantity: 2 },
+  ]);
+});
