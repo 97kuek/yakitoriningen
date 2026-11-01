@@ -22,7 +22,9 @@ test('検索欄を横一列に揃え、30分の時間帯・状態・札番号・
     });
   await openFixture(page, fixture);
   await openScreen(page, '注文履歴');
-  const day = page.getByRole('combobox', { name: '表示する日' });
+  await expect(page.getByRole('combobox', { name: '表示する日' })).toHaveCount(
+    0,
+  );
   const slot = page.getByRole('combobox', { name: '時間帯' });
   const ticket = page.getByLabel('札番号で検索');
   const state = page.getByRole('combobox', { name: '注文の状態' });
@@ -70,7 +72,7 @@ test('検索欄を横一列に揃え、30分の時間帯・状態・札番号・
 
   for (const width of [1089, 834]) {
     await page.setViewportSize({ width, height: 827 });
-    const centers = await centersY([day, slot, ticket, state]);
+    const centers = await centersY([slot, ticket, state]);
     expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(2);
     const heading = page.getByRole('heading', {
       name: '注文履歴',
@@ -90,11 +92,11 @@ test('50件ずつページを分け、CSVは表示条件に合う全ページ分
   page,
 }) => {
   const days = [...Array<string>(51).fill('2026-11-07'), '2026-11-08'];
-  await openFixture(page, await ledgerFixture({ orders: 52, days }));
+  const fixture = await ledgerFixture({ orders: 52, days });
+  fixture.meta.day = '2026-11-07';
+  await openFixture(page, fixture);
   await openScreen(page, '注文履歴');
-  await expect(rows(page)).toHaveCount(1);
-  await page.getByRole('combobox', { name: '表示する日' }).click();
-  await page.getByRole('option', { name: '11/7', exact: true }).click();
+
   await expect(rows(page)).toHaveCount(50);
   await page.getByRole('button', { name: '次のページ', exact: true }).click();
   await expect(rows(page)).toHaveCount(1);
@@ -134,7 +136,7 @@ test('同じ秒・札・商品・金額の会計を詳細で区別し、同じ�
     const details = page.getByRole('dialog', { name: '注文の詳細' });
     const summary = details.getByTestId('order-details');
     await expect(summary).toContainText('12:04:05');
-    await expect(summary).toContainText('受け渡し済み');
+    await expect(summary).toContainText('完了');
     await expect(summary).toContainText('札 1');
     receipts.push((await summary.getByTestId('receipt-number').textContent())!);
     amounts.push((await summary.getByTestId('received-amount').textContent())!);
@@ -161,14 +163,24 @@ test('同じ秒・札・商品・金額の会計を詳細で区別し、同じ�
   expect(amounts.sort()).toEqual(['￥1,000', '￥500'].sort());
 });
 
-test('営業日を訂正しても注文履歴を日ごとに確認できる', async ({ page }) => {
+test('営業日を変更すると履歴とCSVの対象日が変わり、前日の記録は残る', async ({
+  page,
+}) => {
   await openFixture(page, await ledgerFixture({ orders: 1 }));
   await openScreen(page, '設定');
-  await page.getByLabel('会計に記録する日付').fill('2026-11-08');
+  await page.getByLabel('営業日').fill('2026-11-08');
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await openScreen(page, '注文履歴');
   await expect(rows(page)).toHaveCount(0);
-  await page.getByRole('combobox', { name: '表示する日' }).click();
-  await page.getByRole('option', { name: '11/7' }).click();
+  await expect(page.getByRole('combobox', { name: '表示する日' })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole('button', { name: '表示条件の注文をCSVで保存' }),
+  ).toBeDisabled();
+  await openScreen(page, '設定');
+  await page.getByLabel('営業日', { exact: true }).fill('2026-11-07');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await openScreen(page, '注文履歴');
   await expect(rows(page)).toHaveCount(1);
 });

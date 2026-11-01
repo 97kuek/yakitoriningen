@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   IconButton,
   Button,
@@ -7,9 +7,9 @@ import {
   preventKeyRepeat,
 } from './controls';
 import { handoffUndoError } from '../domain/handoff';
-import { matchesTicket, TICKET_SEARCH_MAX_LENGTH } from '../domain/history';
 import { isAwaitingHandoff } from '../domain/order';
 import { needsTicketReturn } from '../domain/ticket';
+import { waitTime } from '../domain/wait-time';
 import { newId } from '../lib/id';
 import { orderItems, timeText, dayText } from '../presentation/format';
 import type { Order, Snapshot } from '../domain/model';
@@ -37,7 +37,12 @@ export function Waiting({
   lastHandoff: Handoff | null;
   onHandoffChange: (value: Handoff | null) => void;
 }) {
-  const [ticketSearch, setTicketSearch] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const waitMinutes = waitTime(snapshot, now);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [undoNotice, setUndoNotice] = useState('');
   const [heldRecoveryIds, setHeldRecoveryIds] = useState<string[]>([]);
@@ -45,7 +50,9 @@ export function Waiting({
   const lastCompletion = useRef(-Infinity);
   const returnOperationIds = useRef(new Map<string, string>());
   const waiting = snapshot.orders
-    .filter(isAwaitingHandoff)
+    .filter(
+      (order) => order.day === snapshot.meta.day && isAwaitingHandoff(order),
+    )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const unreturnedOrders = snapshot.orders.filter(needsTicketReturn);
   const returnRows = snapshot.orders.filter(
@@ -58,7 +65,6 @@ export function Waiting({
         .map((item) => [item.id, item]),
     ).values(),
   ];
-  const free = snapshot.tickets.filter((t) => t.orderId === null).length;
   const completedOrder = snapshot.orders.find(
     (order) => order.id === lastHandoff?.orderId,
   );
@@ -73,9 +79,6 @@ export function Waiting({
           ),
         )
       : null;
-  const visibleOrders = waiting.filter((order) =>
-    matchesTicket(order, ticketSearch),
-  );
   function completeHandoff(order: Order) {
     if (
       busy ||
@@ -127,69 +130,64 @@ export function Waiting({
         <h2 id="waiting-title">
           受け渡し待ち<span className="count-badge">{waiting.length}</span>
         </h2>
-        <span className={`ticket-availability${!free ? ' full' : ''}`}>
-          <Icon name="ticket" />
-          空き {free}
-          <small>/{snapshot.meta.ticketCount}</small>
-        </span>
-      </div>
-      <div className="waiting-tools">
-        <label>
-          <span className="sr-only">待ち注文の札番号</span>
-          <input
-            type="search"
-            inputMode="numeric"
-            maxLength={TICKET_SEARCH_MAX_LENGTH}
-            placeholder="例：1"
-            value={ticketSearch}
-            onChange={(event) => setTicketSearch(event.target.value)}
-          />
-        </label>
-        <div className="waiting-actions">
-          <div className="waiting-recovery-slot">
-            {unreturnedOrders.length > 0 && (
-              <Button
-                variant="plain"
-                className="waiting-recovery-button"
-                title={`札の回収待ち ${unreturnedOrders.length}`}
-                aria-label={`札の回収待ち ${unreturnedOrders.length}`}
-                onClick={() => setRecoveryOpen(true)}
-              >
-                <Icon name="ticket" />
-                <span>{unreturnedOrders.length}</span>
-              </Button>
-            )}
-          </div>
-          <span className="waiting-undo-slot" title={undoError ?? ''}>
-            {completedOrder && lastHandoff && (
-              <IconButton
-                icon="reset"
-                label="元に戻す"
-                disabled={busy}
-                aria-describedby={undoError ? 'undo-reason' : undefined}
-                onClick={() => {
-                  if (undoError) {
-                    setUndoNotice(undoError);
-                    return;
-                  }
-                  void perform(async () => {
-                    await saveCommand({
-                      type: 'undoHandoff',
-                      orderId: completedOrder.id,
-                      assignmentId: completedOrder.assignmentId,
-                      completionId: lastHandoff.completionId,
-                    });
-                    onHandoffChange(null);
-                  });
-                }}
-              />
-            )}
-            {undoError && (
-              <span id="undo-reason" className="sr-only">
-                {undoError}
-              </span>
-            )}
+        {waitMinutes !== null && (
+          <span
+            className="wait-estimate"
+            title="直近30分に完了した最大10件の平均（会計確定から札回収まで）"
+          >
+            目安 約{waitMinutes}分
           </span>
+        )}
+        <div
+          className="waiting-tools"
+          hidden={!unreturnedOrders.length && !lastHandoff}
+        >
+          <div className="waiting-actions">
+            <div className="waiting-recovery-slot">
+              {unreturnedOrders.length > 0 && (
+                <Button
+                  variant="plain"
+                  className="waiting-recovery-button"
+                  title={`札の回収待ち ${unreturnedOrders.length}`}
+                  aria-label={`札の回収待ち ${unreturnedOrders.length}`}
+                  onClick={() => setRecoveryOpen(true)}
+                >
+                  <Icon name="ticket" />
+                  <span>{unreturnedOrders.length}</span>
+                </Button>
+              )}
+            </div>
+            <span className="waiting-undo-slot" title={undoError ?? ''}>
+              {completedOrder && lastHandoff && (
+                <IconButton
+                  icon="reset"
+                  label="元に戻す"
+                  disabled={busy}
+                  aria-describedby={undoError ? 'undo-reason' : undefined}
+                  onClick={() => {
+                    if (undoError) {
+                      setUndoNotice(undoError);
+                      return;
+                    }
+                    void perform(async () => {
+                      await saveCommand({
+                        type: 'undoHandoff',
+                        orderId: completedOrder.id,
+                        assignmentId: completedOrder.assignmentId,
+                        completionId: lastHandoff.completionId,
+                      });
+                      onHandoffChange(null);
+                    });
+                  }}
+                />
+              )}
+              {undoError && (
+                <span id="undo-reason" className="sr-only">
+                  {undoError}
+                </span>
+              )}
+            </span>
+          </div>
         </div>
       </div>
       {waiting.length > 0 && (
@@ -210,28 +208,20 @@ export function Waiting({
           ))}
         </div>
       )}
-      {!waiting.length && !ticketSearch && (
+      {!waiting.length && (
         <div className="empty">
-          <picture>
-            <source
-              media="(prefers-reduced-motion: reduce)"
-              srcSet="/assets/empty-orders-still.png"
-            />
-            <img
-              src="/assets/empty-orders.gif"
-              alt=""
-              width="384"
-              height="270"
-            />
-          </picture>
+          <img
+            className="waiting-mascot"
+            src="/assets/empty-orders-handdrawn.webp"
+            alt=""
+            width="480"
+            height="320"
+          />
           <h3>待っている注文はありません</h3>
         </div>
       )}
-      <div
-        className="waiting-list"
-        hidden={!visibleOrders.length && !ticketSearch}
-      >
-        {visibleOrders.map((order) => (
+      <div className="waiting-list" hidden={!waiting.length}>
+        {waiting.map((order) => (
           <article
             className="order-card"
             key={order.id}
@@ -271,9 +261,6 @@ export function Waiting({
             />
           </article>
         ))}
-        {ticketSearch && !visibleOrders.length && (
-          <p className="empty-text">この札の待ち注文はありません。</p>
-        )}
       </div>
       {undoNotice && (
         <Dialog open title="元に戻せません" onClose={() => setUndoNotice('')}>

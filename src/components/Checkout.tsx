@@ -13,6 +13,8 @@ import { tryQuote } from '../domain/pricing';
 import { pendingOrders } from '../domain/snapshot';
 import { newId } from '../lib/id';
 import { orderItems, yen } from '../presentation/format';
+import { remainingStock } from '../domain/inventory';
+import { useCheckoutEnter } from '../hooks/useCheckoutEnter';
 import { emptyDraft } from '../ui';
 import type { Draft, Shared } from '../ui';
 import type { Cashier } from '../application/ports';
@@ -42,6 +44,10 @@ export function Checkout({
   const activePrice = findActivePrice(snapshot)!;
   const price = draft.price ?? activePrice;
   const products = getMenu(price);
+  const remaining = remainingStock(snapshot);
+  const checkoutRoot = useRef<HTMLElement>(null);
+  const nextButton = useRef<HTMLButtonElement>(null);
+  useCheckoutEnter(checkoutRoot, nextButton);
   // An invalid total cannot be submitted; the draft stays editable.
   const estimate = tryQuote(draft.quantities, price);
   const latestEstimate = tryQuote(draft.quantities, activePrice);
@@ -83,7 +89,11 @@ export function Checkout({
       </section>
     );
   return (
-    <section className="checkout panel" aria-labelledby="checkout-title">
+    <section
+      ref={checkoutRoot}
+      className="checkout panel"
+      aria-labelledby="checkout-title"
+    >
       <div className="section-heading">
         <h2 id="checkout-title">注文</h2>
         <div
@@ -155,7 +165,14 @@ export function Checkout({
         {products.map((p, index) => (
           <div className={`product product-${index}`} key={p.id}>
             <div className="product-name">
-              <strong>{p.name}</strong>
+              <div className="product-title">
+                <strong>{p.name}</strong>
+                {remaining[p.id] !== undefined && (
+                  <span className="product-stock">
+                    残り {remaining[p.id]}本
+                  </span>
+                )}
+              </div>
               <small>{yen(getUnitPrice(p, price))}</small>
             </div>
             <div className="stepper">
@@ -213,6 +230,7 @@ export function Checkout({
       <Button
         variant="primary"
         type="button"
+        ref={nextButton}
         className="primary checkout-button wide"
         disabled={!estimate?.count || unresolved || !hasTicket}
         onClick={() =>
@@ -268,8 +286,11 @@ function Payment({
 }) {
   const [received, setReceived] = useState('');
   const [confirmReady, setConfirmReady] = useState(true);
+  const paymentRoot = useRef<HTMLElement>(null);
+  const primaryButton = useRef<HTMLButtonElement>(null);
+  useCheckoutEnter(paymentRoot, primaryButton);
   const receivedInput = useRef<HTMLInputElement>(null);
-  const confirmButton = useRef<HTMLButtonElement>(null);
+  const confirmButton = primaryButton;
   const focusedStage = useRef<string | null>(null);
   const target = { orderId: order.id, assignmentId: order.assignmentId };
   const staged =
@@ -301,7 +322,11 @@ function Payment({
     }
   }, [busy, staged, confirmReady]);
   return (
-    <section className="payment" aria-label={`札${order.ticket}の入金`}>
+    <section
+      ref={paymentRoot}
+      className="payment"
+      aria-label={`札${order.ticket}の入金`}
+    >
       <div className="section-heading">
         <h2>
           <Icon name="cash" />
@@ -427,6 +452,7 @@ function Payment({
           <Button
             variant="primary"
             type="submit"
+            ref={primaryButton}
             form={`payment-${order.id}`}
             className="checkout-button wide"
             disabled={!received || amount < order.quote.total}

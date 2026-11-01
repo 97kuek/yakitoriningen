@@ -5,6 +5,7 @@ import { MAX_TICKETS } from '../domain/constants';
 import type { Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { DataPanel } from './DataPanel';
+import { StockSettings } from './StockSettings';
 import { MenuSettings } from './MenuSettings';
 import { Button } from './controls';
 export function Settings({
@@ -27,9 +28,10 @@ export function Settings({
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [saved, setSaved] = useState('');
   const [menuDirty, setMenuDirty] = useState(false);
+  const [stockDirty, setStockDirty] = useState(false);
   const operationDirty =
     day !== snapshot.meta.day || tickets !== String(snapshot.meta.ticketCount);
-  const dirty = menuDirty || operationDirty;
+  const dirty = menuDirty || stockDirty || operationDirty;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   return (
     <section className="panel settings">
@@ -43,6 +45,12 @@ export function Settings({
             {...shared}
           />
         </section>
+        <StockSettings
+          key={snapshot.meta.day}
+          snapshot={snapshot}
+          onDirtyChange={setStockDirty}
+          {...shared}
+        />
         <section aria-label="バックアップ・日付・番号札">
           <DataPanel
             store={store}
@@ -60,6 +68,10 @@ export function Settings({
                 event.preventDefault();
                 void shared.perform(async () => {
                   dateSchema.parse(day);
+                  if (day !== snapshot.meta.day && stockDirty)
+                    throw new Error(
+                      '営業日を変える前に、入力中の在庫を保存してください。',
+                    );
                   if (tickets !== String(snapshot.meta.ticketCount))
                     await shared.saveCommand({
                       type: 'tickets',
@@ -74,9 +86,16 @@ export function Settings({
             >
               <div className="operation-settings">
                 <label>
-                  会計に記録する日付
+                  <span className="day-caption">
+                    営業日
+                    <span className="hint" id="business-day-hint">
+                      翌日はここを変更
+                    </span>
+                  </span>
                   <input
                     type="date"
+                    aria-label="営業日"
+                    aria-describedby="business-day-hint"
                     required
                     value={day}
                     onChange={(event) => setDay(event.target.value)}
@@ -110,7 +129,7 @@ export function Settings({
           <section className="operation-section">
             <h3>記録の保護</h3>
             <p className="hint">
-              このPC内の自動削除を防ぎます。故障に備えるにはバックアップを保存してください。
+              空き容量が少なくなっても、注文の記録を残すための設定です。バックアップのように別のファイルを作る機能ではありません。
             </p>
             <Button
               onClick={() =>

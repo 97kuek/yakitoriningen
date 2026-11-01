@@ -4,7 +4,7 @@
 
 .order-details .order-details-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
   gap: 6px 16px;
   justify-content: space-between;
@@ -23,7 +23,7 @@
 }
 
 .order-details .order-details-items {
-  margin: 20px 0;
+  margin: 16px 0;
   padding: 0;
   list-style: none;
   border-block: 1px solid var(--line);
@@ -42,9 +42,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 20px;
-  margin-top: 20px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  margin-top: 16px;
   font-size: var(--font-body);
 }
 
@@ -62,12 +60,9 @@
 
 .order-details .order-details-facts dd {
   margin: 4px 0 0;
-  font-size: var(--font-body);
-  font-variant-numeric: tabular-nums;
-}
-
-.order-details .order-details-facts > div:first-child dd {
   font-size: var(--font-large);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .order-details .order-details-reason {

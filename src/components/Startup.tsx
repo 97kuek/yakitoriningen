@@ -47,13 +47,11 @@ export function Startup({
       <section className="startup panel">
         {snapshot ? (
           <>
-            <h2>前回のデータで始めますか？</h2>
-            <dl className="startup-details">
-              <dt>タイトル</dt>
-              <dd className="startup-event">{snapshot.meta.event}</dd>
-              <dt>日付</dt>
-              <dd>{snapshot.meta.day}</dd>
-            </dl>
+            <h2>保存されている記録から再開</h2>
+            <div className="startup-record">
+              <p className="startup-event">{snapshot.meta.event}</p>
+              <time dateTime={snapshot.meta.day}>{snapshot.meta.day}</time>
+            </div>
             {(reserved.length > 0 || pendingOperations.length > 0) && (
               <section
                 className="startup-pending notice"

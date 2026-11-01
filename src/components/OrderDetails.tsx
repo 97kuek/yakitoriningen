@@ -2,10 +2,11 @@ import type { Order, Snapshot } from '../domain/model';
 import { orderItems, yen } from '../presentation/format';
 import {
   orderDateTime,
-  orderState,
+  historyStateLabel,
   receiptNumber,
 } from '../presentation/order';
 import './OrderDetails.css';
+import { Ticket } from './Ticket';
 
 export function OrderDetails({
   order,
@@ -25,7 +26,7 @@ export function OrderDetails({
         <strong data-testid="receipt-number">
           {receipt ? `会計 ${receipt}` : '会計未確定'}
         </strong>
-        <span className="ticket-badge">札 {order.ticket}</span>
+        <Ticket number={order.ticket} />
       </div>
       <time
         className="order-details-time"
@@ -64,8 +65,8 @@ export function OrderDetails({
         )}
       </dl>
       <div className="order-details-status">
-        <span>{orderState(order)}</span>
-        <span>{order.returned ? '札回収済み' : '札未回収'}</span>
+        <span>{historyStateLabel(order)}</span>
+        {!order.returned && <span>札未回収</span>}
       </div>
       {order.cancelReason && (
         <p className="order-details-reason">取消理由：{order.cancelReason}</p>

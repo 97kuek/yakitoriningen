@@ -1,3 +1,5 @@
+import { encodeBackup } from '../../src/application/backup';
+import { dailySnapshot } from '../../src/application/daily-backup';
 import { expect, test } from '@playwright/test';
 import {
   leaveIsBlocked,
@@ -27,9 +29,8 @@ test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認
   await openScreen(page, '集計');
 
   const table = page.getByRole('table', { name: '日別の集計' });
-  await expect(table.locator('tbody tr').nth(0)).toContainText('￥300');
-  await expect(table.locator('tbody tr').nth(1)).toContainText('￥150');
-  await expect(table.locator('tfoot')).toContainText('￥450');
+  await expect(table.locator('tbody tr')).toHaveCount(1);
+  await expect(table.locator('tfoot')).toContainText('￥150');
 
   const charts = page.getByRole('region', { name: '日別のグラフ' });
   // Sales span business hours 10:00–17:00 in 30-minute slots.
@@ -45,6 +46,30 @@ test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認
   );
   await expect(sales.last()).toHaveAttribute('aria-label', '16:30〜17:00 ￥0');
   await expect(charts.getByRole('img')).toHaveAccessibleName('もも 1本');
+  const expense = page.getByLabel('当日の経費');
+  await expense.fill('00100');
+  await expect.poll(() => leaveIsBlocked(page)).toBe(true);
+  await openScreen(page, '会計');
+  await page
+    .getByRole('dialog', { name: '変更が保存されていません' })
+    .getByRole('button', { name: '未保存のまま移動' })
+    .click();
+  await openScreen(page, '集計');
+  await expect(expense).toHaveValue('00100');
+  await page.getByRole('button', { name: '経費を保存', exact: true }).click();
+  await expect(
+    page.getByText('経費を保存しました。', { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('.summary-profit')).toContainText('￥50');
+  await expect.poll(() => leaveIsBlocked(page)).toBe(false);
+  const files = ['2026-11-07', '2026-11-08'].map((day) => ({
+    name: `${day}-yakitori.json`,
+    mimeType: 'application/json',
+    buffer: Buffer.from(encodeBackup(dailySnapshot(fixture, day))),
+  }));
+  await page.getByLabel('日別のバックアップを集計').setInputFiles(files);
+  await expect(table.locator('tbody tr')).toHaveCount(2);
+  await expect(table.locator('tfoot')).toContainText('￥450');
   await charts.getByRole('combobox', { name: 'グラフの日付' }).click();
   await page.getByRole('option', { name: '11/7', exact: true }).click();
   await expect(sales.nth(0)).toHaveAttribute(
@@ -67,22 +92,10 @@ test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認
   await expect(charts.getByRole('img')).toHaveAccessibleName('もも 2本');
   await expect(charts.locator('.chart-legend')).toContainText('100%');
 
-  const expense = page.getByLabel('開催回全体の経費（円）');
-  await expense.fill('00100');
-  await expect.poll(() => leaveIsBlocked(page)).toBe(true);
-  await openScreen(page, '会計');
-  await page
-    .getByRole('dialog', { name: '変更が保存されていません' })
-    .getByRole('button', { name: '未保存のまま移動' })
-    .click();
-  await openScreen(page, '集計');
-  await expect(expense).toHaveValue('00100');
-  await page.getByRole('button', { name: '経費を保存', exact: true }).click();
-  await expect(
-    page.getByText('経費を保存しました。', { exact: true }),
-  ).toBeVisible();
-  await expect(page.locator('.summary-profit')).toContainText('￥350');
-  await expect.poll(() => leaveIsBlocked(page)).toBe(false);
+  await expect(page.getByLabel('当日の経費')).toHaveCount(0);
+  await page.getByRole('button', { name: '当日の集計に戻る' }).click();
+  await expect(table.locator('tfoot')).toContainText('￥150');
+  await expect(expense).toHaveValue('100');
 });
 
 test('記録のない営業日を訂正したらグラフも新しい日付を選ぶ', async ({
@@ -90,7 +103,7 @@ test('記録のない営業日を訂正したらグラフも新しい日付を�
 }) => {
   await openFixture(page, await ledgerFixture());
   await openScreen(page, '設定');
-  await page.getByLabel('会計に記録する日付').fill('2026-11-08');
+  await page.getByLabel('営業日').fill('2026-11-08');
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await openScreen(page, '集計');
   await expect(

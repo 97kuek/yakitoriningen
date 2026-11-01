@@ -288,9 +288,10 @@ small {
   display: flex;
   color: var(--muted);
 }
-.connection-status .icon {
-  width: 17px;
-  height: 17px;
+.header-status .icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 .storage-status {
   display: flex;
@@ -302,10 +303,6 @@ small {
 }
 .storage-status.ready {
   color: var(--ink);
-}
-.storage-status .icon {
-  width: 16px;
-  height: 16px;
 }
 main {
   max-width: 1360px;
@@ -610,24 +607,6 @@ main {
   padding: 1px 6px;
   font-weight: 600;
 }
-.ticket-availability {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-.ticket-availability.full {
-  color: var(--red) !important;
-  font-weight: 600;
-}
-.ticket-availability > .icon {
-  width: 17px;
-  height: 17px;
-}
-.ticket-availability small {
-  font-size: var(--font-small);
-  color: var(--muted);
-}
 .waiting-totals {
   display: flex;
   background: var(--surface);
@@ -697,36 +676,35 @@ main {
 .startup > p {
   font-size: var(--font-small);
 }
-.startup-details .startup-event {
-  font-size: var(--font-large);
-}
-.startup-details,
 dl {
   display: grid;
   grid-template-columns: 100px 1fr;
   gap: 15px 14px;
   margin: 22px 0;
 }
-.startup-details dt,
 dt {
   color: var(--muted);
   font-size: var(--font-small);
 }
-.startup-details dd,
 dd {
   margin: 0;
   font-size: var(--font-body);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-.startup-details dd > small {
-  display: block;
-  font-size: var(--font-small);
-  font-weight: 400;
-  color: var(--muted);
+.startup-record {
+  display: grid;
+  gap: 8px;
+  margin: 22px 0;
 }
-.startup-details .price-label {
-  margin-right: 8px;
+.startup-record .startup-event {
+  margin: 0;
+  font-size: var(--font-large);
+  font-weight: 600;
+}
+.startup-record time {
+  font-size: var(--font-body);
+  color: var(--muted);
 }
 .startup .checkbox {
   font-size: var(--font-small);
@@ -1163,9 +1141,6 @@ dialog > h2 {
   .payment-mode {
     padding: 23px;
   }
-  .ticket-availability {
-    font-size: var(--font-small) !important;
-  }
   .error-banner {
     font-size: var(--font-small);
   }
@@ -1485,11 +1460,6 @@ input:not([type='checkbox']) {
   color: var(--ink);
   text-decoration: none;
 }
-.brand img {
-  width: 100px;
-  height: 50px;
-  object-fit: contain;
-}
 .brand h1 {
   margin: 0;
   font: inherit;
@@ -1498,10 +1468,6 @@ input:not([type='checkbox']) {
   white-space: nowrap;
 }
 @media (max-width: 1100px) {
-  .brand img {
-    width: 76px;
-    height: 48px;
-  }
 }
 
 /* The amount field has one permanent frame; focusing its inner input adds no ring. */
@@ -1809,14 +1775,13 @@ input:not([type='checkbox']) {
   .startup-art {
     width: 100%;
   }
-  .startup-details {
+  .startup-record {
     gap: 8px 14px;
     margin: 14px 0;
   }
 }
 
 /* Consistent controls across the cashier and preparation screens. */
-.startup-details dt,
 .startup-menu-price,
 .product-name small,
 .price-strip small {
@@ -2054,11 +2019,11 @@ input:not([type='checkbox']) {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-/* The sign hangs into the panel padding, so names keep the content's left edge. */
+/* Reserve an inline column for the subtraction sign. */
 .cash-label {
   display: inline-flex;
   align-items: baseline;
-  margin-left: -1em;
+  gap: 4px;
 }
 .cash-sign {
   flex: 0 0 1em;
@@ -2075,4 +2040,52 @@ dialog.control-dialog.new-event-dialog {
 .new-event-form > .menu-pricing-settings {
   width: 100%;
   max-width: none;
+}
+
+/* Operational fields use the same columns and type scale as the counter. */
+.operation-form .hint {
+  margin: 0;
+  font-weight: 400;
+}
+.stock-settings table {
+  width: 100%;
+  max-width: 700px;
+}
+.stock-settings th,
+.stock-settings td {
+  text-align: left;
+  font-size: var(--font-body);
+  font-weight: 400;
+  padding: 8px 12px 8px 0;
+}
+.stock-settings input {
+  max-width: 180px;
+}
+.product-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.product-stock {
+  font-size: var(--font-small);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.about-details a {
+  color: var(--ink);
+  text-decoration-color: var(--muted);
+  text-underline-offset: 4px;
+}
+.about-details a:hover {
+  text-decoration-color: var(--ink);
+  background: var(--selected-surface);
+}
+.day-caption {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 12px;
+}
+.day-caption .hint {
+  white-space: nowrap;
 }

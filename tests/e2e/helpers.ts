@@ -225,3 +225,30 @@ export async function centersY(locators: ReturnType<Page['locator']>[]) {
     }),
   );
 }
+
+/** Reads ticket availability from the isolated test ledger, not a removed UI counter. */
+export async function freeTicketCount(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve, reject) => {
+        const request = indexedDB.open('yakitoriningen-v1');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction('tickets', 'readonly');
+          const records = transaction.objectStore('tickets').getAll();
+          records.onsuccess = () =>
+            resolve(
+              records.result.filter(
+                (ticket: { orderId: string | null }) => ticket.orderId === null,
+              ).length,
+            );
+          transaction.oncomplete = () => database.close();
+          transaction.onabort = () => {
+            database.close();
+            reject(transaction.error);
+          };
+        };
+      }),
+  );
+}

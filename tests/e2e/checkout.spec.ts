@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   addSkewers,
+  freeTicketCount,
   completeButton,
   ledgerFixture,
   openFixture,
@@ -52,7 +53,7 @@ test('キーボードだけで会計でき、お預かり金額は二重枠を�
 }) => {
   await openFixture(page, await ledgerFixture());
   await page.getByRole('button', { name: 'ももを1本増やす' }).focus();
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Space');
   await page.getByRole('button', { name: '会計へ', exact: true }).focus();
   await page.keyboard.press('Enter');
   const received = page.getByLabel('お預かり金額');
@@ -155,7 +156,7 @@ test('未入金の注文は取り消し・本数修正でき、クリアした�
   await cancel.click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByTestId('total')).toHaveText('￥0');
-  await expect(page.locator('.ticket-availability')).toContainText('20');
+  await expect.poll(() => freeTicketCount(page)).toBe(20);
 
   // Go back to edit quantities before payment.
   await addSkewers(page, 'もも');
@@ -276,4 +277,27 @@ test('旧形式の価格：値下げプリセットは単価50円を通常価格
   await addSkewers(page, 'もも', 3);
   await addSkewers(page, 'かわ', 2);
   await expect(page.getByTestId('total')).toHaveText('￥750');
+});
+
+test('Enterで会計の各段階を進め、長押しで段階を飛ばさない', async ({
+  page,
+}) => {
+  await openFixture(page, await ledgerFixture());
+  await page.getByRole('button', { name: 'ももを1本増やす' }).click();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('お預かり金額', { exact: true })).toBeVisible();
+  await page.getByLabel('お預かり金額', { exact: true }).fill('500');
+  await page.keyboard.down('Enter');
+  await expect(page.getByTestId('change')).toContainText('350');
+  await page.waitForTimeout(600);
+  await page.keyboard.down('Enter');
+  await expect(
+    page.getByRole('button', { name: '会計を確定', exact: true }),
+  ).toBeVisible();
+  await page.keyboard.up('Enter');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('waiting-order')).toHaveCount(1);
+  await expect(
+    page.getByRole('button', { name: '会計へ', exact: true }),
+  ).toBeDisabled();
 });

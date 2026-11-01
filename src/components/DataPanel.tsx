@@ -13,6 +13,7 @@ import {
   MAX_BACKUP_BYTES,
   parseBackup,
 } from '../application/backup';
+import { dailySnapshot } from '../application/daily-backup';
 import { newEvent } from '../application/new-event';
 import { newId } from '../lib/id';
 import { download } from '../presentation/download';
@@ -72,7 +73,7 @@ export function DataPanel({
                   perform(async () => {
                     const current = await store.read();
                     if (!current) throw new Error('営業の記録がありません。');
-                    const text = encodeBackup(current);
+                    const text = encodeBackup(dailySnapshot(current));
                     parseBackup(await new Blob([text]).text());
                     download(text, `${current.meta.day}-yakitori.json`);
                   })
@@ -81,7 +82,7 @@ export function DataPanel({
                 <Icon name="download" />
                 バックアップを保存
               </Button>
-              <p className="hint">注文・設定を戻すためのファイル（.json）</p>
+              <p className="hint">営業が終わったら、当日分を保存</p>
             </div>
           </div>
         </>
@@ -115,7 +116,7 @@ export function DataPanel({
               })
             }
           >
-            新しい開催回を準備
+            翌年の開催を準備
           </Button>
         )}
       </div>
@@ -123,7 +124,7 @@ export function DataPanel({
         <Dialog
           open={newEventOpen}
           onClose={() => setNewEventOpen(false)}
-          title="新しい開催回を準備"
+          title="翌年の開催を準備"
           className="restore-dialog new-event-dialog"
         >
           <InlineError message={errorMessage} />

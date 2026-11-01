@@ -192,7 +192,6 @@ export default function App() {
             if (!locked) navigate('checkout');
           }}
         >
-          <img src="/assets/flight-mark.webp" alt="" width="100" height="50" />
           <h1>焼き鳥人間</h1>
         </a>
         {started && snapshot && (

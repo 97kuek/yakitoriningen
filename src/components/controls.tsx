@@ -79,10 +79,12 @@ export function FilePicker({
   label,
   accept,
   onFile,
+  onFiles,
 }: {
   label: string;
   accept: string;
-  onFile: (file: File | undefined) => void;
+  onFile?: (file: File | undefined) => void;
+  onFiles?: (files: File[]) => void;
 }) {
   const [name, setName] = useState('');
   return (
@@ -93,11 +95,14 @@ export function FilePicker({
         aria-label={label}
         type="file"
         accept={accept}
+        multiple={!!onFiles}
         onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          setName(file?.name ?? '');
+          const files = Array.from(event.currentTarget.files ?? []);
+          const file = files[0];
+          setName(files.map((file) => file.name).join('、'));
           event.currentTarget.value = '';
-          onFile(file);
+          onFile?.(file);
+          onFiles?.(files);
         }}
       />
       <span className="file-picker-control" aria-hidden="true">

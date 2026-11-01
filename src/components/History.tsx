@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import './History.css';
-import { dayText, orderText, timeText, yen } from '../presentation/format';
-import { festivalDays, timeSlotOptions } from '../presentation/festival';
+import { orderText, timeText, yen } from '../presentation/format';
+import { timeSlotOptions } from '../presentation/festival';
 import { TIME_SLOT_MINUTES } from '../domain/constants';
 import { clockText } from '../domain/time';
 import { ordersCsv } from '../presentation/orders-csv';
@@ -23,9 +23,6 @@ import type { Shared } from '../ui';
 import { Icon } from './Icon';
 import type { Cashier } from '../application/ports';
 
-/** Scope value that shows every business day. */
-const ALL_DAYS = 'event';
-
 export function History({
   snapshot,
   perform,
@@ -38,7 +35,6 @@ export function History({
   snapshot: Snapshot;
   store: Cashier;
 }) {
-  const [scope, setScope] = useState(snapshot.meta.day);
   const [cancel, setCancel] = useState<Order | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const detailsTrigger = useRef<HTMLButtonElement | null>(null);
@@ -73,10 +69,8 @@ export function History({
       </th>
     );
   }
-  const days = festivalDays(snapshot);
-  const allDays = scope === ALL_DAYS;
   const orders = snapshot.orders.filter(
-    (order) => allDays || order.day === scope,
+    (order) => order.day === snapshot.meta.day,
   );
   const slotStart = slot ? Number(slot) : undefined;
   const filters = {
@@ -106,22 +100,6 @@ export function History({
         <h2>注文履歴</h2>
       </div>
       <div className="history-filters">
-        <Select
-          value={scope}
-          label="表示する日"
-          onChange={(value) => {
-            setScope(value);
-            setPage(0);
-          }}
-          options={[
-            { value: ALL_DAYS, label: 'すべて' },
-            ...days.map((day) => ({
-              value: day,
-              label: dayText(day),
-            })),
-          ]}
-        />
-
         <Select
           value={slot}
           label="時間帯"
@@ -173,7 +151,7 @@ export function History({
                 prices: snapshot.prices,
                 orders: filterHistory(orders, ticketSearch, state, filters),
               }),
-              `焼き鳥人間_注文履歴_${allDays ? '全日' : scope}${slotName}.csv`,
+              `焼き鳥人間_注文履歴_${snapshot.meta.day}${slotName}.csv`,
               'text/csv;charset=utf-8',
             );
           }}
@@ -185,8 +163,8 @@ export function History({
           <thead>
             <tr>
               <th>会計番号</th>
-              {sortHeading('time', allDays ? '日時' : '時刻')}
-              {sortHeading('ticket', '札')}
+              {sortHeading('time', '時刻')}
+              <th>札</th>
               <th>内容</th>
               {sortHeading('amount', '会計額')}
               <th>状態</th>
@@ -201,10 +179,7 @@ export function History({
                 <td className="history-receipt-number">
                   {receiptNumber(o, snapshot) ?? '会計未確定'}
                 </td>
-                <td className="history-time">
-                  {allDays && <span>{dayText(o.day)} </span>}
-                  {timeText(o.createdAt)}
-                </td>
+                <td className="history-time">{timeText(o.createdAt)}</td>
                 <td>{o.ticket}</td>
                 <td>{orderText(o)}</td>
                 <td>

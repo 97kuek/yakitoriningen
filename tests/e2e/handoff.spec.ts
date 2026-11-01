@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   addSkewers,
+  freeTicketCount,
   completeButton,
   ledgerFixture,
   openFixture,
@@ -81,7 +82,7 @@ test('受け渡しは1回で記録して入力中の注文と位置を保ち、�
   await expect(page.getByTestId('waiting-order')).toHaveCount(0);
   await expect(page.getByTestId('unreturned')).toHaveCount(0);
   await expect(page.getByLabel('ねぎまの本数')).toHaveValue('1');
-  await expect(page.locator('.ticket-availability')).toContainText(/空き\s*20/);
+  await expect.poll(() => freeTicketCount(page)).toBe(20);
   const after = await page.locator('.checkout').boundingBox();
   expect(Math.abs(after!.y - before!.y)).toBeLessThan(1);
   expect(Math.abs(after!.height - before!.height)).toBeLessThan(1);
@@ -110,7 +111,7 @@ test('受け渡しは1回で記録して入力中の注文と位置を保ち、�
   ).toContainText('この札は既に再利用されています。完了を取り消せません。');
 });
 
-test('混雑中は札番号へ絞り込み、完了後も別の札が同じ位置へ現れない', async ({
+test('札検索欄を表示せず、完了後も別の札が同じ位置へ現れない', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
@@ -127,14 +128,12 @@ test('混雑中は札番号へ絞り込み、完了後も別の札が同じ位�
         row && row.y >= list.y && row.y + row.height <= list.y + list.height,
     ).length,
   ).toBeGreaterThanOrEqual(6);
-  const search = page.getByLabel('待ち注文の札番号');
-  await search.fill('12');
-  await expect(page.getByTestId('waiting-order')).toHaveCount(1);
-  await expect(page.getByTestId('waiting-order')).toContainText('12');
-  await completeButton(page).click();
-  await expect(page.getByTestId('waiting-order')).toHaveCount(0);
-  await expect(search).toHaveValue('12');
-  await search.fill('');
+  await expect(page.getByLabel('待ち注文の札番号')).toHaveCount(0);
+  await page
+    .getByTestId('waiting-order')
+    .last()
+    .getByRole('button', { name: '受け渡し完了（札も回収）' })
+    .click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(11);
 });
 
@@ -232,7 +231,6 @@ test('返金後の札は実物を回収したときだけ空きに戻し、二�
 }) => {
   await openFixture(page, await ledgerFixture());
   const result = page.getByRole('dialog', { name: '返金を記録しました' });
-  const availability = page.locator('.ticket-availability');
 
   // Collected right after the refund.
   await sell(page);
@@ -240,7 +238,7 @@ test('返金後の札は実物を回収したときだけ空きに戻し、二�
   await expect(result).toContainText('札 1');
   await result.getByRole('button', { name: '札を回収した' }).click();
   await openScreen(page, '会計');
-  await expect(availability).toContainText('空き 20');
+  await expect.poll(() => freeTicketCount(page)).toBe(20);
   await expect(page.getByRole('button', { name: /札の回収待ち/ })).toHaveCount(
     0,
   );
@@ -277,7 +275,7 @@ test('返金後の札は実物を回収したときだけ空きに戻し、二�
   await expect(first).toBeDisabled();
   await expect(second).toBeEnabled();
   expect(Math.abs((await second.boundingBox())!.y - before!.y)).toBeLessThan(1);
-  await expect(availability).toContainText('空き 19');
+  await expect.poll(() => freeTicketCount(page)).toBe(19);
 });
 
 test('札を後で回収する場合も一覧を狭めず、回収の保存に失敗しても空きを増やさない', async ({
@@ -308,8 +306,7 @@ test('札を後で回収する場合も一覧を狭めず、回収の保存に�
   await openScreen(page, '会計');
   const after = await page.locator('.waiting-list').boundingBox();
   expect(after!.height).toBeGreaterThanOrEqual(before!.height - 1);
-  const availability = page.locator('.ticket-availability');
-  await expect(availability).toContainText('空き 10');
+  await expect.poll(() => freeTicketCount(page)).toBe(10);
   await page
     .getByRole('button', { name: '札の回収待ち 1', exact: true })
     .click();
@@ -324,7 +321,7 @@ test('札を後で回収する場合も一覧を狭めず、回収の保存に�
   await expect(recovery.getByRole('alert')).toContainText(
     '空き容量がありません',
   );
-  await expect(availability).toContainText('空き 10');
+  await expect.poll(() => freeTicketCount(page)).toBe(10);
   await collect.click();
-  await expect(availability).toContainText('空き 11');
+  await expect.poll(() => freeTicketCount(page)).toBe(11);
 });

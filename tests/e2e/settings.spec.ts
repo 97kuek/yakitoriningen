@@ -201,7 +201,7 @@ test('未保存の商品編集は画面の往復・ダイアログ・再読み�
   await page.getByRole('link', { name: '焼き鳥人間・会計へ戻る' }).click();
   await leave.getByRole('button', { name: '未保存のまま移動' }).click();
   await openScreen(page, '設定');
-  await expect(page.getByLabel('会計に記録する日付')).toBeVisible();
+  await expect(page.getByLabel('営業日')).toBeVisible();
   await expect(price).toHaveValue('177');
 
   const trigger = page.getByRole('button', {
@@ -265,7 +265,7 @@ test('日付と札枚数は編集時だけ保存を表示して両方を保持�
     .getByRole('button', { name: 'バックアップから復元', exact: true })
     .boundingBox())!;
   const next = (await page
-    .getByRole('button', { name: '新しい開催回を準備', exact: true })
+    .getByRole('button', { name: '翌年の開催を準備', exact: true })
     .boundingBox())!;
   expect(restore.y).toBe(next.y);
   expect(restore.width).toBe(next.width);
@@ -275,7 +275,7 @@ test('日付と札枚数は編集時だけ保存を表示して両方を保持�
   const formBefore = (await form.boundingBox())!;
   expect(formBefore.height).toBeLessThan(100);
   await expect(save).toHaveCount(0);
-  const date = page.getByLabel('会計に記録する日付');
+  const date = page.getByLabel('営業日');
   const tickets = page.getByLabel('番号札の枚数');
   await date.fill('2026-11-08');
   await tickets.fill('30');
@@ -290,4 +290,35 @@ test('日付と札枚数は編集時だけ保存を表示して両方を保持�
   await expect(tickets).toHaveValue('30');
   await openScreen(page, '注文履歴');
   await expect(rows(page)).toHaveCount(0);
+});
+
+test('在庫を日別に登録し、残数と未保存の入力を保持する', async ({ page }) => {
+  await openFixture(page, await ledgerFixture({ orders: 1 }));
+  await openScreen(page, '設定');
+  await page.getByLabel('ももの在庫').fill('1000');
+  await page.getByRole('button', { name: '在庫を保存', exact: true }).click();
+  await expect(page.locator('.stock-settings')).toContainText('999本');
+  await openScreen(page, '会計');
+  await expect(page.locator('.product-stock')).toHaveText('残り 999本');
+  await openScreen(page, '設定');
+  await page.getByLabel('ももの在庫').fill('1001');
+  await page.getByLabel('営業日', { exact: true }).fill('2026-11-08');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(
+    page
+      .getByText('営業日を変える前に、入力中の在庫を保存してください。')
+      .first(),
+  ).toBeVisible();
+  await expect(page.getByLabel('ももの在庫')).toHaveValue('1001');
+  await page.getByLabel('ももの在庫').fill('1000');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.getByLabel('ももの在庫')).toHaveValue('');
+  await page.getByLabel('ももの在庫').fill('50');
+  await page.getByRole('button', { name: '在庫を保存', exact: true }).click();
+  await openScreen(page, '会計');
+  await expect(page.locator('.product-stock')).toHaveText('残り 50本');
+  await openScreen(page, '設定');
+  await page.getByLabel('営業日', { exact: true }).fill('2026-11-07');
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.locator('.stock-settings')).toContainText('999本');
 });

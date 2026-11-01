@@ -67,8 +67,8 @@ test('選択欄は標準メニューや二重枠を使わず、開閉しても�
   await openFixture(page, await ledgerFixture());
   await openScreen(page, '注文履歴');
   await expect(page.locator('select')).toHaveCount(0);
-  const select = page.getByRole('combobox', { name: '表示する日' });
-  const listbox = page.getByRole('listbox', { name: '表示する日' });
+  const select = page.getByRole('combobox', { name: '注文の状態' });
+  const listbox = page.getByRole('listbox', { name: '注文の状態' });
   const before = await select.boundingBox();
   await select.click();
   await expect(listbox).toBeVisible();
@@ -82,7 +82,7 @@ test('選択欄は標準メニューや二重枠を使わず、開閉しても�
   await expect(listbox).toBeVisible();
   await select.press('ArrowDown');
   await select.press('Enter');
-  await expect(select).toHaveText('11/7');
+  await expect(select).toHaveText('未完了');
   await expect(select).toBeFocused();
   await select.press('Enter');
   await select.press('Escape');
@@ -110,11 +110,12 @@ test('会計画面は空の通知行を作らず価格を揃え、ロゴで入�
   expect((await plus.boundingBox())!.y).toBe(before.y);
 
   const mascot = page.locator('.waiting .empty img');
-  await expect(mascot).toHaveAttribute('src', '/assets/empty-orders.gif');
+  await expect(mascot).toHaveAttribute(
+    'src',
+    '/assets/empty-orders-handdrawn.webp',
+  );
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect
-    .poll(() => mascot.evaluate((img: HTMLImageElement) => img.currentSrc))
-    .toContain('empty-orders-still.png');
+  await expect(mascot).toHaveCSS('animation-name', 'none');
 
   await page.getByLabel('ももの本数', { exact: true }).fill('2');
   await openScreen(page, '注文履歴');

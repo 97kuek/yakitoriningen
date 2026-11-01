@@ -62,19 +62,16 @@ test('再開画面はタイトルと日付に絞り、保存したバックア�
   await loadFixture(page, await ledgerFixture({ orders: 1 }));
   await expect(
     page.getByRole('heading', {
-      name: '前回のデータで始めますか？',
+      name: '保存されている記録から再開',
       exact: true,
     }),
   ).toBeVisible();
-  await expect(page.locator('.startup-details dt')).toHaveText([
-    'タイトル',
-    '日付',
-  ]);
+  await expect(page.locator('.startup-record')).toContainText('試験用の開催回');
+  await expect(page.locator('.startup-record time')).toHaveText('2026-11-07');
+  await expect(page.locator('.startup dt')).toHaveCount(0);
   await expect(page.getByText(/直近：|確定済み/)).toHaveCount(0);
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
-  await expect(
-    page.getByText('注文・設定を戻すためのファイル（.json）'),
-  ).toBeVisible();
+  await expect(page.getByText('営業が終わったら、当日分を保存')).toBeVisible();
   await expect(
     page.getByRole('button', { name: '会計を始める', exact: true }),
   ).toBeEnabled();
@@ -107,10 +104,9 @@ test('再開画面はタイトルと日付に絞り、保存したバックア�
   ).toBeDisabled();
   await dialog.getByLabel('バックアップ内容を確認した').check();
   await dialog.getByRole('button', { name: 'この内容で再開' }).click();
-  await expect(page.locator('.startup-details dt')).toHaveText([
-    'タイトル',
-    '日付',
-  ]);
+  await expect(page.locator('.startup-record')).toContainText('試験用の開催回');
+  await expect(page.locator('.startup-record time')).toHaveText('2026-11-07');
+  await expect(page.locator('.startup dt')).toHaveCount(0);
   await startCounter(page);
   await expect(page.getByTestId('waiting-order')).toHaveCount(0);
   await openScreen(page, '注文履歴');
@@ -243,11 +239,11 @@ test('新しい開催回はバックアップを省略しても準備でき、�
     await ledgerFixture({ orders: 1, price: { unit: 200, discounted: true } }),
   );
   const prepare = page.getByRole('button', {
-    name: '新しい開催回を準備',
+    name: '翌年の開催を準備',
     exact: true,
   });
   await prepare.click();
-  const dialog = page.getByRole('dialog', { name: '新しい開催回を準備' });
+  const dialog = page.getByRole('dialog', { name: '翌年の開催を準備' });
   await expect(dialog.getByLabel('前年のバックアップを保存した')).toHaveCount(
     0,
   );
@@ -329,9 +325,9 @@ test('更新にバックアップの再読込は不要で、入力中・未保�
     await page.getByLabel('ももの通常価格（円）').fill('150');
     await expect(update).toBeEnabled();
     await openScreen(page, '集計');
-    await page.getByLabel('開催回全体の経費（円）').fill('100');
+    await page.getByLabel('当日の経費').fill('100');
     await expect(update).toBeDisabled();
-    await page.getByLabel('開催回全体の経費（円）').fill('');
+    await page.getByLabel('当日の経費').fill('');
     await expect(update).toBeEnabled();
     await update.click();
     await startCounter(page);
@@ -351,9 +347,9 @@ test('新しい開催回の準備で商品・セット・札を編集し、一�
     await ledgerFixture({ orders: 1, price: { mix: false } }),
   );
   await page
-    .getByRole('button', { name: '新しい開催回を準備', exact: true })
+    .getByRole('button', { name: '翌年の開催を準備', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', { name: '新しい開催回を準備' });
+  const dialog = page.getByRole('dialog', { name: '翌年の開催を準備' });
   await dialog.getByLabel('開催回', { exact: true }).fill('早稲田祭 2027');
   await dialog.getByLabel('1日目の日付').fill('2027-11-06');
   await dialog.getByLabel('番号札の枚数').fill('25');

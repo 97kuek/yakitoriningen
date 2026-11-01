@@ -63,3 +63,18 @@
   min-height: 24px;
   font-size: var(--font-body);
 }
+.summary-import {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.summary-import .file-picker {
+  flex: 1;
+  min-width: 240px;
+  margin: 0;
+}
+.summary-result:empty {
+  display: none;
+}
