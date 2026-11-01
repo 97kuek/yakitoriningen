@@ -1,5 +1,7 @@
 import {
   ArrowRight,
+  Pause,
+  Play,
   ListX,
   Banknote,
   ChartNoAxesColumn,
@@ -27,6 +29,8 @@ import {
   X,
 } from 'lucide-react';
 const icons = {
+  pause: Pause,
+  play: Play,
   plus: Plus,
   minus: Minus,
   cash: Banknote,

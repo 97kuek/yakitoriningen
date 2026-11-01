@@ -20,8 +20,8 @@ test('お釣り確認と会計確定のボタン位置を揃える', async ({ pa
 
 test('初回準備とファイル選択は形式が分かる', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '保存した記録を開く' }).click();
-  const dialog = page.getByRole('dialog', { name: '保存した記録を開く' });
+  await page.getByRole('button', { name: 'バックアップから復元' }).click();
+  const dialog = page.getByRole('dialog', { name: 'バックアップから復元' });
   await page.screenshot({ path: 'test-results/file-feedback.png' });
   await expect(dialog.getByLabel('記録ファイル（.json）')).toHaveAttribute(
     'accept',

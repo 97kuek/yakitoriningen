@@ -18,10 +18,10 @@ test('初回の準備は小さなイラストの下に入力と読み込みを�
     page.getByRole('button', { name: '新しく作る', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: '保存した記録を開く', exact: true }),
+    page.getByRole('button', { name: 'バックアップから復元', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: '保存した記録を開く', exact: true }),
+    page.getByRole('button', { name: 'バックアップから復元', exact: true }),
   ).toBeVisible();
 });
 
@@ -39,23 +39,27 @@ test('再開画面は日付と価格に絞り、保存と読み込み後も履�
   ]);
   await expect(page.getByText(/直近：/)).toHaveCount(0);
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
-  await expect(page.getByText('復元用の記録ファイル（.json）')).toBeVisible();
-  await expect(page.getByText('表で確認する一覧（.csv）')).toBeVisible();
   await expect(
-    page.getByRole('button', { name: '保存した記録を開く', exact: true }),
+    page.getByText('注文・設定を戻すためのファイル（.json）'),
+  ).toBeVisible();
+  await expect(page.getByText('Excelなどで開く一覧（.csv）')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'バックアップから復元', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: '会計を始める', exact: true }),
   ).toBeDisabled();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: '記録を保存', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'バックアップを保存', exact: true })
+    .click();
   const buffer = await readFile((await (await downloading).path())!);
   const saved = { name: 'saved.json', mimeType: 'application/json', buffer };
   await page
-    .getByRole('button', { name: '保存した記録を開く', exact: true })
+    .getByRole('button', { name: 'バックアップから復元', exact: true })
     .click();
   const dialog = page.getByRole('dialog', {
-    name: '保存した記録を開く',
+    name: 'バックアップから復元',
     exact: true,
   });
   await dialog
@@ -71,7 +75,7 @@ test('再開画面は日付と価格に絞り、保存と読み込み後も履�
     .setInputFiles(saved);
   await expect(page.getByText('保存したファイルを確認済み')).toBeVisible();
   await page
-    .getByRole('button', { name: '保存した記録を開く', exact: true })
+    .getByRole('button', { name: 'バックアップから復元', exact: true })
     .click();
   await dialog
     .getByRole('button', { name: 'この記録に置き換える', exact: true })

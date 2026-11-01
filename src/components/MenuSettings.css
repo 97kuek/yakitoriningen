@@ -60,3 +60,26 @@
 .menu-pricing-settings .menu-settings button {
   scroll-margin-top: 120px;
 }
+
+.menu-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.menu-editor-actions .add-menu-item {
+  margin: 0;
+}
+.menu-item-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.menu-item-name input[type='checkbox'] {
+  flex: 0 0 20px;
+  margin: 0;
+}
+.menu-item-name input:not([type='checkbox']) {
+  min-width: 0;
+  flex: 1;
+}

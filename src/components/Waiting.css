@@ -77,19 +77,37 @@
 
 .waiting .waiting-totals {
   flex-shrink: 0;
-  height: 40px;
-  min-height: 40px;
-  max-height: 40px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
   overflow-y: auto;
   overscroll-behavior: contain;
   align-content: start;
   gap: 8px;
   margin-bottom: 6px;
-  padding: 5px;
+  padding: 8px;
 }
 
-.waiting .waiting-totals strong {
+.waiting .waiting-totals > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
   font-size: var(--font-body);
+}
+.waiting .waiting-totals > span > span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.waiting .waiting-totals strong {
+  font-size: var(--font-large);
+}
+.waiting .waiting-totals small {
+  margin-left: 4px;
+  font-size: var(--font-body);
+  font-weight: 400;
 }
 
 .waiting .waiting-list {
@@ -138,4 +156,20 @@
 .waiting-undo-slot {
   width: var(--control-size);
   height: var(--control-size);
+}
+
+.waiting .empty {
+  position: relative;
+}
+.waiting .empty img {
+  mix-blend-mode: normal;
+}
+.waiting .mascot-toggle {
+  margin-top: 4px;
+  color: var(--muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .waiting .mascot-toggle {
+    visibility: hidden;
+  }
 }

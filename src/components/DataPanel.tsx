@@ -6,24 +6,13 @@ import type { Snapshot } from '../domain/model';
 import type { ActionHandler } from '../ui';
 import { canonical } from '../application/serialization';
 import type { Cashier } from '../application/ports';
-import { encodeBackup, ordersCsv, parseBackup } from '../application/backup';
+import { encodeBackup, parseBackup } from '../application/backup';
 import { newEvent } from '../application/new-event';
 import { newId } from '../lib/id';
 import { today } from '../presentation/format';
 import { Button, Dialog, FilePicker } from './controls';
 import { Icon } from './Icon';
-export function download(
-  text: string,
-  name: string,
-  type = 'application/json',
-) {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+import { download } from '../presentation/download';
 async function fileText(file: File | undefined) {
   if (!file || file.size > 50_000_000)
     throw new Error(
@@ -36,7 +25,6 @@ export function DataPanel({
   snapshot,
   perform,
   onRestored,
-  onVerified,
   errorMessage,
   hasDraft = false,
 }: {
@@ -44,7 +32,6 @@ export function DataPanel({
   snapshot: Snapshot | null;
   perform: ActionHandler;
   onRestored: () => void;
-  onVerified: (s: Snapshot) => void;
   errorMessage: string;
   hasDraft?: boolean;
 }) {
@@ -67,7 +54,7 @@ export function DataPanel({
     <section className="data-panel" aria-labelledby="backup-heading">
       <h3 id="backup-heading">
         <Icon name="download" />
-        記録の保存・読み込み
+        バックアップ
       </h3>
       {snapshot && (
         <>
@@ -96,31 +83,9 @@ export function DataPanel({
                 }
               >
                 <Icon name="download" />
-                記録を保存
+                バックアップを保存
               </Button>
-              <p className="hint">復元用の記録ファイル（.json）</p>
-            </div>
-            <div className="data-action">
-              <Button
-                variant="secondary"
-                type="button"
-                className="secondary"
-                onClick={() =>
-                  perform(async () => {
-                    const current = await store.read();
-                    if (current)
-                      download(
-                        ordersCsv(current),
-                        `焼き鳥人間_売上一覧_${current.meta.day}.csv`,
-                        'text/csv;charset=utf-8',
-                      );
-                  })
-                }
-              >
-                <Icon name="chart" />
-                売上一覧を保存
-              </Button>
-              <p className="hint">表で確認する一覧（.csv）</p>
+              <p className="hint">注文・設定を戻すためのファイル（.json）</p>
             </div>
           </div>
           {archive && (
@@ -137,7 +102,6 @@ export function DataPanel({
                         '直前に保存した内容と違います。保存したファイルを選び直してください。',
                       );
                     setVerified(true);
-                    onVerified(archive);
                     setStatus('');
                   });
                 }}
@@ -174,7 +138,7 @@ export function DataPanel({
           onClick={() => setRestoreOpen(true)}
         >
           <Icon name="upload" />
-          保存した記録を開く
+          バックアップから復元
         </Button>
         {snapshot && (
           <Button
@@ -200,7 +164,7 @@ export function DataPanel({
           )}
           <div className="restore">
             <p>
-              現在の記録はこの画面から消えます。先に「記録を保存」し、保存したファイルを確認してください。
+              現在の記録はこの画面から消えます。先に「バックアップを保存」し、保存したファイルを確認してください。
             </p>
             <p>
               {archiveCurrent
@@ -256,7 +220,7 @@ export function DataPanel({
                     setNewEventConfirmed(event.target.checked)
                   }
                 />
-                前年の記録を保存した
+                前年のバックアップを保存した
               </label>
               <Button
                 type="submit"
@@ -277,7 +241,7 @@ export function DataPanel({
       <Dialog
         open={restoreOpen}
         onClose={() => setRestoreOpen(false)}
-        title="保存した記録を開く"
+        title="バックアップから復元"
         className="restore-dialog"
       >
         {errorMessage && (
@@ -288,7 +252,7 @@ export function DataPanel({
         <div className="restore">
           <p>
             {snapshot
-              ? '会計を止めてから開いてください。現在の記録は置き換わります。先に記録を保存し、ファイルを確認してください。'
+              ? '会計を止めてから開いてください。現在の記録は置き換わります。先にバックアップを保存し、ファイルを確認してください。'
               : '保存したファイルを選び、内容を確認してください。'}
           </p>
           <FilePicker

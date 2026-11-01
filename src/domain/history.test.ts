@@ -13,17 +13,17 @@ it('札を完全一致で検索し、待ちだけを絞って新しい順に50�
         createdAt: new Date(index * 1000).toISOString(),
       }) as Order,
   );
-  const first = historyPage(orders, '', false, 0);
+  const first = historyPage(orders, '', 'all', 0);
   expect(first.orders).toHaveLength(50);
   expect(first.orders[0].id).toBe('104');
-  expect(historyPage(orders, '', false, 2).orders).toHaveLength(5);
-  const filtered = historyPage(orders, '2', true, 0);
+  expect(historyPage(orders, '', 'all', 2).orders).toHaveLength(5);
+  const filtered = historyPage(orders, '2', 'waiting', 0);
   expect(
     filtered.orders.every((order) => order.ticket === 2 && !order.delivered),
   ).toBe(true);
   expect(filtered.total).toBe(35);
-  expect(historyPage(orders, '12', false, 0).orders).toEqual([]);
-  expect(historyPage([], '', false, 10)).toMatchObject({
+  expect(historyPage(orders, '12', 'all', 0).orders).toEqual([]);
+  expect(historyPage([], '', 'all', 10)).toMatchObject({
     page: 0,
     pages: 1,
     total: 0,
@@ -63,24 +63,44 @@ it('日本時間の範囲を分単位で絞り、並べ替えてからページ�
     sort: 'amount' as const,
     direction: 'asc' as const,
   };
-  expect(historyPage(orders, '', false, 0, 1, options)).toMatchObject({
+  expect(historyPage(orders, '', 'all', 0, 1, options)).toMatchObject({
     total: 2,
     pages: 2,
     orders: [{ id: 'b' }],
   });
-  expect(historyPage(orders, '', false, 1, 1, options).orders[0].id).toBe('c');
+  expect(historyPage(orders, '', 'all', 1, 1, options).orders[0].id).toBe('c');
   expect(
-    historyPage(orders, '1', true, 0, 50, options).orders.map((o) => o.id),
+    historyPage(orders, '1', 'waiting', 0, 50, options).orders.map((o) => o.id),
   ).toEqual(['c']);
   expect(
-    historyPage(orders, '', false, 0, 50, {
+    historyPage(orders, '', 'all', 0, 50, {
       sort: 'ticket',
       direction: 'asc',
     }).orders.map((o) => o.ticket),
   ).toEqual([1, 2, 3, 4]);
   expect(
-    historyPage(orders, '', false, 0, 50, { from: '12:00', to: '10:00' }).total,
+    historyPage(orders, '', 'all', 0, 50, { from: '12:00', to: '10:00' }).total,
   ).toBe(0);
-  expect(historyPage(orders, '', false, 0, 50, { to: '09:59' }).total).toBe(1);
+  expect(historyPage(orders, '', 'all', 0, 50, { to: '09:59' }).total).toBe(1);
   expect(orders[0].id).toBe('a');
+});
+
+it('完了・未完了・保留・取消を混ぜずに絞り込む', () => {
+  const orders = [
+    { id: 'waiting', status: 'paid', delivered: false },
+    { id: 'complete', status: 'paid', delivered: true },
+    { id: 'pending', status: 'pending', delivered: false },
+    { id: 'cancelled', status: 'cancelled', delivered: true },
+  ].map((o) => ({ ...o, createdAt: '2026-11-01T01:00:00Z' })) as Order[];
+  for (const state of [
+    'waiting',
+    'complete',
+    'pending',
+    'cancelled',
+  ] as const) {
+    expect(historyPage(orders, '', state, 0).orders.map((o) => o.id)).toEqual([
+      state,
+    ]);
+  }
+  expect(historyPage(orders, '', 'all', 0).total).toBe(4);
 });

@@ -1,5 +1,7 @@
 import type { Order } from './model';
 
+export type HistoryState =
+  'all' | 'waiting' | 'complete' | 'pending' | 'cancelled';
 export type HistorySort = 'time' | 'ticket' | 'amount';
 export type HistoryOptions = {
   from?: string;
@@ -17,7 +19,7 @@ const japanTime = new Intl.DateTimeFormat('en-GB', {
 export function historyPage(
   orders: readonly Order[],
   ticket: string,
-  waitingOnly: boolean,
+  state: HistoryState,
   requestedPage: number,
   size = 50,
   options: HistoryOptions = {},
@@ -28,7 +30,15 @@ export function historyPage(
       (order) =>
         (!ticket.trim() ||
           (/^\d+$/.test(ticket.trim()) && order.ticket === Number(ticket))) &&
-        (!waitingOnly || (order.status === 'paid' && !order.delivered)) &&
+        (state === 'all' ||
+          (state === 'waiting' &&
+            order.status === 'paid' &&
+            !order.delivered) ||
+          (state === 'complete' &&
+            order.status === 'paid' &&
+            order.delivered) ||
+          (state === 'pending' && order.status === 'pending') ||
+          (state === 'cancelled' && order.status === 'cancelled')) &&
         (!from || japanTime.format(new Date(order.createdAt)) >= from) &&
         (!to || japanTime.format(new Date(order.createdAt)) <= to),
     )

@@ -56,4 +56,6 @@ test('営業開始・会計・売上・設定・返金の文字サイズは3種�
     .click();
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await expectThreeSizes(page);
+  await page.getByRole('button', { name: '集計', exact: true }).click();
+  await expectThreeSizes(page);
 });

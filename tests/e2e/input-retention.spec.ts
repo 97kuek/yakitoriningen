@@ -88,7 +88,7 @@ test('経費を保存すると先頭の0があっても未保存の確認を解�
 }) => {
   await openFixture(page, await historyFixture(0));
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '経費', exact: true }).click();
+  await page.getByRole('button', { name: '集計', exact: true }).click();
   await page.getByLabel('開催回全体の経費（円）').fill('00100');
   const blocked = () =>
     page.evaluate(

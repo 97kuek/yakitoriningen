@@ -15,7 +15,6 @@ export function Startup({
   perform,
   onStart,
   onRestored,
-  onVerified,
   errorMessage,
 }: {
   snapshot: Snapshot | null;
@@ -23,7 +22,6 @@ export function Startup({
   perform: ActionHandler;
   onStart: () => void;
   onRestored: () => void;
-  onVerified: (s: Snapshot) => void;
   errorMessage: string;
 }) {
   const [event, setEvent] = useState('');
@@ -203,7 +201,7 @@ export function Startup({
               </Button>
             </form>
             <p className="hint">
-              営業の続きは、下の「保存した記録を開く」から。
+              営業の続きは、下の「バックアップから復元」から。
             </p>
           </>
         )}
@@ -213,7 +211,6 @@ export function Startup({
           perform={perform}
           errorMessage={errorMessage}
           onRestored={onRestored}
-          onVerified={onVerified}
         />
       </section>
     </div>

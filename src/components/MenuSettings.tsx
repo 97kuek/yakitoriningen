@@ -6,7 +6,6 @@ import { menuForm, menuPrice, type MenuForm } from '../presentation/menu-form';
 import { newId } from '../lib/id';
 import type { Shared } from '../ui';
 import { Button, IconButton } from './controls';
-import { Icon } from './Icon';
 import './MenuSettings.css';
 
 function menuContents(price: MenuForm) {
@@ -113,34 +112,71 @@ export function MenuSettings({
         <div className="menu-editor-toolbar">
           <div className="menu-setting-heading">
             <h3>商品・セットの編集</h3>
-            <Button variant="primary" type="submit" disabled={busy || !dirty}>
-              変更を保存
-            </Button>
+            <div className="menu-editor-actions">
+              <IconButton
+                icon="plus"
+                label="商品を追加"
+                className="add-menu-item"
+                disabled={items.length >= 30}
+                onClick={() => {
+                  editDraft({
+                    ...draft,
+                    items: [
+                      ...items,
+                      {
+                        id: newId(),
+                        name: '',
+                        price: '150',
+                        discountPrice: '50',
+                      },
+                    ],
+                  });
+                }}
+              />
+              <Button variant="primary" type="submit" disabled={busy || !dirty}>
+                変更を保存
+              </Button>
+            </div>
           </div>
           <p className="menu-draft-status" role="status">
             {dirty ? '未保存の変更があります。' : ''}
           </p>
         </div>
         <div className="menu-columns" aria-hidden="true">
-          <span>商品名</span>
-          <span>通常価格（円）</span>
-          <span>値下げ価格（円）</span>
+          <span>セット対象・商品名</span>
+          <span>通常価格</span>
+          <span>値下げ価格</span>
           <span />
         </div>
         <div className="menu-rows">
           {items.map((item, index) => (
             <div className="menu-row" key={item.id}>
-              <input
-                aria-label={`商品${index + 1}の名前`}
-                value={item.name}
-                maxLength={40}
-                required
-                onChange={(event) =>
-                  updateItem(item.id, { name: event.target.value })
-                }
-              />
+              <div className="menu-item-name">
+                <input
+                  type="checkbox"
+                  aria-label={`${item.name || `商品${index + 1}`}をセット対象にする`}
+                  checked={draft.bundleItems?.includes(item.id) ?? false}
+                  onChange={(event) =>
+                    editDraft({
+                      ...draft,
+                      bundleItems: event.target.checked
+                        ? [...(draft.bundleItems ?? []), item.id]
+                        : draft.bundleItems?.filter((id) => id !== item.id),
+                    })
+                  }
+                />
+                <input
+                  aria-label={`商品${index + 1}の名前`}
+                  value={item.name}
+                  maxLength={40}
+                  required
+                  onChange={(event) =>
+                    updateItem(item.id, { name: event.target.value })
+                  }
+                />
+              </div>
               <label>
-                <span className="mobile-field-label">通常価格（円）</span>
+                <span className="mobile-field-label">通常価格</span>
                 <input
                   aria-label={`${item.name || `商品${index + 1}`}の通常価格（円）`}
                   type="number"
@@ -154,7 +190,7 @@ export function MenuSettings({
                 />
               </label>
               <label>
-                <span className="mobile-field-label">値下げ価格（円）</span>
+                <span className="mobile-field-label">値下げ価格</span>
                 <input
                   aria-label={`${item.name || `商品${index + 1}`}の値下げ価格（円）`}
                   type="number"
@@ -186,22 +222,6 @@ export function MenuSettings({
             </div>
           ))}
         </div>
-        <Button
-          className="add-menu-item"
-          disabled={items.length >= 30}
-          onClick={() => {
-            editDraft({
-              ...draft,
-              items: [
-                ...items,
-                { id: newId(), name: '', price: '150', discountPrice: '50' },
-              ],
-            });
-          }}
-        >
-          <Icon name="plus" />
-          商品を追加
-        </Button>
         <section className="bundle-section">
           <h3>セット価格</h3>
           <label className="checkbox">
@@ -215,26 +235,6 @@ export function MenuSettings({
             セット価格を使う
           </label>
           <fieldset className="bundle-settings" disabled={!draft.bundleEnabled}>
-            <legend>セットにできる商品</legend>
-            <div className="bundle-item-options">
-              {items.map((item) => (
-                <label className="checkbox" key={item.id}>
-                  <input
-                    type="checkbox"
-                    checked={draft.bundleItems?.includes(item.id) ?? false}
-                    onChange={(event) =>
-                      editDraft({
-                        ...draft,
-                        bundleItems: event.target.checked
-                          ? [...(draft.bundleItems ?? []), item.id]
-                          : draft.bundleItems?.filter((id) => id !== item.id),
-                      })
-                    }
-                  />
-                  {item.name || '名前未入力'}
-                </label>
-              ))}
-            </div>
             <div className="form-row">
               <label>
                 セットの本数
@@ -254,8 +254,9 @@ export function MenuSettings({
                 />
               </label>
               <label>
-                セットの価格（円）
+                セットの価格
                 <input
+                  aria-label="セットの価格（円）"
                   type="number"
                   min="0"
                   max="100000000"
@@ -270,9 +271,6 @@ export function MenuSettings({
                 />
               </label>
             </div>
-            <p className="hint">
-              選んだ商品から組合せ自由。単品より安くなる場合に使います。
-            </p>
             <label className="checkbox">
               <input
                 type="checkbox"

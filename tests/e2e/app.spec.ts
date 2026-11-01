@@ -114,16 +114,15 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await pay(page, '200');
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   const firstDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: '記録を保存' }).click();
+  await page.getByRole('button', { name: 'バックアップを保存' }).click();
   const first = await readFile((await (await firstDownload).path())!);
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await page.getByRole('button', { name: 'かわを1本増やす' }).click();
   await pay(page, '200');
   await page.getByRole('button', { name: '設定', exact: true }).click();
   const archiveDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: '記録を保存' }).click();
+  await page.getByRole('button', { name: 'バックアップを保存' }).click();
   const archive = await readFile((await (await archiveDownload).path())!);
   await page.getByLabel('保存したファイルを確認').setInputFiles({
     name: 'archive.json',
@@ -131,9 +130,8 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
     buffer: archive,
   });
   await expect(page.getByText('保存したファイルを確認済み')).toBeVisible();
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await page
-    .getByRole('button', { name: '保存した記録を開く', exact: true })
+    .getByRole('button', { name: 'バックアップから復元', exact: true })
     .click();
   await page.getByLabel('記録ファイル（.json）').setInputFiles({
     name: 'restore.json',
@@ -239,13 +237,12 @@ test('会計へ進むと数量入力を隠し、支払いとお釣りに集中�
 test('設定の操作はファイル形式や開発用語を知らずに選べる', async ({ page }) => {
   await setup(page);
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: '記録を保存', exact: true }),
+    page.getByRole('button', { name: 'バックアップを保存', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: '売上一覧を保存', exact: true }),
-  ).toBeVisible();
+    page.getByRole('button', { name: '売上一覧を出力', exact: true }),
+  ).toHaveCount(0);
   expect(await page.locator('body').innerText()).not.toMatch(
     /JSON|CSV|IndexedDB|操作ID|世代|PWA/,
   );
@@ -256,15 +253,14 @@ test('データを戻す画面を開閉しても設定の位置や入力が変�
   await setup(page);
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await page.getByLabel('ももの通常価格（円）').fill('177');
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   const trigger = page.getByRole('button', {
-    name: '保存した記録を開く',
+    name: 'バックアップから復元',
     exact: true,
   });
   await trigger.scrollIntoViewIfNeeded();
   const before = await trigger.boundingBox();
   await trigger.click();
-  const modal = page.getByRole('dialog', { name: '保存した記録を開く' });
+  const modal = page.getByRole('dialog', { name: 'バックアップから復元' });
   await expect(modal).toBeVisible();
   await modal.getByRole('button', { name: '閉じる', exact: true }).click();
   await expect(modal).not.toBeVisible();
@@ -272,7 +268,6 @@ test('データを戻す画面を開閉しても設定の位置や入力が変�
   expect(Math.abs(after!.x - before!.x)).toBeLessThan(1);
   expect(Math.abs(after!.y - before!.y)).toBeLessThan(1);
   await expect(trigger).toBeFocused();
-  await page.getByRole('button', { name: '商品・価格', exact: true }).click();
   await expect(page.getByLabel('ももの通常価格（円）')).toHaveValue('177');
 });
 test('履歴には当日の重複日付や内部番号を表示しない', async ({ page }) => {
@@ -330,11 +325,10 @@ test('戻すファイルに問題があれば開いている画面の中で理�
 }) => {
   await setup(page);
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await page
-    .getByRole('button', { name: '保存した記録を開く', exact: true })
+    .getByRole('button', { name: 'バックアップから復元', exact: true })
     .click();
-  const modal = page.getByRole('dialog', { name: '保存した記録を開く' });
+  const modal = page.getByRole('dialog', { name: 'バックアップから復元' });
   await modal.getByLabel('記録ファイル（.json）').setInputFiles({
     name: 'invalid.json',
     mimeType: 'application/json',
@@ -452,26 +446,23 @@ test('お預かり金額はフォーカスしても二重枠やハイライト�
     fullPage: true,
   });
 });
-test('設定は項目ごとに分かれ、入力を保ったまま切り替えられる', async ({
-  page,
-}) => {
+test('設定は開閉せず一覧でき、画面を往復しても入力を保つ', async ({ page }) => {
   await setup(page);
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await expect(
     page.getByRole('button', { name: '記録・その他', exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await page.getByLabel('ももの通常価格（円）').fill('177');
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
-  await expect(page.getByLabel('ももの通常価格（円）')).not.toBeVisible();
+  await expect(page.getByLabel('ももの通常価格（円）')).toBeVisible();
+  await page.getByRole('button', { name: '会計', exact: true }).click();
+  await page.getByRole('button', { name: '設定', exact: true }).click();
   await expect(page.getByLabel('会計に記録する日付')).toBeVisible();
-  await page.getByRole('button', { name: '商品・価格', exact: true }).click();
   await expect(page.getByLabel('ももの通常価格（円）')).toHaveValue('177');
   const panelBeforeSwitch = await page.locator('.settings').boundingBox();
   await page.screenshot({
     path: 'test-results/settings-price.png',
     fullPage: true,
   });
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   const panelAfterSwitch = await page.locator('.settings').boundingBox();
   expect(
     Math.abs(panelAfterSwitch!.height - panelBeforeSwitch!.height),
@@ -486,26 +477,25 @@ test('営業日の切り替え後も注文履歴を日ごとに確認できる',
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await pay(page, '1000');
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await page.getByLabel('会計に記録する日付').fill('2026-11-08');
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   const select = page.getByRole('combobox', { name: '表示する日' });
   await select.click();
-  await page.getByRole('option', { name: '2日目（11/8）' }).click();
+  await page.getByRole('option', { name: '11/8' }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(0);
   await select.click();
-  await page.getByRole('option', { name: '1日目（11/7）' }).click();
+  await page.getByRole('option', { name: '11/7' }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
 });
 test('保存前の設定は会計や売上へ移動しても残る', async ({ page }) => {
   await setup(page);
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '経費', exact: true }).click();
+  await page.getByRole('button', { name: '集計', exact: true }).click();
   await page.getByLabel('開催回全体の経費（円）').fill('12345');
   await page.getByRole('button', { name: '会計', exact: true }).click();
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '経費', exact: true }).click();
+  await page.getByRole('button', { name: '集計', exact: true }).click();
   await expect(page.getByLabel('開催回全体の経費（円）')).toHaveValue('12345');
 });
 test('入金前に本数を修正し、設定変更前の価格で会計できる', async ({ page }) => {
@@ -554,7 +544,8 @@ test('履歴は札番号と受け渡し状態で探せて集計額は変わら�
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
   await expect(page.getByRole('table')).toContainText('かわ');
   await page.getByLabel('札番号で検索').fill('');
-  await page.getByLabel('未受け渡しだけ表示').check();
+  await page.getByRole('combobox', { name: '注文の状態' }).click();
+  await page.getByRole('option', { name: '未完了', exact: true }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
 });
 test('返金は段階ごとに操作を1つ示し、入力に二重枠を出さない', async ({
@@ -585,9 +576,9 @@ test('追加商品の対象セットと個別値下げを会計し、削除後�
   await page.getByLabel('商品4の名前', { exact: true }).fill('つくね');
   await page.getByLabel('つくねの通常価格（円）').fill('200');
   await page.getByLabel('つくねの値下げ価格（円）').fill('80');
-  await page.getByLabel('つくね', { exact: true }).check();
-  await page.getByLabel('かわ', { exact: true }).uncheck();
-  await page.getByLabel('ねぎま', { exact: true }).uncheck();
+  await page.getByLabel('つくねをセット対象にする', { exact: true }).check();
+  await page.getByLabel('かわをセット対象にする', { exact: true }).uncheck();
+  await page.getByLabel('ねぎまをセット対象にする', { exact: true }).uncheck();
   await page.getByLabel('セットの本数', { exact: true }).fill('3');
   await page.getByLabel('セットの価格（円）', { exact: true }).fill('400');
   await page.getByRole('button', { name: '変更を保存', exact: true }).click();
@@ -638,7 +629,7 @@ test('表示範囲は共通の選択UIをキーボードで操作できる', asy
   await expect(page.getByRole('listbox', { name: '表示する日' })).toBeVisible();
   await select.press('ArrowDown');
   await select.press('Enter');
-  await expect(select).toHaveText('1日目（11/7）');
+  await expect(select).toHaveText('11/7');
   await expect(select).toBeFocused();
   await select.press('Enter');
   await select.press('Escape');

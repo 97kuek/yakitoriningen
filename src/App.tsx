@@ -6,7 +6,6 @@ import { count, emptyQuantities } from './domain/model';
 import { newId } from './lib/id';
 
 import type { Snapshot } from './domain/model';
-import { canonical } from './application/serialization';
 import { cashier } from './bootstrap';
 import { useExclusiveTab } from './useExclusiveTab';
 import { encodeBackup } from './application/backup';
@@ -16,9 +15,10 @@ import { Checkout } from './components/Checkout';
 import type { Draft } from './components/Checkout';
 import { Waiting } from './components/Waiting';
 import { Startup } from './components/Startup';
+import { festivalTitle } from './presentation/festival';
+import { Summary } from './components/Summary';
 import { History } from './components/History';
 import { Settings } from './components/Settings';
-import type { SettingsSection } from './components/Settings';
 import { Icon } from './components/Icon';
 import type { IconName } from './components/Icon';
 import { Help } from './components/Help';
@@ -61,10 +61,9 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<Snapshot | null | undefined>();
   const [started, setStarted] = useState(false);
   const [tab, setTab] = useState('会計');
-  const [settingsInitial, setSettingsInitial] =
-    useState<SettingsSection>('price');
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
+  const [summaryDirty, setSummaryDirty] = useState(false);
   const [lastHandoff, setLastHandoff] = useState<{
     orderId: string;
     completionId: string;
@@ -78,24 +77,44 @@ export default function App() {
     quantities: emptyQuantities(),
     price: null,
   });
-  const [verifiedBackup, setVerifiedBackup] = useState<Snapshot | null>(null);
   useEffect(() => {
-    if (!settingsDirty) return;
+    if (!settingsDirty && !summaryDirty) return;
     const confirmLeave = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', confirmLeave);
     return () => window.removeEventListener('beforeunload', confirmLeave);
-  }, [settingsDirty]);
+  }, [settingsDirty, summaryDirty]);
   const lock = useRef(false);
   const pendingBeforeAction = useRef<Set<string>>(new Set());
   const previousGeneration = useRef<string | null>(null);
+  const updateRequested = useRef(false);
+  const reloadAfterUpdate = () => {
+    if (!updateRequested.current) return;
+    updateRequested.current = false;
+    window.location.reload();
+  };
+  useEffect(() => {
+    // Workbox can classify a rapid deployment as an external update. The native
+    // controller event also covers that case, but only reloads on an explicit click.
+    navigator.serviceWorker?.addEventListener(
+      'controllerchange',
+      reloadAfterUpdate,
+    );
+    return () =>
+      navigator.serviceWorker?.removeEventListener(
+        'controllerchange',
+        reloadAfterUpdate,
+      );
+  }, []);
+
   const {
     offlineReady: [offlineReady],
     needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW({
+    onNeedReload: reloadAfterUpdate,
     onRegisterError: () =>
       setError(
         'オフライン起動の準備を確認できません。営業前に再接続して確認してください。',
@@ -157,8 +176,8 @@ export default function App() {
     ) {
       setStarted(false);
       setDraft({ quantities: emptyQuantities(), price: null });
-      setVerifiedBackup(null);
       setSettingsDirty(false);
+      setSummaryDirty(false);
     }
     previousGeneration.current = snapshot.meta.generation;
   }, [snapshot?.meta.generation]);
@@ -205,9 +224,9 @@ export default function App() {
     setStarted(false);
     setTab('会計');
     setDraft({ quantities: emptyQuantities(), price: null });
-    setVerifiedBackup(null);
     setLastHandoff(null);
     setSettingsDirty(false);
+    setSummaryDirty(false);
   };
   const shared: Shared | null = snapshot
     ? {
@@ -236,7 +255,12 @@ export default function App() {
   return (
     <>
       <header className="app-header">
-        <a href="#main" className="brand">
+        <a
+          href="#main"
+          className="brand"
+          aria-label="焼き鳥人間・会計へ戻る"
+          onClick={() => setTab('会計')}
+        >
           <img src="/assets/shop-logo.png" alt="" width="232" height="58" />
           <h1 className="sr-only">焼き鳥人間</h1>
         </a>
@@ -245,7 +269,8 @@ export default function App() {
             {(
               [
                 { key: '会計', label: '会計', icon: 'cash' },
-                { key: '履歴・集計', label: '注文履歴', icon: 'chart' },
+                { key: '履歴・集計', label: '注文履歴', icon: 'details' },
+                { key: '集計', label: '集計', icon: 'chart' },
                 { key: '設定・データ', label: '設定', icon: 'settings' },
               ] as { key: string; label: string; icon: IconName }[]
             ).map((item) => (
@@ -269,8 +294,14 @@ export default function App() {
         <div className="header-status">
           <span
             className="connection-status"
-            title={online ? 'オンライン' : 'オフライン'}
-            aria-label={online ? 'オンライン' : 'オフライン'}
+            title={
+              online
+                ? 'オンライン（他の端末との同期はありません）'
+                : 'オフライン（このPCに保存しています）'
+            }
+            aria-label={
+              online ? 'オンライン・端末間同期なし' : 'オフライン・このPCに保存'
+            }
           >
             <Icon name={online ? 'wifi' : 'offline'} />
           </span>
@@ -345,7 +376,7 @@ export default function App() {
           <div className="notice update-notice">
             <strong>アプリの更新があります</strong>
             <span>
-              会計が終わったら、記録を保存・確認してから更新してください。
+              記録を残して画面を更新します。バックアップの読み込みは不要です。
             </span>
             <IconButton
               icon="refresh"
@@ -353,15 +384,25 @@ export default function App() {
               variant="secondary"
               disabled={
                 tabOwnership.state !== 'owned' ||
-                !snapshot ||
+                busy ||
+                fatal ||
+                snapshot === undefined ||
                 settingsDirty ||
+                summaryDirty ||
                 count(draft.quantities) > 0 ||
-                snapshot.orders.some((o) => o.status === 'pending') ||
-                snapshot.operations.some((op) => op.status === 'pending') ||
-                canonical(snapshot) !== canonical(verifiedBackup)
+                snapshot?.orders.some((o) => o.status === 'pending') ||
+                snapshot?.operations.some((op) => op.status === 'pending')
               }
               onClick={() => {
-                void updateServiceWorker(true);
+                updateRequested.current = true;
+                setBusy(true);
+                void updateServiceWorker(true).catch(() => {
+                  updateRequested.current = false;
+                  setBusy(false);
+                  setError(
+                    '更新できませんでした。接続を確認して、もう一度お試しください。',
+                  );
+                });
               }}
             />
           </div>
@@ -389,20 +430,12 @@ export default function App() {
                 setStarted(true);
               }}
               onRestored={resetAfterRestore}
-              onVerified={setVerifiedBackup}
             />
           ) : (
             <>
               <div className="session-bar">
-                <div>
-                  <strong>{snapshot.meta.event}</strong>
-                  <span>営業日 {snapshot.meta.day}</span>
-                </div>
-                <span>
-                  保存済み{' '}
-                  {snapshot.orders.filter((o) => o.received !== null).length}件
-                  {busy ? ' ／ 保存中…' : ''}
-                </span>
+                <strong>{festivalTitle(snapshot)}</strong>
+                <span role="status">{busy ? '保存中…' : ''}</span>
               </div>
               <Recovery
                 operations={unresolved}
@@ -433,14 +466,18 @@ export default function App() {
               {tab === '履歴・集計' && (
                 <History snapshot={snapshot} store={store} {...shared} />
               )}
+              <div hidden={tab !== '集計'}>
+                <Summary
+                  snapshot={snapshot}
+                  onDirtyChange={setSummaryDirty}
+                  {...shared}
+                />
+              </div>
               <div hidden={tab !== '設定・データ'}>
                 <Settings
                   snapshot={snapshot}
                   store={store}
-                  section={settingsInitial}
-                  onSectionChange={setSettingsInitial}
                   onRestored={resetAfterRestore}
-                  onVerified={setVerifiedBackup}
                   hasDraft={count(draft.quantities) > 0}
                   onDirtyChange={setSettingsDirty}
                   {...shared}

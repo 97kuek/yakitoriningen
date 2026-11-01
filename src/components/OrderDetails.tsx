@@ -1,5 +1,5 @@
 import type { Order, Snapshot } from '../domain/model';
-import { orderText, yen } from '../presentation/format';
+import { orderItems, yen } from '../presentation/format';
 import './OrderDetails.css';
 
 export function receiptNumber(order: Order, snapshot: Snapshot) {
@@ -52,12 +52,22 @@ export function OrderDetails({
         <strong data-testid="receipt-number">
           {receiptNumber(order, snapshot)}
         </strong>
-        <span>札 {order.ticket}</span>
-        <time dateTime={order.paidAt ?? order.createdAt}>
-          {order.paidAt ? '会計日時' : '受付日時'} {orderDateTime(order)}
-        </time>
+        <span className="ticket-badge">札 {order.ticket}</span>
       </div>
-      <p className="order-details-items">{orderText(order)}</p>
+      <time
+        className="order-details-time"
+        dateTime={order.paidAt ?? order.createdAt}
+      >
+        {order.paidAt ? '会計日時' : '受付日時'} {orderDateTime(order)}
+      </time>
+      <ul className="order-details-items" aria-label="注文した商品">
+        {orderItems(order).map((item) => (
+          <li key={item.id}>
+            <span>{item.name}</span>
+            <span>{item.quantity}本</span>
+          </li>
+        ))}
+      </ul>
       <dl className="order-details-facts">
         <div>
           <dt>会計額</dt>
@@ -73,14 +83,6 @@ export function OrderDetails({
           <dt>お釣り</dt>
           <dd>{order.change === null ? '未確定' : yen(order.change)}</dd>
         </div>
-        <div>
-          <dt>状態</dt>
-          <dd>{orderState(order)}</dd>
-        </div>
-        <div>
-          <dt>番号札</dt>
-          <dd>{order.returned ? '回収済み' : '未回収'}</dd>
-        </div>
         {order.refunded > 0 && (
           <div>
             <dt>返金額</dt>
@@ -88,6 +90,10 @@ export function OrderDetails({
           </div>
         )}
       </dl>
+      <div className="order-details-status">
+        <span>{orderState(order)}</span>
+        <span>{order.returned ? '札回収済み' : '札未回収'}</span>
+      </div>
       {order.cancelReason && (
         <p className="order-details-reason">取消理由：{order.cancelReason}</p>
       )}

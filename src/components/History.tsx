@@ -1,6 +1,14 @@
 import { useRef, useState } from 'react';
+import './History.css';
 import { dayText, orderText, timeText, yen } from '../presentation/format';
-import { historyPage, type HistorySort } from '../domain/history';
+import { festivalDays, hourOptions } from '../presentation/festival';
+import { ordersCsv } from '../application/backup';
+import { download } from '../presentation/download';
+import {
+  historyPage,
+  type HistoryState,
+  type HistorySort,
+} from '../domain/history';
 import { Button, Dialog, IconButton, Select } from './controls';
 import { RefundDialog } from './RefundDialog';
 import { OrderDetails, receiptNumber } from './OrderDetails';
@@ -26,10 +34,9 @@ export function History({
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const detailsTrigger = useRef<HTMLButtonElement | null>(null);
   const [ticketSearch, setTicketSearch] = useState('');
-  const [waitingOnly, setWaitingOnly] = useState(false);
+  const [state, setState] = useState<HistoryState>('all');
   const [page, setPage] = useState(0);
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [hour, setHour] = useState('');
   const [sort, setSort] = useState<HistorySort>('time');
   const [direction, setDirection] = useState<'asc' | 'desc'>('desc');
   function sortBy(key: HistorySort) {
@@ -57,34 +64,22 @@ export function History({
       </th>
     );
   }
-  const days = [
-    ...new Set([
-      snapshot.meta.day,
-      ...snapshot.orders.map((order) => order.day),
-      ...snapshot.operations.flatMap((operation) =>
-        operation.status === 'done' && operation.command.type === 'day'
-          ? [operation.day, operation.command.day]
-          : [],
-      ),
-    ]),
-  ].sort();
+  const days = festivalDays(snapshot);
   const orders = snapshot.orders.filter(
     (order) => scope === 'event' || order.day === scope,
   );
-  const history = historyPage(orders, ticketSearch, waitingOnly, page, 50, {
-    from,
-    to,
+  const filters = {
+    from: hour ? `${hour}:00` : '',
+    to: hour ? `${hour}:59` : '',
     sort,
     direction,
-  });
+  };
+  const history = historyPage(orders, ticketSearch, state, page, 50, filters);
   const details = snapshot.orders.find((order) => order.id === detailsId);
   return (
     <section className="panel history">
       <div className="section-heading">
-        <h2>
-          <Icon name="chart" />
-          注文履歴
-        </h2>
+        <h2>注文履歴</h2>
       </div>
       <div className="history-filters">
         <Select
@@ -96,18 +91,26 @@ export function History({
           }}
           options={[
             { value: 'event', label: 'すべて' },
-            ...days.map((day, index) => ({
+            ...days.map((day) => ({
               value: day,
-              label:
-                days.length <= 2
-                  ? `${index + 1}日目（${dayText(day)}）`
-                  : dayText(day),
+              label: dayText(day),
             })),
           ]}
         />
 
+        <Select
+          value={hour}
+          label="時間帯"
+          className="history-hour"
+          options={hourOptions}
+          onChange={(value) => {
+            setHour(value);
+            setPage(0);
+          }}
+        />
+
         <label>
-          札番号で検索
+          <span className="sr-only">札番号で検索</span>
           <input
             type="search"
             inputMode="numeric"
@@ -120,61 +123,51 @@ export function History({
             }}
           />
         </label>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={waitingOnly}
-            onChange={(event) => {
-              setWaitingOnly(event.target.checked);
-              setPage(0);
-            }}
-          />
-          未受け渡しだけ表示
-        </label>
-      </div>
-      <div className="history-time-filter">
-        <span>時間帯</span>
-        <input
-          type="time"
-          aria-label="開始時刻"
-          value={from}
-          onChange={(event) => {
-            setFrom(event.target.value);
+        <Select
+          value={state}
+          label="注文の状態"
+          className="history-state"
+          options={[
+            { value: 'all', label: 'すべての状態' },
+            { value: 'waiting', label: '未完了' },
+            { value: 'complete', label: '完了' },
+            { value: 'pending', label: '保留' },
+            { value: 'cancelled', label: '取消済み' },
+          ]}
+          onChange={(value) => {
+            setState(value as HistoryState);
             setPage(0);
           }}
         />
-        <span>〜</span>
-        <input
-          type="time"
-          aria-label="終了時刻"
-          value={to}
-          onChange={(event) => {
-            setTo(event.target.value);
-            setPage(0);
+        <IconButton
+          className="history-export"
+          icon="download"
+          label="表示条件の注文をCSVで保存"
+          disabled={busy || history.total === 0}
+          onClick={() => {
+            const matching = historyPage(
+              orders,
+              ticketSearch,
+              state,
+              0,
+              Math.max(1, orders.length),
+              filters,
+            );
+            download(
+              ordersCsv({ ...snapshot, orders: matching.orders }),
+              `焼き鳥人間_注文履歴_${scope === 'event' ? '全日' : scope}${hour ? `_${hour}時台` : ''}.csv`,
+              'text/csv;charset=utf-8',
+            );
           }}
         />
-        {(from || to) && (
-          <IconButton
-            icon="close"
-            label="時間帯をクリア"
-            onClick={() => {
-              setFrom('');
-              setTo('');
-              setPage(0);
-            }}
-          />
-        )}
-        {from && to && from > to && (
-          <span role="alert">終了時刻は開始時刻以降にしてください。</span>
-        )}
       </div>
       <div className="table-scroll">
         <table>
           <caption className="sr-only">注文履歴</caption>
           <thead>
             <tr>
-              {sortHeading('time', scope === 'event' ? '日時' : '時刻')}
               <th>会計番号</th>
+              {sortHeading('time', scope === 'event' ? '日時' : '時刻')}
               {sortHeading('ticket', '札')}
               <th>内容</th>
               {sortHeading('amount', '会計額')}
@@ -187,12 +180,12 @@ export function History({
           <tbody>
             {history.orders.map((o) => (
               <tr key={o.id}>
+                <td className="history-receipt-number">
+                  {receiptNumber(o, snapshot).replace('会計 ', '')}
+                </td>
                 <td className="history-time">
                   {scope === 'event' && <span>{dayText(o.day)} </span>}
                   {timeText(o.createdAt)}
-                </td>
-                <td className="history-receipt-number">
-                  {receiptNumber(o, snapshot).replace('会計 ', '')}
                 </td>
                 <td>{o.ticket}</td>
                 <td>{orderText(o)}</td>
@@ -202,9 +195,6 @@ export function History({
                 </td>
                 <td>
                   <span className={`state-label${o.delivered ? ' done' : ''}`}>
-                    {o.delivered && o.status === 'paid' && (
-                      <Icon name="check" />
-                    )}
                     {o.status === 'pending'
                       ? '保留'
                       : o.status === 'cancelled'

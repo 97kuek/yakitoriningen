@@ -24,6 +24,7 @@ export function Waiting({
   ) => void;
 }) {
   const [ticketSearch, setTicketSearch] = useState('');
+  const [animate, setAnimate] = useState(true);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [undoNotice, setUndoNotice] = useState('');
   const [heldRecoveryIds, setHeldRecoveryIds] = useState<string[]>([]);
@@ -206,15 +207,17 @@ export function Waiting({
       {(waiting.length > 0 || heldOrders.length > 0) && (
         <div
           className="waiting-totals"
+          role="group"
+          aria-label="未受け渡しの本数（調理済み分を含む）"
           title="調理済み分を含む、未受け渡しの本数"
         >
           {products.map((p) => (
             <span key={p.id}>
-              {p.name}
+              <span>{p.name}</span>
               <strong>
                 {waiting.reduce((n, o) => n + (o.quantities[p.id] ?? 0), 0)}
+                <small>本</small>
               </strong>
-              <small>本</small>
             </span>
           ))}
         </div>
@@ -227,13 +230,23 @@ export function Waiting({
               srcSet="/assets/empty-orders-still.png"
             />
             <img
-              src="/assets/empty-orders.gif"
+              src={
+                animate
+                  ? '/assets/empty-orders.gif'
+                  : '/assets/empty-orders-still.png'
+              }
               alt=""
               width="384"
               height="270"
             />
           </picture>
           <h3>待っている注文はありません</h3>
+          <IconButton
+            className="mascot-toggle"
+            icon={animate ? 'pause' : 'play'}
+            label={animate ? 'アニメーションを止める' : 'アニメーションを再生'}
+            onClick={() => setAnimate(!animate)}
+          />
         </div>
       )}
       <div className="waiting-list">

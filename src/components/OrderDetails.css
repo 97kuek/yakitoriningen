@@ -1,8 +1,5 @@
 .order-details {
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  padding: 0;
 }
 
 .order-details .order-details-heading {
@@ -10,6 +7,7 @@
   align-items: baseline;
   flex-wrap: wrap;
   gap: 6px 16px;
+  justify-content: space-between;
 }
 
 .order-details .order-details-heading strong {
@@ -17,13 +15,36 @@
   font-weight: 500;
 }
 
-.order-details .order-details-heading time {
-  font-size: var(--font-small);
+.order-details .order-details-time {
+  display: block;
+  margin-top: 8px;
+  font-size: var(--font-body);
   color: var(--muted);
 }
 
 .order-details .order-details-items {
-  margin: 12px 0;
+  margin: 20px 0;
+  padding: 0;
+  list-style: none;
+  border-block: 1px solid var(--line);
+  font-size: var(--font-body);
+}
+.order-details-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+}
+.order-details-items li + li {
+  border-top: 1px solid var(--line);
+}
+.order-details .order-details-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
   font-size: var(--font-body);
 }
 
@@ -45,7 +66,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.refund-dialog .order-details-facts > div:first-child dd {
+.order-details .order-details-facts > div:first-child dd {
   font-size: var(--font-large);
 }
 

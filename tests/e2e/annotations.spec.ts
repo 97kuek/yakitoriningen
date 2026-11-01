@@ -7,7 +7,6 @@ test('日付と札枚数は編集時だけ共通の保存を表示し、両方�
   await page.setViewportSize({ width: 834, height: 827 });
   await openFixture(page, await historyFixture(0));
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   const save = page.getByRole('button', { name: '保存', exact: true });
   await expect(save).toHaveCount(0);
   const date = page.getByLabel('会計に記録する日付');
@@ -21,11 +20,10 @@ test('日付と札枚数は編集時だけ共通の保存を表示し、両方�
   await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める', exact: true }).click();
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await expect(date).toHaveValue('2026-11-08');
   await expect(tickets).toHaveValue('30');
   const open = await page
-    .getByRole('button', { name: '保存した記録を開く', exact: true })
+    .getByRole('button', { name: 'バックアップから復元', exact: true })
     .boundingBox();
   const next = await page
     .getByRole('button', { name: '新しい開催回を準備', exact: true })
@@ -50,7 +48,7 @@ test('履歴の検索を横一列に揃え、時間帯と並び替えを併用�
   await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   const day = page.getByRole('combobox', { name: '表示する日' });
   const ticket = page.getByLabel('札番号で検索');
-  const waiting = page.getByLabel('未受け渡しだけ表示');
+  const waiting = page.getByRole('combobox', { name: '注文の状態' });
   const positions = await Promise.all(
     [day, ticket, waiting].map(async (item) => {
       const b = (await item.boundingBox())!;
@@ -58,22 +56,26 @@ test('履歴の検索を横一列に揃え、時間帯と並び替えを併用�
     }),
   );
   expect(Math.max(...positions) - Math.min(...positions)).toBeLessThan(2);
-  await page.getByLabel('開始時刻').fill('10:00');
-  await page.getByLabel('終了時刻').fill('11:00');
+  const hour = page.getByRole('combobox', { name: '時間帯' });
   const rows = page.locator('.history tbody tr');
-  await expect(rows).toHaveCount(2);
   await page.getByRole('button', { name: '時刻', exact: true }).click();
   await expect(rows.first()).toContainText('10:00');
   await expect(
     page.getByRole('columnheader', { name: '時刻' }),
   ).toHaveAttribute('aria-sort', 'ascending');
   await page.getByRole('button', { name: '時刻', exact: true }).click();
-  await expect(rows.first()).toContainText('11:00');
-  await waiting.check();
+  await expect(rows.first()).toContainText('12:00');
+  await hour.click();
+  await page.getByRole('option', { name: '10:00–11:00', exact: true }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('10:00');
+  await waiting.click();
+  await page.getByRole('option', { name: '未完了', exact: true }).click();
   await expect(rows).toHaveCount(0);
-  await waiting.uncheck();
-  await expect(rows).toHaveCount(2);
-  await expect(rows.first().locator('td').nth(1)).toContainText('No.');
+  await waiting.click();
+  await page.getByRole('option', { name: 'すべての状態', exact: true }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first().locator('td').nth(0)).toContainText('No.');
   for (const width of [1089, 834]) {
     await page.setViewportSize({ width, height: 827 });
     const heading = page.getByRole('heading', {

@@ -8,13 +8,14 @@ import { newId } from '../../src/lib/id';
 export async function historyFixture(
   count: number,
   override?: Partial<Price>,
+  orderDays?: readonly string[],
 ): Promise<Snapshot> {
   const database = new Database(`fixture-${newId()}`);
   const cashier = new CashierStore(database);
   try {
     const context = await cashier.initialize(
       '試験用の開催回',
-      '2026-11-07',
+      orderDays?.[0] ?? '2026-11-07',
       20,
     );
     let price = (await cashier.read())!.prices[0];
@@ -24,7 +25,18 @@ export async function historyFixture(
       await cashier.prepare(operationId, context, { type: 'price', price });
       await cashier.execute(operationId, context);
     }
+    let day = orderDays?.[0] ?? '2026-11-07';
     for (let index = 0; index < count; index++) {
+      const orderDay = orderDays?.[index] ?? day;
+      if (orderDay !== day) {
+        const operationId = newId();
+        await cashier.prepare(operationId, context, {
+          type: 'day',
+          day: orderDay,
+        });
+        await cashier.execute(operationId, context);
+        day = orderDay;
+      }
       const orderId = newId(),
         assignmentId = newId(),
         confirmOperationId = newId(),
