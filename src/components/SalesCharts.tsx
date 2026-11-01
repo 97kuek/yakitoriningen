@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import type { Snapshot } from '../domain/model';
-import {
-  quantitiesByProduct,
-  SALES_SLOT_MINUTES,
-  salesByHalfHour,
-} from '../domain/sales';
+import { TIME_SLOT_MINUTES } from '../domain/constants';
+import { quantitiesByProduct, salesByHalfHour } from '../domain/sales';
 import { clockText } from '../domain/time';
 import { festivalDays } from '../presentation/festival';
 import { dayText, yen } from '../presentation/format';
@@ -66,7 +63,7 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
       </div>
       <div className="chart-grid">
         <figure>
-          <figcaption>{SALES_SLOT_MINUTES}分ごとの売上</figcaption>
+          <figcaption>{TIME_SLOT_MINUTES}分ごとの売上</figcaption>
           {slots.length ? (
             <>
               <div className="bar-scale" aria-hidden="true">
@@ -75,7 +72,7 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
               <div
                 className="bar-scroll"
                 tabIndex={0}
-                aria-label={`${SALES_SLOT_MINUTES}分ごとの売上グラフ`}
+                aria-label={`${TIME_SLOT_MINUTES}分ごとの売上グラフ`}
               >
                 <div
                   className="sales-bars"
@@ -88,7 +85,7 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
                       <div
                         className="bar-track"
                         tabIndex={0}
-                        aria-label={`${clockText(slot.minute)}〜${clockText(slot.minute + SALES_SLOT_MINUTES)} ${yen(slot.sales)}`}
+                        aria-label={`${clockText(slot.minute)}〜${clockText(slot.minute + TIME_SLOT_MINUTES)} ${yen(slot.sales)}`}
                       >
                         <div
                           className="bar-fill"

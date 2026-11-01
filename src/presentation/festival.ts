@@ -1,7 +1,10 @@
+import {
+  BUSINESS_CLOSE_MINUTE,
+  BUSINESS_OPEN_MINUTE,
+  TIME_SLOT_MINUTES,
+} from '../domain/constants';
 import type { Snapshot } from '../domain/model';
 import { clockText } from '../domain/time';
-
-const HOURS_PER_DAY = 24;
 
 /** Business days with orders, plus the current day, in order. */
 export function festivalDays(
@@ -20,12 +23,27 @@ export function festivalTitle(snapshot: Pick<Snapshot, 'meta'>): string {
   return `${year}年度 早稲田祭　${Number(month)}月${Number(day)}日`;
 }
 
-export const hourOptions = [
+/** A history time filter: an empty value means every time. */
+export type TimeSlot = { value: string; label: string; from?: number };
+
+/** Every time, then each slot within business hours. */
+export const timeSlotOptions: TimeSlot[] = [
   { value: '', label: 'すべての時間' },
-  ...Array.from({ length: HOURS_PER_DAY }, (_, hour) => ({
-    value: String(hour).padStart(2, '0'),
-    label: `${clockText(hour * 60)}–${clockText((hour + 1) * 60)}`,
-  })),
+  ...Array.from(
+    {
+      length:
+        (BUSINESS_CLOSE_MINUTE - BUSINESS_OPEN_MINUTE) / TIME_SLOT_MINUTES,
+    },
+    (_, index) => {
+      const from = BUSINESS_OPEN_MINUTE + index * TIME_SLOT_MINUTES;
+      const to = from + TIME_SLOT_MINUTES;
+      return {
+        value: String(from),
+        label: `${clockText(from)}–${clockText(to)}`,
+        from,
+      };
+    },
+  ),
 ];
 
 /** Placeholder for an event name, e.g. `例：早稲田祭 2026`. */

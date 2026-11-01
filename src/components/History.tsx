@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import './History.css';
 import { dayText, orderText, timeText, yen } from '../presentation/format';
-import { festivalDays, hourOptions } from '../presentation/festival';
+import { festivalDays, timeSlotOptions } from '../presentation/festival';
+import { TIME_SLOT_MINUTES } from '../domain/constants';
+import { clockText } from '../domain/time';
 import { ordersCsv } from '../presentation/orders-csv';
 import { download } from '../presentation/download';
 import { historyStateLabel, receiptNumber } from '../presentation/order';
@@ -43,7 +45,7 @@ export function History({
   const [ticketSearch, setTicketSearch] = useState('');
   const [state, setState] = useState<HistoryState>('all');
   const [page, setPage] = useState(0);
-  const [hour, setHour] = useState('');
+  const [slot, setSlot] = useState('');
   const [sort, setSort] = useState<HistorySort>('time');
   const [direction, setDirection] = useState<SortDirection>('desc');
   function sortBy(key: HistorySort) {
@@ -76,12 +78,17 @@ export function History({
   const orders = snapshot.orders.filter(
     (order) => allDays || order.day === scope,
   );
+  const slotStart = slot ? Number(slot) : undefined;
   const filters = {
-    from: hour ? `${hour}:00` : '',
-    to: hour ? `${hour}:59` : '',
+    from: slotStart,
+    to: slotStart === undefined ? undefined : slotStart + TIME_SLOT_MINUTES,
     sort,
     direction,
   };
+  const slotName =
+    slotStart === undefined
+      ? ''
+      : `_${clockText(slotStart).replace(':', '')}-${clockText(slotStart + TIME_SLOT_MINUTES).replace(':', '')}`;
   const history = historyPage(
     orders,
     ticketSearch,
@@ -116,12 +123,12 @@ export function History({
         />
 
         <Select
-          value={hour}
+          value={slot}
           label="時間帯"
           className="history-hour"
-          options={hourOptions}
+          options={timeSlotOptions}
           onChange={(value) => {
-            setHour(value);
+            setSlot(value);
             setPage(0);
           }}
         />
@@ -166,7 +173,7 @@ export function History({
                 prices: snapshot.prices,
                 orders: filterHistory(orders, ticketSearch, state, filters),
               }),
-              `焼き鳥人間_注文履歴_${allDays ? '全日' : scope}${hour ? `_${hour}時台` : ''}.csv`,
+              `焼き鳥人間_注文履歴_${allDays ? '全日' : scope}${slotName}.csv`,
               'text/csv;charset=utf-8',
             );
           }}

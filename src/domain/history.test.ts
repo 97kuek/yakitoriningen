@@ -30,7 +30,7 @@ it('札を完全一致で検索し、待ちだけを絞って新しい順に50�
   });
 });
 
-it('日本時間の範囲を分単位で絞り、並べ替えてからページを分ける', () => {
+it('日本時間の範囲を開始を含み終了を含まずに絞り、並べ替えてからページを分ける', () => {
   const orders = [
     {
       id: 'a',
@@ -57,9 +57,10 @@ it('日本時間の範囲を分単位で絞り、並べ替えてからページ�
       quote: { total: 150 },
     },
   ].map((order) => ({ ...order, status: 'paid', delivered: false })) as Order[];
+  // 10:00–11:01 in Japan: a (09:59:59) is before, d (11:01:00) is at the excluded end.
   const options = {
-    from: '10:00',
-    to: '11:00',
+    from: 600,
+    to: 661,
     sort: 'amount' as const,
     direction: 'asc' as const,
   };
@@ -79,9 +80,10 @@ it('日本時間の範囲を分単位で絞り、並べ替えてからページ�
     }).orders.map((o) => o.ticket),
   ).toEqual([1, 2, 3, 4]);
   expect(
-    historyPage(orders, '', 'all', 0, 50, { from: '12:00', to: '10:00' }).total,
+    historyPage(orders, '', 'all', 0, 50, { from: 720, to: 600 }).total,
   ).toBe(0);
-  expect(historyPage(orders, '', 'all', 0, 50, { to: '09:59' }).total).toBe(1);
+  expect(historyPage(orders, '', 'all', 0, 50, { to: 600 }).total).toBe(1);
+  expect(historyPage(orders, '', 'all', 0, 50, { from: 600 }).total).toBe(3);
   expect(orders[0].id).toBe('a');
 });
 

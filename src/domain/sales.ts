@@ -1,7 +1,6 @@
+import { TIME_SLOT_MINUTES } from './constants';
 import type { Order } from './model';
 import { japanMinuteOfDay } from './time';
-
-export const SALES_SLOT_MINUTES = 30;
 
 /** Sales net of refunds. Pending orders are not sales; full refunds remove their skewers. */
 export function summarizeSales(orders: readonly Order[]) {
@@ -32,7 +31,7 @@ export function salesByHalfHour(orders: readonly Order[]) {
     if (order.received === null || !order.paidAt) continue;
     const minute = japanMinuteOfDay(order.paidAt);
     if (!Number.isFinite(minute)) continue;
-    const slot = minute - (minute % SALES_SLOT_MINUTES);
+    const slot = minute - (minute % TIME_SLOT_MINUTES);
     groups.set(
       slot,
       (groups.get(slot) ?? 0) + order.quote.total - order.refunded,
@@ -42,9 +41,9 @@ export function salesByHalfHour(orders: readonly Order[]) {
   const first = Math.min(...groups.keys());
   const last = Math.max(...groups.keys());
   return Array.from(
-    { length: (last - first) / SALES_SLOT_MINUTES + 1 },
+    { length: (last - first) / TIME_SLOT_MINUTES + 1 },
     (_, index) => {
-      const minute = first + index * SALES_SLOT_MINUTES;
+      const minute = first + index * TIME_SLOT_MINUTES;
       return { minute, sales: groups.get(minute) ?? 0 };
     },
   );

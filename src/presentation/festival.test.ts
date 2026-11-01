@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { festivalDays, festivalTitle, hourOptions } from './festival';
+import { festivalDays, festivalTitle, timeSlotOptions } from './festival';
 import type { Snapshot } from '../domain/model';
 
 it('準備日や訂正履歴を開催日数として数えず年度と日付を示す', () => {
@@ -27,8 +27,17 @@ it('注文日と現在の日付だけを重複なく並べる', () => {
   ).toEqual(['2026-11-07', '2026-11-08']);
 });
 
-it('時間帯は全時間と一時間ごとの24枠を用意する', () => {
-  expect(hourOptions).toHaveLength(25);
-  expect(hourOptions[11]).toEqual({ value: '10', label: '10:00–11:00' });
-  expect(hourOptions[24]).toEqual({ value: '23', label: '23:00–24:00' });
+it('時間帯は全時間と、営業時間10:00〜17:00の30分ごとの14枠を用意する', () => {
+  expect(timeSlotOptions).toHaveLength(15);
+  expect(timeSlotOptions[0]).toEqual({ value: '', label: 'すべての時間' });
+  expect(timeSlotOptions[1]).toEqual({
+    value: '600',
+    label: '10:00–10:30',
+    from: 600,
+  });
+  expect(timeSlotOptions.at(-1)).toEqual({
+    value: '990',
+    label: '16:30–17:00',
+    from: 990,
+  });
 });

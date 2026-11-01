@@ -1,7 +1,7 @@
 import { MAX_TICKETS } from './constants';
 import type { Order } from './model';
 import { isAwaitingHandoff } from './order';
-import { clockText, japanMinuteOfDay } from './time';
+import { japanMinuteOfDay } from './time';
 
 export const HISTORY_PAGE_SIZE = 50;
 /** Longest ticket-number query worth typing. */
@@ -11,9 +11,9 @@ export type HistoryState = 'all' | 'waiting' | 'complete' | 'cancelled';
 export type HistorySort = 'time' | 'ticket' | 'amount';
 export type SortDirection = 'asc' | 'desc';
 export type HistoryOptions = {
-  /** Inclusive `HH:MM` bounds in Japan time. */
-  from?: string;
-  to?: string;
+  /** Order time range in Japan as minutes since midnight: `from` inclusive, `to` exclusive. */
+  from?: number;
+  to?: number;
   sort?: HistorySort;
   direction?: SortDirection;
 };
@@ -45,14 +45,17 @@ export function filterHistory(
   state: HistoryState,
   options: HistoryOptions = {},
 ): Order[] {
-  const { from = '', to = '', sort = 'time', direction = 'desc' } = options;
+  const { from, to, sort = 'time', direction = 'desc' } = options;
   return orders
     .filter((order) => {
       if (!matchesTicket(order, ticket) || !matchesState(order, state))
         return false;
-      if (!from && !to) return true;
-      const time = clockText(japanMinuteOfDay(order.createdAt));
-      return (!from || time >= from) && (!to || time <= to);
+      if (from === undefined && to === undefined) return true;
+      const minute = japanMinuteOfDay(order.createdAt);
+      return (
+        (from === undefined || minute >= from) &&
+        (to === undefined || minute < to)
+      );
     })
     .sort((a, b) => {
       const value =

@@ -22,3 +22,9 @@ export const DEFAULT_TICKET_COUNT = 20;
 
 /** Stored price labels. They are part of the saved format and must not be renamed. */
 export const PRICE_LABELS = { normal: '通常', discounted: '値下げ' } as const;
+
+/** Business hours in Japan, as minutes since midnight. */
+export const BUSINESS_OPEN_MINUTE = 10 * 60;
+export const BUSINESS_CLOSE_MINUTE = 17 * 60;
+/** Length of the time slots used by history filters and sales charts. */
+export const TIME_SLOT_MINUTES = 30;
