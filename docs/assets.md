@@ -50,3 +50,16 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 空状態の最終生成プロンプト：
 
 > A tiny quiet illustration for an empty yakitori order list. WHITE BACKGROUND, solid perfectly uniform pure white #FFFFFF, no transparency. One simple round yellow chick with a small cream festival headband, standing beside a small EMPTY rectangular wooden serving tray. Friendly calm face, eyes smiling. Sparse hand-drawn dark brown outlines, FLAT solid yellow body, FLAT ochre tray, small orange beak/feet. Only four flat colors plus white background. Like a simple Japanese school festival pen drawing, no digital effects. No shading, NO paper texture, NO grain, NO gradients, NO drop shadows, NO ambient glow, NO halo, NO fog, NO dark vignette, NO light rays, no food, no text, no lettering, no sparkles, no decor. The background must remain pure white right up to the character outline. Full character and tray comfortably visible, centered compact landscape composition, clean small UI sticker.
+
+
+## 待ち画面のGIF（2026-11-01）
+
+組み込みのimage_genで既存のひよこを参照したスプライトを生成し、上段の3コマをffmpegでGIFへ符号化した。CSSで画像全体を揺らす演出は削除した。
+
+- `public/assets/empty-orders.gif`：384×270、6フレーム、2.64秒で停止。
+- `public/assets/empty-orders-still.png`：動きを減らす設定用の静止画。
+- 元のPNGは保持。GIFと静止画は両方ともPWAの事前保存対象。
+
+生成プロンプト（組み込みツール使用、CLIへの切り替えなし）：
+
+> Create an animation sprite sheet editing the reference illustration for a yakitori cashier app empty state. Preserve exactly the same friendly yellow chick with cream headband, warm brown hand-drawn outlines, small orange beak, and empty wooden tray to its right. A flat warm off-white #fffef7 background, no texture, no text, no grid lines, no labels. Output one landscape 1536x1024 image divided into an exact 3-column by 2-row grid of six equal 512x512 cells. Each cell contains the whole same chick and tray at identical scale and aligned identical positions with ample equal margin. Tray and feet remain fixed across every frame. Animation frames reading left to right top row then bottom row: 1 eyes open neutral wings down; 2 eyes half closed wings slightly lifted; 3 eyes closed smiling wings raised gently; 4 eyes half open wings slightly lowered; 5 eyes open wings lowered; 6 same as frame1. Subtle natural blink and small wing wave, no camera movement, no background changes. Flat restrained colors, matte, simple hand-drawn mascot, no gloss, no sparks, no smoke, no 3D. This exact aligned sheet will be cut into frames and encoded as a real GIF.
