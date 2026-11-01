@@ -61,10 +61,6 @@ test('同じ位置を150ms間隔で二度押しても一件だけ完了し、次
   page,
 }) => {
   await openFixture(page, await queueFixture(3));
-  const secondBefore = await page
-    .getByTestId('waiting-order')
-    .nth(1)
-    .boundingBox();
   const first = await complete(page).first().boundingBox();
   const x = first!.x + first!.width / 2;
   const y = first!.y + first!.height / 2;
@@ -72,11 +68,8 @@ test('同じ位置を150ms間隔で二度押しても一件だけ完了し、次
   await page.waitForTimeout(150);
   await page.mouse.click(x, y);
   await expect(page.getByTestId('waiting-order')).toHaveCount(2);
-  const secondAfter = await page
-    .getByTestId('waiting-order')
-    .first()
-    .boundingBox();
-  expect(Math.abs(secondAfter!.y - secondBefore!.y)).toBeLessThan(1);
+  await expect(page.locator('.handoff-completed')).toHaveCount(0);
+  await page.waitForTimeout(500);
   await complete(page).first().click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   await page.getByRole('button', { name: '元に戻す', exact: true }).click();
@@ -93,6 +86,7 @@ test('Enterの連続入力でも一件だけ完了し、次の札へフォーカ
   await page.keyboard.down('Enter');
   await page.keyboard.up('Enter');
   await expect(page.getByTestId('waiting-order')).toHaveCount(2);
+  await page.waitForTimeout(500);
   await complete(page).first().focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
@@ -174,4 +168,61 @@ test('混雑中は札番号へ絞り込み、完了後も別の札が同じ位�
   await expect(page.getByLabel('待ち注文の札番号')).toHaveValue('12');
   await page.getByLabel('待ち注文の札番号').fill('');
   await expect(page.getByTestId('waiting-order')).toHaveCount(11);
+});
+
+test('保存に時間がかかっても完了直後の再クリックで次の札を完了しない', async ({
+  page,
+}) => {
+  await openFixture(page, await queueFixture(3));
+  // Keep the write lock until the test releases it, so the delay starts after
+  // the click rather than expiring while Playwright waits for actionability.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('yakitoriningen-v1');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const tx = database.transaction('meta', 'readwrite');
+          let held = true;
+          (
+            window as unknown as { releaseHandoffLock: () => void }
+          ).releaseHandoffLock = () => {
+            held = false;
+          };
+          const keepAlive = () => {
+            const read = tx.objectStore('meta').get('main');
+            read.onsuccess = () => {
+              if (held) keepAlive();
+            };
+          };
+          keepAlive();
+          tx.oncomplete = () => database.close();
+          resolve();
+        };
+      }),
+  );
+  await complete(page).first().click();
+  await expect(page.locator('.app-content')).toHaveAttribute(
+    'aria-busy',
+    'true',
+  );
+  await page.waitForTimeout(650);
+  await expect(page.getByTestId('waiting-order')).toHaveCount(3);
+  await page.evaluate(() =>
+    (
+      window as unknown as { releaseHandoffLock: () => void }
+    ).releaseHandoffLock(),
+  );
+  await expect(page.getByTestId('waiting-order')).toHaveCount(2);
+  await expect(complete(page).first()).toBeEnabled();
+  // Do not let the count assertion succeed before an erroneous second write
+  // has had time to commit. DOM click avoids another actionability wait here.
+  await complete(page)
+    .first()
+    .evaluate((button: HTMLButtonElement) => button.click());
+  await page.waitForTimeout(550);
+  await expect(page.getByTestId('waiting-order')).toHaveCount(2);
+  await complete(page).first().click();
+  await expect(page.getByTestId('waiting-order')).toHaveCount(1);
 });

@@ -10,16 +10,13 @@ export async function restoreBackup(
   db: Database,
   snapshot: Snapshot,
   expected: Snapshot | null,
-  archived: boolean,
 ): Promise<void> {
   const incoming = validateSnapshot(snapshot);
-  if (expected && !archived)
-    throw new Error('既存データの退避ファイルを確認してから復元してください。');
   await db.transaction('rw', db.tables, async () => {
     const current = await new CashierStore(db).read();
     if (canonical(current) !== canonical(expected))
       throw new Error(
-        '退避後に保存状態が変更されました。もう一度退避して確認してください。',
+        '確認中に記録が変更されました。画面を開き直してください。',
       );
     for (const table of db.tables) await table.clear();
     await db.meta.add({ ...incoming.meta, generation: newId() });

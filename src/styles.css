@@ -607,7 +607,7 @@ main {
 }
 .cash-buttons {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   margin: 12px 0 20px;
 }
@@ -630,7 +630,7 @@ main {
   padding-bottom: 14px;
 }
 .received-summary strong {
-  font-size: var(--font-body);
+  font-size: var(--font-large);
   color: var(--ink);
 }
 .change-display {
@@ -757,7 +757,7 @@ main {
   margin: 24px auto;
 }
 .startup-art {
-  width: min(280px, 100%);
+  width: 100%;
   margin: auto;
 }
 .startup-art img {
@@ -779,7 +779,8 @@ main {
 .startup > p {
   font-size: var(--font-small);
 }
-.startup-event {
+.startup > .startup-event {
+  font-size: var(--font-large);
   font-weight: 600;
   color: var(--muted);
   margin-bottom: 20px !important;
@@ -871,7 +872,6 @@ dd {
   font-size: var(--font-small);
   background: var(--surface);
 }
-.archive-check,
 .restore-preview {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -879,14 +879,25 @@ dd {
   padding: 15px;
   margin-top: 16px;
 }
-.archive-check p {
-  font-size: var(--font-small);
-}
 .restore {
   margin-top: 24px;
 }
-.restore-preview dl {
-  font-size: var(--font-small);
+.backup-table {
+  margin: 16px 0;
+}
+.backup-table th,
+.backup-table td {
+  font-size: var(--font-body);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.backup-table th {
+  font-weight: 400;
+}
+.backup-table td {
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 .table-scroll {
   overflow-x: auto;
@@ -1288,7 +1299,7 @@ dialog > h2 {
     max-width: 480px;
   }
   .startup-art {
-    max-width: 240px;
+    max-width: 100%;
     margin: auto;
   }
   .startup {
@@ -1359,16 +1370,6 @@ dialog > h2 {
     animation: none !important;
     transition: none !important;
   }
-}
-.archive-check p {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.archive-check p > .icon {
-  color: var(--ink);
-  width: 17px;
-  height: 17px;
 }
 
 /* Stable controls and a quieter type hierarchy. */
@@ -2112,7 +2113,7 @@ select {
     gap: 12px;
   }
   .startup-art {
-    width: 200px;
+    width: 100%;
   }
   .startup-details {
     gap: 8px 14px;
@@ -2154,9 +2155,12 @@ select {
 }
 .payment .payment-secondary {
   display: flex;
-  justify-content: center;
-  gap: 20px;
-  min-height: 48px;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 40px;
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 .payment .payment-secondary > button {
   margin: 0;

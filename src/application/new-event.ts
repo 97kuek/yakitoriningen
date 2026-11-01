@@ -1,7 +1,7 @@
 import { metaSchema, priceSchema, type Snapshot } from '../domain/model';
 import { createMenuDraft } from '../domain/catalog';
 
-/** Prepare a clean ledger; the caller must verify and atomically archive the old one. */
+/** Prepare a clean ledger; the caller atomically replaces the unchanged previous ledger. */
 export function newEvent(
   previous: Snapshot,
   event: string,

@@ -1,4 +1,4 @@
-import { IconButton, Button, Dialog } from './controls';
+import { IconButton, Button } from './controls';
 import { useEffect, useRef, useState } from 'react';
 import { count, emptyQuantities } from '../domain/model';
 import { newId } from '../lib/id';
@@ -274,9 +274,6 @@ function Payment({
   const products = getMenu(order.price);
   const [received, setReceived] = useState('');
   const [confirmReady, setConfirmReady] = useState(true);
-  const [confirmAction, setConfirmAction] = useState<'edit' | 'cancel' | null>(
-    null,
-  );
   const receivedInput = useRef<HTMLInputElement>(null);
   const confirmButton = useRef<HTMLButtonElement>(null);
   const focusedStage = useRef<string | null>(null);
@@ -375,21 +372,22 @@ function Payment({
             </p>
           )}
           <div className="cash-buttons">
-            {[order.quote.total, 1000, 2000, 5000, 10000]
-              .filter(
-                (v, i, arr) => v >= order.quote.total && arr.indexOf(v) === i,
-              )
-              .map((v, i) => (
-                <Button
-                  variant="secondary"
-                  type="button"
-                  key={v}
-                  className="secondary"
-                  onClick={() => setReceived(String(v))}
-                >
-                  {i === 0 ? 'ちょうど' : yen(v)}
-                </Button>
-              ))}
+            <Button
+              type="button"
+              onClick={() => setReceived(String(order.quote.total))}
+            >
+              ちょうど
+            </Button>
+            {[500, 1000, 2000, 5000, 10000].map((value) => (
+              <Button
+                type="button"
+                key={value}
+                disabled={value < order.quote.total}
+                onClick={() => setReceived(String(value))}
+              >
+                {yen(value)}
+              </Button>
+            ))}
           </div>
         </form>
       ) : (
@@ -445,7 +443,11 @@ function Payment({
             <Button
               variant="plain"
               className="link-button"
-              onClick={() => setConfirmAction('edit')}
+              onClick={() =>
+                void perform(() =>
+                  store.discard(order.confirmOperationId, context),
+                )
+              }
             >
               入金額を修正
             </Button>
@@ -470,7 +472,15 @@ function Payment({
               <Button
                 variant="plain"
                 className="link-button muted"
-                onClick={() => setConfirmAction('cancel')}
+                onClick={() =>
+                  void perform(() =>
+                    saveCommand({
+                      type: 'cancel',
+                      ...target,
+                      reason: '未入金の保留取消',
+                    }),
+                  )
+                }
               >
                 注文を取り消す
               </Button>
@@ -478,55 +488,6 @@ function Payment({
           )}
         </div>
       </div>
-      {confirmAction && (
-        <Dialog
-          open
-          title={
-            confirmAction === 'cancel'
-              ? 'この注文を取り消す'
-              : 'お預かり金額を修正'
-          }
-          onClose={() => {
-            if (!busy) setConfirmAction(null);
-          }}
-          footer={
-            <>
-              <Button disabled={busy} onClick={() => setConfirmAction(null)}>
-                戻る
-              </Button>
-              <Button
-                variant={confirmAction === 'cancel' ? 'danger' : 'primary'}
-                disabled={busy}
-                onClick={() =>
-                  void perform(async () => {
-                    if (confirmAction === 'edit') {
-                      await store.discard(order.confirmOperationId, context);
-                    } else if (confirmAction === 'cancel') {
-                      await saveCommand({
-                        type: 'cancel',
-                        ...target,
-                        reason: '未入金の保留取消',
-                      });
-                    }
-                    setConfirmAction(null);
-                  })
-                }
-              >
-                {confirmAction === 'cancel' ? '注文を取り消す' : '入力し直す'}
-              </Button>
-            </>
-          }
-        >
-          <p>
-            札 {order.ticket} ／ お会計 {yen(order.quote.total)}
-          </p>
-          <p>
-            {confirmAction === 'cancel'
-              ? '現金を受け取っていないことを確認してから、注文を取り消してください。'
-              : '受け取ったお金とお釣りを確認してから、金額を入力し直してください。まだ会計は確定しません。'}
-          </p>
-        </Dialog>
-      )}
     </section>
   );
 }

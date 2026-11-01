@@ -4,7 +4,6 @@ import { yen } from '../presentation/format';
 
 import type { Snapshot } from '../domain/model';
 import type { ActionHandler } from '../ui';
-import { canonical } from '../application/serialization';
 import type { Cashier } from '../application/ports';
 import { encodeBackup, parseBackup } from '../application/backup';
 import { newEvent } from '../application/new-event';
@@ -36,20 +35,13 @@ export function DataPanel({
   hasDraft?: boolean;
 }) {
   const [incoming, setIncoming] = useState<Snapshot | null>(null);
-  const [archive, setArchive] = useState<Snapshot | null>(null);
-  const [verified, setVerified] = useState(false);
+  const [expected, setExpected] = useState<Snapshot | null>(null);
+  const [eventBase, setEventBase] = useState<Snapshot | null>(null);
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
-  const [status, setStatus] = useState('');
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [newEventOpen, setNewEventOpen] = useState(false);
   const [eventName, setEventName] = useState('');
   const [eventDay, setEventDay] = useState(today());
-  const [newEventConfirmed, setNewEventConfirmed] = useState(false);
-  const archiveCurrent =
-    !!snapshot &&
-    !!archive &&
-    verified &&
-    canonical(snapshot) === canonical(archive);
   return (
     <section className="data-panel" aria-labelledby="backup-heading">
       <h3 id="backup-heading">
@@ -70,15 +62,7 @@ export function DataPanel({
                     if (!current) throw new Error('営業の記録がありません。');
                     const text = encodeBackup(current);
                     parseBackup(await new Blob([text]).text());
-                    download(
-                      text,
-                      `焼き鳥人間_バックアップ_${current.meta.day}_${new Date().toLocaleTimeString('sv-SE', { hour12: false }).replaceAll(':', '-')}.json`,
-                    );
-                    setArchive(current);
-                    setVerified(false);
-                    setStatus(
-                      '保存したファイルを選んで確認し、USBなどにもコピーしてください。',
-                    );
+                    download(text, `${current.meta.day}-yakitori.json`);
                   })
                 }
               >
@@ -88,54 +72,18 @@ export function DataPanel({
               <p className="hint">注文・設定を戻すためのファイル（.json）</p>
             </div>
           </div>
-          {archive && (
-            <div className="archive-check">
-              <FilePicker
-                label="保存したファイルを確認"
-                accept=".json,application/json"
-                onFile={(file) => {
-                  setVerified(false);
-                  void perform(async () => {
-                    const read = parseBackup(await fileText(file));
-                    if (canonical(read) !== canonical(archive))
-                      throw new Error(
-                        '直前に保存した内容と違います。保存したファイルを選び直してください。',
-                      );
-                    setVerified(true);
-                    setStatus('');
-                  });
-                }}
-              />
-              <p>
-                {verified ? (
-                  <>
-                    <Icon name="check" />
-                    保存したファイルを確認済み
-                  </>
-                ) : (
-                  '保存先のファイルを選んで、中身を確認してください。'
-                )}
-              </p>
-              {verified && (
-                <p className="hint">
-                  USBなど別の場所へのコピーも確認してください。
-                </p>
-              )}
-            </div>
-          )}
         </>
-      )}
-      {status && (
-        <p role="status" className="notice">
-          {status}
-        </p>
       )}
       <div className="data-secondary-actions">
         <Button
           variant="secondary"
           type="button"
           className="secondary restore-trigger"
-          onClick={() => setRestoreOpen(true)}
+          onClick={() => {
+            setIncoming(null);
+            setRestoreConfirmed(false);
+            setRestoreOpen(true);
+          }}
         >
           <Icon name="upload" />
           バックアップから復元
@@ -144,7 +92,14 @@ export function DataPanel({
           <Button
             variant="secondary"
             className="new-event-trigger"
-            onClick={() => setNewEventOpen(true)}
+            onClick={() =>
+              void perform(async () => {
+                const current = await store.read();
+                if (!current) throw new Error('営業の記録がありません。');
+                setEventBase(current);
+                setNewEventOpen(true);
+              })
+            }
           >
             新しい開催回を準備
           </Button>
@@ -164,12 +119,9 @@ export function DataPanel({
           )}
           <div className="restore">
             <p>
-              現在の記録はこの画面から消えます。先に「バックアップを保存」し、保存したファイルを確認してください。
-            </p>
-            <p>
-              {archiveCurrent
-                ? '保存したファイルを確認済み'
-                : '記録の保存とファイルの確認が必要です。'}
+              新しい開催回に切り替えると、記録が削除されます。
+              <br />
+              記録を保存したい場合は、「バックアップを保存」を選択してください。
             </p>
             {hasDraft && (
               <p role="status">入力途中の注文を確認してください。</p>
@@ -178,14 +130,12 @@ export function DataPanel({
               className="new-event-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!archive || !archiveCurrent || hasDraft) return;
+                if (!eventBase || hasDraft) return;
                 void perform(async () => {
-                  const next = newEvent(archive, eventName, eventDay, newId);
-                  await store.restore(next, archive, true);
+                  const next = newEvent(eventBase, eventName, eventDay, newId);
+                  await store.restore(next, eventBase);
                   setNewEventOpen(false);
-                  setArchive(null);
-                  setVerified(false);
-                  setNewEventConfirmed(false);
+                  setEventBase(null);
                   onRestored();
                 });
               }}
@@ -209,28 +159,10 @@ export function DataPanel({
                   onChange={(event) => setEventDay(event.target.value)}
                 />
               </label>
-              <p className="hint">
-                商品・価格と札の枚数を引き継ぎます。値下げは解除します。
-              </p>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={newEventConfirmed}
-                  onChange={(event) =>
-                    setNewEventConfirmed(event.target.checked)
-                  }
-                />
-                前年のバックアップを保存した
-              </label>
               <Button
                 type="submit"
                 variant="danger"
-                disabled={
-                  !archiveCurrent ||
-                  hasDraft ||
-                  !newEventConfirmed ||
-                  !eventName.trim()
-                }
+                disabled={!eventBase || hasDraft || !eventName.trim()}
               >
                 新しい開催回に切り替える
               </Button>
@@ -251,9 +183,9 @@ export function DataPanel({
         )}
         <div className="restore">
           <p>
-            {snapshot
-              ? '会計を止めてから開いてください。現在の記録は置き換わります。先にバックアップを保存し、ファイルを確認してください。'
-              : '保存したファイルを選び、内容を確認してください。'}
+            バックアップを復元します。
+            <br />
+            保存したバックアップファイルを開いてください。
           </p>
           <FilePicker
             label="記録ファイル（.json）"
@@ -261,82 +193,98 @@ export function DataPanel({
             onFile={(file) => {
               setIncoming(null);
               setRestoreConfirmed(false);
-              void perform(async () =>
-                setIncoming(parseBackup(await fileText(file))),
-              );
+              void perform(async () => {
+                const parsed = parseBackup(await fileText(file));
+                const current = await store.read();
+                setExpected(current);
+                setIncoming(parsed);
+              });
             }}
           />
           {incoming && (
             <div className="restore-preview">
-              <h4>開く内容</h4>
-              <p>
-                {incoming.meta.event} / {incoming.meta.day}
-              </p>
-              <dl>
-                <dt>注文</dt>
-                <dd>{incoming.orders.length}件</dd>
-                <dt>売上</dt>
-                <dd>
-                  {yen(
-                    incoming.orders
-                      .filter((o) => o.status === 'paid')
-                      .reduce((n, o) => n + o.quote.total, 0),
-                  )}
-                </dd>
-                <dt>販売本数</dt>
-                <dd>
-                  {incoming.orders
-                    .filter((o) => o.status === 'paid')
-                    .reduce((n, o) => n + count(o.quantities), 0)}
-                  本
-                </dd>
-                <dt>保留の注文</dt>
-                <dd>
-                  {incoming.orders.filter((o) => o.status === 'pending').length}
-                  件
-                </dd>
-                <dt>確認待ちの記録</dt>
-                <dd>
-                  {
-                    incoming.operations.filter((op) => op.status === 'pending')
-                      .length
-                  }
-                  件
-                </dd>
-              </dl>
+              <h4>バックアップ内容</h4>
+              <table className="backup-table" aria-label="バックアップ内容">
+                <tbody>
+                  <tr>
+                    <th scope="row">開催回</th>
+                    <td>{incoming.meta.event}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">日付</th>
+                    <td>{incoming.meta.day}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">注文</th>
+                    <td>{incoming.orders.length}件</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">売上</th>
+                    <td>
+                      {yen(
+                        incoming.orders
+                          .filter((o) => o.status === 'paid')
+                          .reduce((n, o) => n + o.quote.total, 0),
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">販売本数</th>
+                    <td>
+                      {incoming.orders
+                        .filter((o) => o.status === 'paid')
+                        .reduce((n, o) => n + count(o.quantities), 0)}
+                      本
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">保留の注文</th>
+                    <td>
+                      {
+                        incoming.orders.filter((o) => o.status === 'pending')
+                          .length
+                      }
+                      件
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">確認待ちの記録</th>
+                    <td>
+                      {
+                        incoming.operations.filter(
+                          (op) => op.status === 'pending',
+                        ).length
+                      }
+                      件
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
               <label className="checkbox">
                 <input
                   type="checkbox"
                   checked={restoreConfirmed}
                   onChange={(e) => setRestoreConfirmed(e.target.checked)}
                 />
-                開く内容と現在の記録の保存を確認した
+                バックアップ内容を確認した
               </label>
               <Button
                 variant="danger"
                 type="button"
                 className="danger"
-                disabled={!restoreConfirmed || (!!snapshot && !verified)}
+                disabled={!restoreConfirmed || hasDraft}
                 onClick={() =>
                   perform(async () => {
-                    await store.restore(
-                      incoming,
-                      snapshot ? archive : null,
-                      verified,
-                    );
+                    await store.restore(incoming, expected);
                     setIncoming(null);
-                    setArchive(null);
-                    setVerified(false);
+                    setRestoreOpen(false);
                     setRestoreConfirmed(false);
                     onRestored();
                   })
                 }
               >
-                この記録に置き換える
+                この内容で再開
               </Button>
-              <p className="hint">
-                保留の注文は、現金と札を確認してから再開してください。
-              </p>
             </div>
           )}
         </div>

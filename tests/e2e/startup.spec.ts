@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { historyFixture, openFixture } from './fixtures';
 
-test('初回の準備は小さなイラストの下に入力と読み込みを表示する', async ({
+test('初回の準備はパネルと同じ幅のイラストの下に入力を表示する', async ({
   page,
 }) => {
   await page.goto('/');
@@ -12,7 +12,12 @@ test('初回の準備は小さなイラストの下に入力と読み込みを�
   const imageBox = (await art.boundingBox())!;
   const formBox = (await form.boundingBox())!;
   expect(imageBox.y + imageBox.height).toBeLessThan(formBox.y);
-  expect(imageBox.width).toBeLessThanOrEqual(320);
+  expect(
+    Math.abs(
+      imageBox.width -
+        (await page.locator('.startup.panel').boundingBox())!.width,
+    ),
+  ).toBeLessThan(1);
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: '新しく作る', exact: true }),
@@ -65,21 +70,12 @@ test('再開画面は日付と価格に絞り、保存と読み込み後も履�
   await dialog
     .getByLabel('記録ファイル（.json）', { exact: true })
     .setInputFiles(saved);
-  await dialog.getByLabel('開く内容と現在の記録の保存を確認した').check();
   await expect(
-    dialog.getByRole('button', { name: 'この記録に置き換える', exact: true }),
+    dialog.getByRole('button', { name: 'この内容で再開' }),
   ).toBeDisabled();
-  await dialog.getByRole('button', { name: '閉じる', exact: true }).click();
-  await page
-    .getByLabel('保存したファイルを確認', { exact: true })
-    .setInputFiles(saved);
-  await expect(page.getByText('保存したファイルを確認済み')).toBeVisible();
-  await page
-    .getByRole('button', { name: 'バックアップから復元', exact: true })
-    .click();
-  await dialog
-    .getByRole('button', { name: 'この記録に置き換える', exact: true })
-    .click();
+  await dialog.getByLabel('バックアップ内容を確認した').check();
+  await expect(dialog.getByRole('table')).toContainText('開催回');
+  await dialog.getByRole('button', { name: 'この内容で再開' }).click();
   await expect(page.locator('.startup-details dt')).toHaveText([
     '日付',
     '価格',

@@ -39,11 +39,7 @@ export interface Cashier {
   prepare(id: string, context: Context, command: Command): Promise<Operation>;
   execute(id: string, context: Context): Promise<string>;
   discard(id: string, context: Context): Promise<void>;
-  restore(
-    snapshot: Snapshot,
-    expected: Snapshot | null,
-    archived: boolean,
-  ): Promise<void>;
+  restore(snapshot: Snapshot, expected: Snapshot | null): Promise<void>;
   watch(observer: {
     next: (snapshot: Snapshot | null) => void;
     error: (error: unknown) => void;

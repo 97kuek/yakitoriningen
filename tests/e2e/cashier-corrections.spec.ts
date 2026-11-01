@@ -103,9 +103,7 @@ test('多商品の受け渡しを終えても集計領域と一覧の高さが�
   expect(Math.abs(listBefore!.height - listAfter!.height)).toBeLessThan(1);
 });
 
-test('預かり金の修正は共通ダイアログで確認し会計を確定せず入力へ戻る', async ({
-  page,
-}) => {
+test('預かり金の修正は直接入力へ戻り会計を確定しない', async ({ page }) => {
   await setup(page);
   let nativeDialogs = 0;
   page.on('dialog', async (dialog) => {
@@ -117,15 +115,7 @@ test('預かり金の修正は共通ダイアログで確認し会計を確定�
   await page.getByLabel('お預かり金額', { exact: true }).fill('1000');
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await page.getByRole('button', { name: '入金額を修正', exact: true }).click();
-  const dialog = page.getByRole('dialog', {
-    name: 'お預かり金額を修正',
-    exact: true,
-  });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: '戻る', exact: true }).click();
-  await expect(page.getByTestId('change')).toHaveText('￥850');
-  await page.getByRole('button', { name: '入金額を修正', exact: true }).click();
-  await dialog.getByRole('button', { name: '入力し直す', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByLabel('お預かり金額', { exact: true }).fill('500');
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await expect(page.getByTestId('change')).toHaveText('￥350');
@@ -189,4 +179,40 @@ test('商品が多くても商品欄だけをスクロールし合計と会計�
     .evaluate((el) => ({ client: el.clientHeight, scroll: el.scrollHeight }));
   expect(products.scroll).toBeGreaterThan(products.client);
   await expect(page.getByTestId('total')).toHaveText('￥150');
+});
+
+test('固定の金額ボタンと離した副操作を使い、未入金の注文を直接取り消す', async ({
+  page,
+}) => {
+  await setup(page);
+  await page.getByLabel('ももの本数').fill('6');
+  await page.getByRole('button', { name: '会計へ', exact: true }).click();
+  await expect(page.locator('.cash-buttons button')).toHaveText([
+    'ちょうど',
+    '￥500',
+    '￥1,000',
+    '￥2,000',
+    '￥5,000',
+    '￥10,000',
+  ]);
+  await expect(
+    page
+      .locator('.cash-buttons')
+      .getByRole('button', { name: '￥500', exact: true }),
+  ).toBeDisabled();
+  const primary = (await page
+    .getByRole('button', { name: 'お釣りを確認', exact: true })
+    .boundingBox())!;
+  const cancel = page.getByRole('button', {
+    name: '注文を取り消す',
+    exact: true,
+  });
+  const secondary = (await cancel.boundingBox())!;
+  expect(secondary.y - primary.y - primary.height).toBeGreaterThanOrEqual(24);
+  await cancel.click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByTestId('total')).toHaveText('￥0');
+  await expect(page.locator('.ticket-availability')).toContainText('20');
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
+  await expect(page.getByRole('table')).toContainText('取消');
 });

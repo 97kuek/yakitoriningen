@@ -11,8 +11,7 @@ export const cashier: Cashier = {
   prepare: (id, context, command) => store.prepare(id, context, command),
   execute: (id, context) => store.execute(id, context),
   discard: (id, context) => store.discard(id, context),
-  restore: (snapshot, expected, archived) =>
-    restoreBackup(store.db, snapshot, expected, archived),
+  restore: (snapshot, expected) => restoreBackup(store.db, snapshot, expected),
   watch: (observer) => {
     const subscription = liveQuery(() => store.read()).subscribe(observer);
     return () => subscription.unsubscribe();

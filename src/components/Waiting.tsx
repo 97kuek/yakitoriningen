@@ -24,14 +24,11 @@ export function Waiting({
   ) => void;
 }) {
   const [ticketSearch, setTicketSearch] = useState('');
-  const [animate, setAnimate] = useState(true);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [undoNotice, setUndoNotice] = useState('');
   const [heldRecoveryIds, setHeldRecoveryIds] = useState<string[]>([]);
-  // Keep every completed row until the operator explicitly clears it. Removing
-  // it on a timer would let a later click reach another order at that position.
-  const [heldOrderIds, setHeldOrderIds] = useState<string[]>([]);
   const completing = useRef(false);
+  const lastCompletion = useRef(-Infinity);
   const returnOperationIds = useRef(new Map<string, string>());
   const waiting = snapshot.orders
     .filter((o) => o.status === 'paid' && !o.delivered)
@@ -62,45 +59,43 @@ export function Waiting({
           ),
         )
       : null;
-  const heldOrders = snapshot.orders.filter(
-    (order) => heldOrderIds.includes(order.id) && order.delivered,
-  );
   const visibleOrders = snapshot.orders
     .filter(
       (order) =>
         order.status === 'paid' &&
-        (!order.delivered || heldOrderIds.includes(order.id)) &&
+        !order.delivered &&
         (!ticketSearch.trim() ||
           (/^\d+$/.test(ticketSearch.trim()) &&
             order.ticket === Number(ticketSearch))),
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   function completeHandoff(order: Order) {
-    if (busy || completing.current || order.delivered) return;
+    if (
+      busy ||
+      completing.current ||
+      order.delivered ||
+      performance.now() - lastCompletion.current < 500
+    )
+      return;
+    completing.current = true;
+    const completionId = newId();
     void perform(async () => {
-      if (completing.current) return;
-      completing.current = true;
-      // Retain the position before the committed subscription can update.
-      // The row only changes to completed when the saved snapshot says so.
-      setHeldOrderIds((ids) =>
-        ids.includes(order.id) ? ids : [...ids, order.id],
+      await saveCommand(
+        {
+          type: 'complete',
+          orderId: order.id,
+          assignmentId: order.assignmentId,
+        },
+        completionId,
       );
-      const completionId = newId();
-      try {
-        await saveCommand(
-          {
-            type: 'complete',
-            orderId: order.id,
-            assignmentId: order.assignmentId,
-          },
-          completionId,
-        );
-        onHandoffChange({ orderId: order.id, completionId });
-      } finally {
-        completing.current = false;
-      }
+      onHandoffChange({ orderId: order.id, completionId });
+    }).finally(() => {
+      // Start the guard after persistence and snapshot refresh, even on slow disks.
+      lastCompletion.current = performance.now();
+      completing.current = false;
     });
   }
+
   function recoverTicket(order: Order) {
     void perform(async () => {
       const operationId = returnOperationIds.current.get(order.id) ?? newId();
@@ -177,9 +172,6 @@ export function Waiting({
                       assignmentId: completedOrder.assignmentId,
                       completionId: lastHandoff.completionId,
                     });
-                    setHeldOrderIds((ids) =>
-                      ids.filter((id) => id !== completedOrder.id),
-                    );
                     onHandoffChange(null);
                   });
                 }}
@@ -191,20 +183,9 @@ export function Waiting({
               </span>
             )}
           </span>
-          {heldOrders.length > 0 && (
-            <Button
-              variant="plain"
-              className="clear-completed"
-              aria-label="完了表示を片づける"
-              disabled={busy}
-              onClick={() => setHeldOrderIds([])}
-            >
-              完了を隠す
-            </Button>
-          )}
         </div>
       </div>
-      {(waiting.length > 0 || heldOrders.length > 0) && (
+      {waiting.length > 0 && (
         <div
           className="waiting-totals"
           role="group"
@@ -222,7 +203,7 @@ export function Waiting({
           ))}
         </div>
       )}
-      {!waiting.length && !heldOrders.length && !ticketSearch && (
+      {!waiting.length && !ticketSearch && (
         <div className="empty">
           <picture>
             <source
@@ -230,33 +211,21 @@ export function Waiting({
               srcSet="/assets/empty-orders-still.png"
             />
             <img
-              src={
-                animate
-                  ? '/assets/empty-orders.gif'
-                  : '/assets/empty-orders-still.png'
-              }
+              src="/assets/empty-orders.gif"
               alt=""
               width="384"
               height="270"
             />
           </picture>
           <h3>待っている注文はありません</h3>
-          <IconButton
-            className="mascot-toggle"
-            icon={animate ? 'pause' : 'play'}
-            label={animate ? 'アニメーションを止める' : 'アニメーションを再生'}
-            onClick={() => setAnimate(!animate)}
-          />
         </div>
       )}
       <div className="waiting-list">
         {visibleOrders.map((order) => (
           <article
-            className={`order-card${order.delivered ? ' handoff-completed' : ''}`}
+            className="order-card"
             key={order.id}
-            data-testid={
-              order.delivered ? 'completed-handoff' : 'waiting-order'
-            }
+            data-testid="waiting-order"
           >
             <span className="ticket-badge">
               <strong aria-label={`札 ${order.ticket}`}>{order.ticket}</strong>
@@ -273,11 +242,6 @@ export function Waiting({
                   </span>
                 ))}
               </div>
-              {order.delivered && (
-                <small className="handoff-completed-note">
-                  完了・札回収済み
-                </small>
-              )}
             </div>
             <time>
               {order.day !== snapshot.meta.day
@@ -288,7 +252,7 @@ export function Waiting({
               variant="plain"
               type="button"
               className="icon-button complete-button"
-              disabled={busy || order.delivered}
+              disabled={busy}
               onKeyDown={(event) => {
                 if (
                   event.repeat &&
@@ -300,11 +264,7 @@ export function Waiting({
                 if (event.detail > 1) return;
                 completeHandoff(order);
               }}
-              label={
-                order.delivered
-                  ? '受け渡し済み（札も回収済み）'
-                  : '受け渡し完了（札も回収）'
-              }
+              label="受け渡し完了（札も回収）"
               icon="check"
             />
           </article>

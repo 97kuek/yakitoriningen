@@ -121,15 +121,6 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
   await page.getByRole('button', { name: 'かわを1本増やす' }).click();
   await pay(page, '200');
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  const archiveDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'バックアップを保存' }).click();
-  const archive = await readFile((await (await archiveDownload).path())!);
-  await page.getByLabel('保存したファイルを確認').setInputFiles({
-    name: 'archive.json',
-    mimeType: 'application/json',
-    buffer: archive,
-  });
-  await expect(page.getByText('保存したファイルを確認済み')).toBeVisible();
   await page
     .getByRole('button', { name: 'バックアップから復元', exact: true })
     .click();
@@ -138,8 +129,8 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
     mimeType: 'application/json',
     buffer: first,
   });
-  await page.getByLabel('開く内容と現在の記録の保存を確認した').check();
-  await page.getByRole('button', { name: 'この記録に置き換える' }).click();
+  await page.getByLabel('バックアップ内容を確認した').check();
+  await page.getByRole('button', { name: 'この内容で再開' }).click();
   await expect(page.locator('.startup-details')).not.toContainText('確定済み');
   await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める' }).click();
