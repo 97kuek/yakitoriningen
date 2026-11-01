@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Snapshot } from '../domain/model';
 import { yen } from '../presentation/format';
 import type { Shared } from '../ui';
@@ -15,6 +15,7 @@ export function Settings({
   section,
   onSectionChange,
   hasDraft,
+  onDirtyChange,
   ...shared
 }: Shared & {
   snapshot: Snapshot;
@@ -24,6 +25,7 @@ export function Settings({
   section: SettingsSection;
   onSectionChange: (section: SettingsSection) => void;
   hasDraft: boolean;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const active = snapshot.prices.find(
     (price) => price.id === snapshot.meta.activePriceId,
@@ -37,6 +39,16 @@ export function Settings({
   );
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [saved, setSaved] = useState('');
+  const [menuDirty, setMenuDirty] = useState(false);
+  const dirty =
+    menuDirty ||
+    day !== snapshot.meta.day ||
+    tickets !== snapshot.meta.ticketCount ||
+    expense !==
+      (snapshot.meta.expenseTotal == null
+        ? ''
+        : String(snapshot.meta.expenseTotal));
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   return (
     <section className="panel settings">
       <h2>設定</h2>
@@ -64,7 +76,11 @@ export function Settings({
       </nav>
       <div className="settings-content">
         <section hidden={section !== 'price'}>
-          <MenuSettings active={active} {...shared} />
+          <MenuSettings
+            active={active}
+            onDirtyChange={setMenuDirty}
+            {...shared}
+          />
         </section>
         <section hidden={section !== 'expenses'}>
           <h3>開催回全体の経費</h3>
@@ -80,6 +96,7 @@ export function Settings({
                   type: 'expense',
                   amount: Number(expense),
                 });
+                setExpense(String(Number(expense)));
                 setSaved('経費を保存しました。');
               });
             }}

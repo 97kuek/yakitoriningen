@@ -64,6 +64,7 @@ export default function App() {
   const [settingsInitial, setSettingsInitial] =
     useState<SettingsSection>('price');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsDirty, setSettingsDirty] = useState(false);
   const [lastHandoff, setLastHandoff] = useState<{
     orderId: string;
     completionId: string;
@@ -78,6 +79,15 @@ export default function App() {
     price: null,
   });
   const [verifiedBackup, setVerifiedBackup] = useState<Snapshot | null>(null);
+  useEffect(() => {
+    if (!settingsDirty) return;
+    const confirmLeave = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', confirmLeave);
+    return () => window.removeEventListener('beforeunload', confirmLeave);
+  }, [settingsDirty]);
   const lock = useRef(false);
   const pendingBeforeAction = useRef<Set<string>>(new Set());
   const previousGeneration = useRef<string | null>(null);
@@ -148,6 +158,7 @@ export default function App() {
       setStarted(false);
       setDraft({ quantities: emptyQuantities(), price: null });
       setVerifiedBackup(null);
+      setSettingsDirty(false);
     }
     previousGeneration.current = snapshot.meta.generation;
   }, [snapshot?.meta.generation]);
@@ -196,6 +207,7 @@ export default function App() {
     setDraft({ quantities: emptyQuantities(), price: null });
     setVerifiedBackup(null);
     setLastHandoff(null);
+    setSettingsDirty(false);
   };
   const shared: Shared | null = snapshot
     ? {
@@ -342,6 +354,7 @@ export default function App() {
               disabled={
                 tabOwnership.state !== 'owned' ||
                 !snapshot ||
+                settingsDirty ||
                 count(draft.quantities) > 0 ||
                 snapshot.orders.some((o) => o.status === 'pending') ||
                 snapshot.operations.some((op) => op.status === 'pending') ||
@@ -399,7 +412,7 @@ export default function App() {
                 setDraft={setDraft}
                 {...shared}
               />
-              {tab === '会計' && (
+              <div hidden={tab !== '会計'}>
                 <div className="counter-layout">
                   <Checkout
                     snapshot={snapshot}
@@ -416,7 +429,7 @@ export default function App() {
                     {...shared}
                   />
                 </div>
-              )}
+              </div>
               {tab === '履歴・集計' && (
                 <History snapshot={snapshot} store={store} {...shared} />
               )}
@@ -429,6 +442,7 @@ export default function App() {
                   onRestored={resetAfterRestore}
                   onVerified={setVerifiedBackup}
                   hasDraft={count(draft.quantities) > 0}
+                  onDirtyChange={setSettingsDirty}
                   {...shared}
                 />
               </div>

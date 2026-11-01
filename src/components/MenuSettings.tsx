@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createMenuDraft } from '../domain/catalog';
 import { priceSchema } from '../domain/model';
-import type { Price, MenuItem } from '../domain/model';
+import type { Price } from '../domain/model';
+import { menuForm, menuPrice, type MenuForm } from '../presentation/menu-form';
 import { newId } from '../lib/id';
 import type { Shared } from '../ui';
 import { Button, IconButton } from './controls';
 import { Icon } from './Icon';
 import './MenuSettings.css';
 
-function menuContents(price: Price) {
+function menuContents(price: MenuForm) {
   return JSON.stringify({
     items: price.items,
     bundleEnabled: price.bundleEnabled,
@@ -24,22 +25,25 @@ export function MenuSettings({
   perform,
   saveCommand,
   busy,
-}: { active: Price } & Pick<Shared, 'perform' | 'saveCommand' | 'busy'>) {
-  const [draft, setDraft] = useState<Price>(() => createMenuDraft(active));
+  onDirtyChange,
+}: { active: Price; onDirtyChange: (dirty: boolean) => void } & Pick<
+  Shared,
+  'perform' | 'saveCommand' | 'busy'
+>) {
+  const [draft, setDraft] = useState<MenuForm>(() => menuForm(active));
   const [savedContents, setSavedContents] = useState(() =>
-    menuContents(createMenuDraft(active)),
+    menuContents(menuForm(active)),
   );
   const [saved, setSaved] = useState('');
-  const [modeSaved, setModeSaved] = useState('');
   const current = createMenuDraft(active);
   const dirty = menuContents(draft) !== savedContents;
   const items = draft.items!;
-  function editDraft(next: Price) {
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
+  function editDraft(next: MenuForm) {
     setSaved('');
     setDraft(next);
   }
   function switchMode(discounted: boolean) {
-    setModeSaved('');
     void perform(async () => {
       // Only the committed catalog belongs to a selling-mode change.
       const price = priceSchema.parse({
@@ -50,10 +54,9 @@ export function MenuSettings({
         unit: current.items[0].price,
       });
       await saveCommand({ type: 'price', price });
-      setModeSaved('切り替えました。');
     });
   }
-  function updateItem(id: string, change: Partial<MenuItem>) {
+  function updateItem(id: string, change: Partial<MenuForm['items'][number]>) {
     editDraft({
       ...draft,
       items: items.map((item) =>
@@ -67,7 +70,7 @@ export function MenuSettings({
         className="menu-selling-settings"
         aria-label="販売価格の切り替え"
       >
-        <p className="menu-selling-current">
+        <p className="menu-selling-current" role="status">
           販売中：{current.discounted ? '値下げ価格' : '通常価格'}
         </p>
         <div className="menu-selling-actions">
@@ -88,23 +91,17 @@ export function MenuSettings({
             値下げ価格
           </Button>
         </div>
-        {modeSaved && (
-          <p className="menu-mode-result" role="status">
-            {modeSaved}
-          </p>
-        )}
       </section>
       <form
         className="menu-settings"
         onSubmit={(event) => {
           event.preventDefault();
           void perform(async () => {
-            const price = priceSchema.parse({
+            const price = menuPrice({
               ...draft,
               id: newId(),
               discounted: current.discounted,
               label: current.discounted ? '値下げ' : '通常',
-              unit: items[0].price,
               mix: true,
             });
             await saveCommand({ type: 'price', price });
@@ -152,7 +149,7 @@ export function MenuSettings({
                   required
                   value={item.price}
                   onChange={(event) =>
-                    updateItem(item.id, { price: Number(event.target.value) })
+                    updateItem(item.id, { price: event.target.value })
                   }
                 />
               </label>
@@ -167,7 +164,7 @@ export function MenuSettings({
                   value={item.discountPrice}
                   onChange={(event) =>
                     updateItem(item.id, {
-                      discountPrice: Number(event.target.value),
+                      discountPrice: event.target.value,
                     })
                   }
                 />
@@ -197,7 +194,7 @@ export function MenuSettings({
               ...draft,
               items: [
                 ...items,
-                { id: newId(), name: '', price: 150, discountPrice: 50 },
+                { id: newId(), name: '', price: '150', discountPrice: '50' },
               ],
             });
           }}
@@ -251,7 +248,7 @@ export function MenuSettings({
                   onChange={(event) =>
                     editDraft({
                       ...draft,
-                      bundleSize: Number(event.target.value),
+                      bundleSize: event.target.value,
                     })
                   }
                 />
@@ -267,7 +264,7 @@ export function MenuSettings({
                   onChange={(event) =>
                     editDraft({
                       ...draft,
-                      bundlePrice: Number(event.target.value),
+                      bundlePrice: event.target.value,
                     })
                   }
                 />
