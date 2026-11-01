@@ -40,6 +40,14 @@ test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認
   await page.getByRole('option', { name: '11/7', exact: true }).click();
   await expect(bars).toHaveCount(3);
   await expect(bars.nth(1)).toHaveAttribute('aria-label', '10:30〜11:00 ￥0');
+  // Empty slots keep their place and the axis line does not break between them.
+  const edges = await bars.evaluateAll((tracks) =>
+    tracks.map((track) => track.getBoundingClientRect()),
+  );
+  for (let index = 1; index < edges.length; index++)
+    expect(Math.abs(edges[index].left - edges[index - 1].right)).toBeLessThan(
+      1,
+    );
   await expect(charts.getByRole('img')).toHaveAccessibleName('もも 2本');
   await expect(charts.locator('.chart-legend')).toContainText('100%');
 

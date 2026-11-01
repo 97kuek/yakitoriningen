@@ -54,9 +54,11 @@
   overflow-x: auto;
   padding-top: 22px;
 }
+/* Columns touch so the axis and grid lines run across empty slots. */
 .sales-bars {
   display: grid;
-  gap: 8px;
+  column-gap: 0;
+  row-gap: 8px;
 }
 .bar-track {
   position: relative;
