@@ -175,7 +175,7 @@ export default function App() {
           aria-label="焼き鳥人間・会計へ戻る"
           onClick={() => setScreen('checkout')}
         >
-          <img src="/assets/shop-logo.png" alt="" width="232" height="58" />
+          <img src="/assets/shop-logo.webp" alt="" width="232" height="58" />
           <h1 className="sr-only">焼き鳥人間</h1>
         </a>
         {started && snapshot && (

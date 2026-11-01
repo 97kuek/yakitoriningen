@@ -2,8 +2,15 @@
 
 ## 採用画像
 
-- `public/assets/shop-logo.png`：提供看板を参照して生成した「焼き鳥人間」のロゴ。
-- `public/assets/welcome-stall.png`：提供されたWASAポスターとひよこの絵を参照して生成した、開始画面の屋台。
+- `public/assets/shop-logo.webp`：提供看板を参照して生成した「焼き鳥人間」のロゴ。透過WebP、480×192px（表示232px幅の2倍）。
+- `public/assets/welcome-stall.webp`：提供されたWASAポスターとひよこの絵を参照して生成した、開始画面の屋台。WebP、1200×800px（表示最大600px幅の2倍）。
+
+画面で使う画像は、表示サイズの2倍を上限に縮小したWebPにしています。PWAが初回準備ですべて保存するため、大きい画像はそのまま初回の通信量と端末の保存容量になります。生成した元のPNG（`docs/design-references/shop-logo-source.png`、`welcome-stall-source.png`）は配信せず、作り直す時の素材として保持しています。書き出しは次のとおりです。
+
+```sh
+cwebp -q 85 -m 6 -resize 1200 800 docs/design-references/welcome-stall-source.png -o public/assets/welcome-stall.webp
+cwebp -q 90 -alpha_q 100 -m 6 -resize 480 192 docs/design-references/shop-logo-source.png -o public/assets/shop-logo.webp
+```
 
 組み込みの`image_gen`で生成・編集しました。ロゴの透過を保持し、焼き鳥は光沢を抑えた平面の塗りに修正しています。画面の文字と操作部品はHTMLで表示します。
 
@@ -40,7 +47,7 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 
 組み込みのimage_genで生成・編集し、最終採用分だけをpublic/assetsへ保存。生成画像の外側にぼかしが残った空状態案は不採用。ロゴの焼き鳥は鶏肉とねぎが交互に刺さった形へ修正し、照り・衣の粒・大きな焦げ穴を除いた。空状態は白地の小さなひよこと空の盆を採用し、画面では紙色になじませている。
 
-- `public/assets/shop-logo.png`：既存の文字とひよこを維持した編集。透過PNG。
+- `docs/design-references/shop-logo-source.png`：既存の文字とひよこを維持した編集。透過PNG。画面では縮小したWebPを使う。
 - `docs/design-references/empty-orders-source.png`：空の待ち一覧用イラストの元画像。白地PNG。画面では使わず、配信対象から外している。
 
 ロゴ最終編集プロンプト：

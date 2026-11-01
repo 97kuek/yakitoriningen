@@ -46,10 +46,10 @@ export function Startup({
     <div className="startup-shell">
       <aside className="startup-art">
         <img
-          src="/assets/welcome-stall.png"
+          src="/assets/welcome-stall.webp"
           alt="ひよこたちが営む焼き鳥の屋台"
-          width="1536"
-          height="1024"
+          width="1200"
+          height="800"
         />
       </aside>
       <section className="startup panel">
