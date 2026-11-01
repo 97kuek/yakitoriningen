@@ -9,9 +9,11 @@ test('日別のグラフは30分の会計額と販売本数を表示し、日付
     '2026-11-07',
     '2026-11-08',
   ]);
-  fixture.orders[0].paidAt = '2026-11-07T01:05:00Z';
-  fixture.orders[1].paidAt = '2026-11-07T02:05:00Z';
-  fixture.orders[2].paidAt = '2026-11-08T01:35:00Z';
+  const firstDay = fixture.orders.filter((order) => order.day === '2026-11-07');
+  firstDay[0].paidAt = '2026-11-07T01:05:00Z';
+  firstDay[1].paidAt = '2026-11-07T02:05:00Z';
+  fixture.orders.find((order) => order.day === '2026-11-08')!.paidAt =
+    '2026-11-08T01:35:00Z';
   await openFixture(page, fixture);
   await page.getByRole('button', { name: '集計', exact: true }).click();
   const charts = page.getByRole('region', { name: '日別のグラフ' });
