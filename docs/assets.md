@@ -101,3 +101,9 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 どちらも組み込みのimage_genで生成し、透過を保ってWebPへ縮小変換した。旧ロゴは参照資料として残すがヘッダーでは使用しない。新しい画像もPWAの事前キャッシュに含める。
 
 生成指定：平面的な黄・生成り・茶色の線画、文字・背景・影なし。人力飛行機は細長い主翼・自転車型のペダル・プロペラを描き、履歴用は鉢巻姿のひよこと空の帳簿を描く。
+
+## 待ち画面の手描き版（2026-11-01）
+
+`empty-orders-handdrawn.webp`はwelcome-stallのクレヨン風に合わせて組み込みimage_genで生成した透過イラスト。派手な照りのある肉は使わず、ひよこと木の盆・竹串だけにした。WebPへ480pxに縮小し、CSSで4秒の穏やかな上下ループを付ける。動きを減らす設定では静止する。従来のGIFは使用しない。ヘッダーの人力飛行機は外し、画面のフォントで店名を表示する。
+
+編集指定：keep textured chick, remove halo/shadow/white outline, empty wooden tray and two bamboo sticks, genuine transparent alpha.
