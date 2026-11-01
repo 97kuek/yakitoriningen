@@ -18,14 +18,16 @@ cwebp -q 90 -alpha_q 100 -m 6 -resize 480 192 docs/design-references/shop-logo-s
 
 ## 書体
 
-日本語の文字は筆文字風の[Yuji Syuku](https://github.com/Kinutafontfactory/Yuji)（SIL Open Font License 1.1、`public/fonts/OFL-YujiSyuku.txt`）で表示します。営業中は通信しないため、Google Fontsなどから読み込まず、アプリに同梱してPWAで事前保存します。
+日本語の文字は、和風で読みやすさを重視した明朝体の[BIZ UD P明朝](https://github.com/googlefonts/morisawa-biz-ud-mincho)（SIL Open Font License 1.1、`public/fonts/OFL-BIZUDPMincho.txt`）で表示します。通常（400）と太字（700）を使います。営業中は通信しないため、Google Fontsなどから読み込まず、アプリに同梱してPWAで事前保存します。
 
-`public/fonts/yuji-syuku-ja.woff2`は、ひらがな・カタカナ・日本語の記号・JIS第1水準漢字と、ソースコードで使う文字だけに絞ったものです（約1.6MB、元は8.4MB）。数字・円記号・英字は含めていないため、金額・札番号・時刻は読みやすいゴシック体で表示されます。商品名にこの範囲にない漢字を入力した場合、その文字だけゴシック体になります。
+`public/fonts/biz-udp-mincho-400.woff2`と`biz-udp-mincho-700.woff2`は、ひらがな・カタカナ・日本語の記号・JIS第1水準漢字と、ソースコードで使う文字だけに絞ったものです（2つで約1.5MB、元は合計13MB）。数字・円記号・英字は含めていないため、金額・札番号・時刻は読みやすいゴシック体で表示されます。商品名にこの範囲にない漢字を入力した場合、その文字だけゴシック体になります。
 
-画面の文字に第1水準以外の漢字を増やしたときは、元のフォントを[Google Fontsのリポジトリ](https://github.com/google/fonts/tree/main/ofl/yujisyuku)から取得して作り直します。
+画面の文字に第1水準以外の漢字を増やしたときは、元のフォントを[Google Fontsのリポジトリ](https://github.com/google/fonts/tree/main/ofl/bizudpmincho)から取得して作り直します。
 
 ```sh
-uv run scripts/subset-display-font.py path/to/YujiSyuku-Regular.ttf
+uv run scripts/subset-japanese-font.py \
+  BIZUDPMincho-Regular.ttf public/fonts/biz-udp-mincho-400.woff2 \
+  BIZUDPMincho-Bold.ttf public/fonts/biz-udp-mincho-700.woff2
 ```
 
 ## 提供画像

@@ -1,11 +1,18 @@
 /*
- * Japanese text uses a brush face; the subset has no digits, yen signs or
+ * Japanese text uses BIZ UD Mincho; the subsets have no digits, yen signs or
  * ASCII, so amounts and ticket numbers fall back to the gothic faces below.
- * Rebuild with scripts/subset-display-font.py.
+ * Rebuild with scripts/subset-japanese-font.py.
  */
 @font-face {
-  font-family: 'Yuji Syuku';
-  src: url('/fonts/yuji-syuku-ja.woff2') format('woff2');
+  font-family: 'BIZ UDPMincho';
+  font-weight: 400;
+  src: url('/fonts/biz-udp-mincho-400.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'BIZ UDPMincho';
+  font-weight: 700;
+  src: url('/fonts/biz-udp-mincho-700.woff2') format('woff2');
   font-display: swap;
 }
 html {
@@ -18,7 +25,7 @@ html {
 }
 :root {
   font-family:
-    'Yuji Syuku',
+    'BIZ UDPMincho',
     -apple-system,
     BlinkMacSystemFont,
     'Hiragino Kaku Gothic ProN',
