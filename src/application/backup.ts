@@ -302,6 +302,14 @@ export function ordersCsv(snapshot: Snapshot): string {
     for (const [id, name] of Object.entries(order.names))
       if (!columns.has(id)) columns.set(id, name);
   const productIds = [...columns.keys()];
+  const time = new Intl.DateTimeFormat('ja-JP', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Asia/Tokyo',
+  });
+  const statuses = { pending: '保留', paid: '会計済み', cancelled: '取消済み' };
   const escape = (value: string | number | null) =>
     `"${String(value ?? '').replaceAll('"', '""')}"`;
   return (
@@ -311,6 +319,7 @@ export function ordersCsv(snapshot: Snapshot): string {
         '注文ID',
         '開催回',
         '営業日',
+        '注文時刻',
         '札番号',
         '状態',
         ...columns.values(),
@@ -327,16 +336,17 @@ export function ordersCsv(snapshot: Snapshot): string {
         o.id,
         o.event,
         o.day,
+        time.format(new Date(o.createdAt)),
         o.ticket,
-        o.status,
+        statuses[o.status],
         ...productIds.map((id) => o.quantities[id] ?? 0),
         o.quote.total,
         o.received,
         o.change,
         o.refunded,
         o.received === null ? 0 : o.quote.total - o.refunded,
-        Number(o.delivered),
-        Number(o.returned),
+        o.delivered ? '受け渡し済み' : '未受け渡し',
+        o.returned ? '回収済み' : '未回収',
         o.cancelReason,
       ]),
     ]

@@ -30,6 +30,41 @@ afterEach(async () => {
 it('全ストアとメタデータを往復できる', () => {
   expect(parseBackup(encodeBackup(original))).toEqual(original);
 });
+it('売上一覧は日本語の状態と日本時間の注文時刻を出力する', async () => {
+  const order = original.orders[0];
+  const snapshot = structuredClone(original);
+  snapshot.orders[0].createdAt = '2026-11-07T01:23:45.000Z';
+  const cells = (s: Snapshot) =>
+    ordersCsv(s)
+      .replace('\uFEFF', '')
+      .split('\r\n')
+      .map((row) => row.split(',').map((cell) => cell.slice(1, -1)));
+  const [header, pending] = cells(snapshot);
+  expect(header).toContain('注文時刻');
+  expect(pending[header.indexOf('注文時刻')]).toBe('10:23:45');
+  expect(pending[header.indexOf('状態')]).toBe('保留');
+  expect(pending[header.indexOf('受渡済')]).toBe('未受け渡し');
+  expect(pending[header.indexOf('札回収済')]).toBe('未回収');
+  await store.prepare(order.confirmOperationId, ctx, {
+    type: 'pay',
+    orderId: order.id,
+    assignmentId: order.assignmentId,
+    received: 1000,
+  });
+  await store.execute(order.confirmOperationId, ctx);
+  const paid = cells((await store.read())!)[1];
+  expect(paid[header.indexOf('状態')]).toBe('会計済み');
+  const complete = newId();
+  await store.prepare(complete, ctx, {
+    type: 'complete',
+    orderId: order.id,
+    assignmentId: order.assignmentId,
+  });
+  await store.execute(complete, ctx);
+  const delivered = cells((await store.read())!)[1];
+  expect(delivered[header.indexOf('受渡済')]).toBe('受け渡し済み');
+  expect(delivered[header.indexOf('札回収済')]).toBe('回収済み');
+});
 it('新旧メニューが混在するバックアップとCSVに削除済み商品も残す', async () => {
   const price = {
     ...original.prices[0],
