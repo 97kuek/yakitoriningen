@@ -135,9 +135,7 @@ export function Checkout({
             <Icon name="check" />
             <span>札 {lastPaidTicket} 会計済み。番号札を渡してください。</span>
           </>
-        ) : (
-          <span>本数を選んで「会計へ」</span>
-        )}
+        ) : null}
       </div>
       <div className="price-strip">
         <span className="price-label">{price.label}</span>

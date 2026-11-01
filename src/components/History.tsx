@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { dayText, orderText, timeText, yen } from '../presentation/format';
 import { profit, summarizeSales } from '../domain/sales';
 import { historyPage } from '../domain/history';
-import { Button, Dialog, Select } from './controls';
+import { Button, Dialog, IconButton, Select } from './controls';
 import { RefundDialog } from './RefundDialog';
 import { SalesCharts } from './SalesCharts';
 import { OrderDetails, receiptNumber } from './OrderDetails';
@@ -203,16 +203,14 @@ export function History({
                 </td>
                 <td>
                   <div className="history-order-actions">
-                    <Button
-                      variant="plain"
-                      aria-label="注文の詳細"
+                    <IconButton
+                      icon="details"
+                      label="注文の詳細"
                       onClick={(event) => {
                         detailsTrigger.current = event.currentTarget;
                         setDetailsId(o.id);
                       }}
-                    >
-                      詳細
-                    </Button>
+                    />
                     {o.status === 'paid' && (
                       <Button
                         variant="secondary"

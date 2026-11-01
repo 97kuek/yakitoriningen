@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { IconButton, Button } from './controls';
-import { handoffUndoError } from '../domain/handoff';
+import { IconButton, Button, Dialog } from './controls';
+import { handoffUndoError, needsTicketReturn } from '../domain/handoff';
 import { newId } from '../lib/id';
 import { orderItems, timeText, dayText } from '../presentation/format';
 
@@ -13,6 +13,7 @@ export function Waiting({
   perform,
   saveCommand,
   busy,
+  errorMessage,
   lastHandoff,
   onHandoffChange,
 }: Shared & {
@@ -23,15 +24,19 @@ export function Waiting({
   ) => void;
 }) {
   const [ticketSearch, setTicketSearch] = useState('');
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [heldRecoveryIds, setHeldRecoveryIds] = useState<string[]>([]);
   // Keep every completed row until the operator explicitly clears it. Removing
   // it on a timer would let a later click reach another order at that position.
   const [heldOrderIds, setHeldOrderIds] = useState<string[]>([]);
   const completing = useRef(false);
+  const returnOperationIds = useRef(new Map<string, string>());
   const waiting = snapshot.orders
     .filter((o) => o.status === 'paid' && !o.delivered)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const unreturned = snapshot.orders.filter(
-    (o) => !o.returned && (o.delivered || o.status === 'cancelled'),
+  const unreturnedOrders = snapshot.orders.filter(needsTicketReturn);
+  const returnRows = snapshot.orders.filter(
+    (order) => needsTicketReturn(order) || heldRecoveryIds.includes(order.id),
   );
   const products = [
     ...new Map(
@@ -95,13 +100,22 @@ export function Waiting({
     });
   }
   function recoverTicket(order: Order) {
-    void perform(() =>
-      saveCommand({
-        type: 'return',
-        orderId: order.id,
-        assignmentId: order.assignmentId,
-      }),
-    );
+    void perform(async () => {
+      const operationId = returnOperationIds.current.get(order.id) ?? newId();
+      returnOperationIds.current.set(order.id, operationId);
+      setHeldRecoveryIds((ids) =>
+        ids.includes(order.id) ? ids : [...ids, order.id],
+      );
+      await saveCommand(
+        {
+          type: 'return',
+          orderId: order.id,
+          assignmentId: order.assignmentId,
+        },
+        operationId,
+      );
+      returnOperationIds.current.delete(order.id);
+    });
   }
   return (
     <aside className="waiting panel" aria-labelledby="waiting-title">
@@ -127,14 +141,28 @@ export function Waiting({
             onChange={(event) => setTicketSearch(event.target.value)}
           />
         </label>
-        <Button
-          variant="plain"
-          className="link-button"
-          disabled={!heldOrders.length || busy}
-          onClick={() => setHeldOrderIds([])}
-        >
-          完了表示を片づける
-        </Button>
+        <div className="waiting-actions">
+          <div className="waiting-recovery-slot">
+            {unreturnedOrders.length > 0 && (
+              <Button
+                variant="plain"
+                className="waiting-recovery-button"
+                title={`札の回収待ち ${unreturnedOrders.length}`}
+                aria-label={`札の回収待ち ${unreturnedOrders.length}`}
+                onClick={() => setRecoveryOpen(true)}
+              >
+                <Icon name="ticket" />
+                <span>{unreturnedOrders.length}</span>
+              </Button>
+            )}
+          </div>
+          <IconButton
+            icon="refresh"
+            label="完了表示を片づける"
+            disabled={!heldOrders.length || busy}
+            onClick={() => setHeldOrderIds([])}
+          />
+        </div>
       </div>
       <div className="handoff-feedback" role="status">
         {completedOrder && lastHandoff && (
@@ -261,28 +289,66 @@ export function Waiting({
           <p className="empty-text">この札の待ち注文はありません。</p>
         )}
       </div>
-      {unreturned.length > 0 && (
-        <section className="unreturned" data-testid="unreturned">
-          <h3>
-            札の回収待ち<span className="count-badge">{unreturned.length}</span>
-          </h3>
-          {unreturned.map((order) => (
-            <div key={order.id}>
-              <strong>札 {order.ticket}</strong>
-              <span>
-                {order.status === 'cancelled' ? '取消済み' : '受け渡し済み'}
-              </span>
-              <IconButton
-                variant="plain"
-                type="button"
-                className="icon-button secondary"
-                onClick={() => recoverTicket(order)}
-                label="札を回収した"
-                icon="ticket"
-              />
-            </div>
-          ))}
-        </section>
+      {recoveryOpen && (
+        <Dialog
+          open
+          title="札の回収待ち"
+          onClose={() => {
+            if (!busy) {
+              setRecoveryOpen(false);
+              setHeldRecoveryIds([]);
+            }
+          }}
+          footer={
+            <Button
+              disabled={busy}
+              onClick={() => {
+                setRecoveryOpen(false);
+                setHeldRecoveryIds([]);
+              }}
+            >
+              閉じる
+            </Button>
+          }
+        >
+          {errorMessage && (
+            <p className="inline-error" role="alert">
+              {errorMessage}
+            </p>
+          )}
+          <div className="ticket-recovery-list" data-testid="unreturned">
+            {returnRows.map((order) => (
+              <div key={order.id}>
+                <strong>札 {order.ticket}</strong>
+                <span>
+                  {order.returned
+                    ? '回収済み'
+                    : order.status === 'cancelled'
+                      ? '取消済み'
+                      : '受け渡し済み'}
+                </span>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  disabled={busy || order.returned}
+                  aria-label={`札${order.ticket}を回収した`}
+                  onKeyDown={(event) => {
+                    if (
+                      event.repeat &&
+                      (event.key === 'Enter' || event.key === ' ')
+                    )
+                      event.preventDefault();
+                  }}
+                  onClick={(event) => {
+                    if (event.detail <= 1) recoverTicket(order);
+                  }}
+                >
+                  回収
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Dialog>
       )}
     </aside>
   );

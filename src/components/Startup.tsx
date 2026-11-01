@@ -167,7 +167,6 @@ export function Startup({
         ) : (
           <>
             <h2>営業の準備</h2>
-            <p className="muted">初めての営業は、ここから準備します。</p>
             <form
               onSubmit={(e) => {
                 e.preventDefault();

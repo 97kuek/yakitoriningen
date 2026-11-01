@@ -13,18 +13,18 @@
 }
 
 .order-details .order-details-heading strong {
-  font-size: 15px;
+  font-size: var(--font-body);
   font-weight: 500;
 }
 
 .order-details .order-details-heading time {
-  font-size: 12px;
+  font-size: var(--font-small);
   color: var(--muted);
 }
 
 .order-details .order-details-items {
   margin: 12px 0;
-  font-size: 14px;
+  font-size: var(--font-body);
 }
 
 .order-details .order-details-facts {
@@ -36,18 +36,22 @@
 
 .order-details .order-details-facts dt {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--font-small);
 }
 
 .order-details .order-details-facts dd {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: var(--font-body);
   font-variant-numeric: tabular-nums;
+}
+
+.refund-dialog .order-details-facts > div:first-child dd {
+  font-size: var(--font-large);
 }
 
 .order-details .order-details-reason {
   margin: 12px 0 0;
-  font-size: 12px;
+  font-size: var(--font-small);
 }
 
 .history .history-order-actions {
@@ -65,7 +69,7 @@
 .history .history-receipt-number {
   display: block;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: var(--font-small);
   color: var(--muted);
 }
 

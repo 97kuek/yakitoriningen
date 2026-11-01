@@ -654,7 +654,7 @@ test('追加商品の対象セットと個別値下げを会計し、削除後�
   await page.getByLabel('セットの価格（円）', { exact: true }).fill('400');
   await page.getByRole('button', { name: '変更を保存', exact: true }).click();
   await expect(
-    page.getByText('商品と価格を保存しました。次の注文から使います。', {
+    page.getByText('保存しました。', {
       exact: true,
     }),
   ).toBeVisible();
@@ -684,7 +684,7 @@ test('追加商品の対象セットと個別値下げを会計し、削除後�
   await page.getByRole('button', { name: 'つくねを削除', exact: true }).click();
   await page.getByRole('button', { name: '変更を保存', exact: true }).click();
   await expect(
-    page.getByText('商品と価格を保存しました。次の注文から使います。', {
+    page.getByText('保存しました。', {
       exact: true,
     }),
   ).toBeVisible();

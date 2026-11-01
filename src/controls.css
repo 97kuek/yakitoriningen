@@ -258,8 +258,13 @@ h4 {
   background: var(--paper);
   border: 1px solid var(--control-border);
   border-radius: 7px;
-  font-size: 14px;
+  font-size: var(--font-body);
   text-align: left;
+}
+
+.inline-label .control-select-options {
+  left: auto;
+  right: 0;
 }
 
 .control-select-options > li {
@@ -315,13 +320,13 @@ dialog.control-dialog {
 }
 
 .control-dialog-header h2 {
-  font-size: 20px;
+  font-size: var(--font-body);
   font-weight: 600;
   line-height: 1.5;
 }
 
 .control-dialog-body {
-  font-size: 14px;
+  font-size: var(--font-body);
 }
 
 .control-dialog-body p {
@@ -344,7 +349,7 @@ dialog.control-dialog {
   width: auto;
   height: 40px;
   min-height: 40px;
-  font-size: 14px;
+  font-size: var(--font-body);
   padding: 8px 12px;
 }
 
@@ -375,14 +380,6 @@ dialog.control-dialog {
   }
 }
 
-.control-dialog .refund-amount {
-  padding: 4px 0 12px;
-  margin: 0;
-}
-.control-dialog .refund-amount strong {
-  font-size: 28px;
-  font-weight: 600;
-}
 .control-dialog form > label {
   margin-block: 16px;
 }

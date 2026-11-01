@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { Order, Snapshot } from '../domain/model';
 import type { Cashier } from '../application/ports';
 import type { Shared } from '../ui';
@@ -14,6 +14,7 @@ export function RefundDialog({
   store,
   perform,
   context,
+  saveCommand,
   errorMessage,
   busy,
 }: Shared & {
@@ -24,6 +25,8 @@ export function RefundDialog({
 }) {
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [refundRecorded, setRefundRecorded] = useState(false);
+  const returnOperationId = useRef<string | null>(null);
   const formId = useId();
   const pending = snapshot.operations.find(
     (operation) =>
@@ -33,11 +36,61 @@ export function RefundDialog({
       operation.context.generation === context.generation,
   );
   const prepared = pending?.command.type === 'cancel' ? pending.command : null;
+  if (refundRecorded)
+    return (
+      <Dialog
+        open
+        title="返金を記録しました"
+        onClose={() => {
+          if (!busy) onClose();
+        }}
+        footer={
+          <>
+            <Button onClick={onClose} disabled={busy}>
+              あとで回収する
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || order.returned}
+              onClick={() =>
+                void perform(async () => {
+                  returnOperationId.current ??= newId();
+                  await saveCommand(
+                    {
+                      type: 'return',
+                      orderId: order.id,
+                      assignmentId: order.assignmentId,
+                    },
+                    returnOperationId.current,
+                  );
+                  onClose();
+                })
+              }
+            >
+              札を回収した
+            </Button>
+          </>
+        }
+      >
+        <p>
+          札 {order.ticket}{' '}
+          {order.returned ? 'は回収済みです。' : 'を回収しましたか？'}
+        </p>
+        {errorMessage && (
+          <p className="inline-error" role="alert">
+            {errorMessage}
+          </p>
+        )}
+      </Dialog>
+    );
   return (
     <Dialog
       open
       title="全額返金"
-      onClose={onClose}
+      className="refund-dialog"
+      onClose={() => {
+        if (!busy) onClose();
+      }}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
@@ -74,15 +127,12 @@ export function RefundDialog({
             else {
               if (!confirmed) return;
               await store.execute(pending.id, context);
-              onClose();
+              if (order.returned) onClose();
+              else setRefundRecorded(true);
             }
           });
         }}
       >
-        <div className="refund-amount">
-          <span>札 {order.ticket} の返金</span>
-          <strong>{yen(order.quote.total)}</strong>
-        </div>
         <OrderDetails order={order} snapshot={snapshot} />
         {!prepared ? (
           <>

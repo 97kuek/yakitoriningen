@@ -2,6 +2,12 @@ import type { Order, Snapshot, Ticket } from './model';
 
 type HandoffHistory = Pick<Snapshot, 'orders' | 'operations' | 'logs'>;
 
+export function needsTicketReturn(
+  order: Pick<Order, 'status' | 'delivered' | 'returned'>,
+): boolean {
+  return !order.returned && (order.delivered || order.status === 'cancelled');
+}
+
 /** A released ticket can only be reclaimed before any later reservation uses it. */
 export function handoffUndoError(
   order: Order,

@@ -20,7 +20,9 @@ test('初回の準備は小さなイラストの下に入力と読み込みを�
   await expect(
     page.getByRole('button', { name: '保存した記録を開く', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('保存済みの記録を読み込みます。')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: '保存した記録を開く', exact: true }),
+  ).toBeVisible();
 });
 
 test('再開画面で件数を確認し、そのまま保存と読み込みができる', async ({
@@ -36,7 +38,9 @@ test('再開画面で件数を確認し、そのまま保存と読み込みが�
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
   await expect(page.getByText('再開やPCの引き継ぎに使います。')).toBeVisible();
   await expect(page.getByText('売上を表で確認できます。')).toBeVisible();
-  await expect(page.getByText('保存済みの記録を読み込みます。')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: '保存した記録を開く', exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: '会計を始める', exact: true }),
   ).toBeDisabled();

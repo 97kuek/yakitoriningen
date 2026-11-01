@@ -165,7 +165,6 @@ export function DataPanel({
         <Icon name="upload" />
         保存した記録を開く
       </Button>
-      <p className="hint">保存済みの記録を読み込みます。</p>
       <Dialog
         open={restoreOpen}
         onClose={() => setRestoreOpen(false)}

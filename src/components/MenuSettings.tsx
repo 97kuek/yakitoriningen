@@ -51,7 +51,7 @@ export function MenuSettings({
         unit: current.items[0].price,
       });
       await saveCommand({ type: 'price', price });
-      setModeSaved('切り替えました。次の注文から使います。');
+      setModeSaved('切り替えました。');
     });
   }
   function updateItem(id: string, change: Partial<MenuItem>) {
@@ -82,21 +82,21 @@ export function MenuSettings({
           <Button
             disabled={busy || !current.discounted}
             aria-pressed={!current.discounted}
+            aria-label="通常価格に切り替える"
             onClick={() => switchMode(false)}
           >
-            通常価格に切り替える
+            通常価格
           </Button>
           <Button
             disabled={busy || current.discounted}
             aria-pressed={current.discounted}
+            aria-label="値下げ価格に切り替える"
             onClick={() => switchMode(true)}
           >
-            値下げ価格に切り替える
+            値下げ価格
           </Button>
         </div>
-        <p className="hint menu-selling-note">
-          保存済みの商品・セットを使い、次の注文から適用します。
-        </p>
+        <p className="hint menu-selling-note">次の注文から適用します。</p>
         <p className="menu-mode-result" role="status">
           {modeSaved}
         </p>
@@ -116,7 +116,7 @@ export function MenuSettings({
             });
             await saveCommand({ type: 'price', price });
             setSavedContents(menuContents(draft));
-            setSaved('商品と価格を保存しました。次の注文から使います。');
+            setSaved('保存しました。');
           });
         }}
       >
@@ -128,9 +128,7 @@ export function MenuSettings({
             </Button>
           </div>
           <p className="menu-draft-status" role="status">
-            {dirty
-              ? '商品・セットに未保存の変更があります。'
-              : '商品・セットは保存済みです。'}
+            {dirty ? '未保存の変更があります。' : ''}
           </p>
         </div>
         <div className="menu-columns" aria-hidden="true">

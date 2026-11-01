@@ -26,7 +26,7 @@ test('販売価格の切り替えは未保存の商品編集を保持し、入�
   await page.getByLabel('ももの通常価格（円）').fill('220');
   await page.getByLabel('ももの値下げ価格（円）').fill('80');
   await expect(
-    page.getByText('商品・セットに未保存の変更があります。', { exact: true }),
+    page.getByText('未保存の変更があります。', { exact: true }),
   ).toBeVisible();
   await page
     .getByRole('button', { name: '値下げ価格に切り替える', exact: true })
@@ -45,7 +45,7 @@ test('販売価格の切り替えは未保存の商品編集を保持し、入�
   await settings(page);
   await page.getByRole('button', { name: '変更を保存', exact: true }).click();
   await expect(
-    page.getByText('商品と価格を保存しました。次の注文から使います。', {
+    page.getByText('保存しました。', {
       exact: true,
     }),
   ).toBeVisible();
@@ -53,7 +53,7 @@ test('販売価格の切り替えは未保存の商品編集を保持し、入�
     page.getByText('販売中：値下げ価格', { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText('商品・セットに未保存の変更があります。', { exact: true }),
+    page.getByText('未保存の変更があります。', { exact: true }),
   ).toHaveCount(0);
   await checkout(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
