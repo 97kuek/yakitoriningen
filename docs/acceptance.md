@@ -14,6 +14,8 @@ IndexedDBの耐久性はDexieの`chromeTransactionDurability: 'strict'`、画面
 
 GitHub Actionsは型・単体試験・整形・ビルド・ブラウザ試験が成功した成果物だけを公開します。PRでは公開せず、mainのpushまたはmain上の手動実行だけを対象とします。公開設定は`actionlint`でも検査します。
 
+ブラウザ試験は画面ごとのファイル（`startup`・`checkout`・`handoff`・`history`・`summary`・`settings`・`layout`）に分けています。オフライン起動と更新の試験は、Service Workerが有効になってから記録を読み込み直し、再読み込みした画面が確実にオフライン対応の状態で始まるようにしています。
+
 自動試験の実行コマンドは[CONTRIBUTING.md](../CONTRIBUTING.md)を参照してください。テスト件数は固定せず、試験名と対象の挙動で範囲を管理します。
 
 ## 本番PCで行うこと（未検証）

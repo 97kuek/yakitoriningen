@@ -7,14 +7,16 @@
 | 層・ファイル | 責務 |
 |---|---|
 | `src/domain/model.ts` | 注文・価格・操作・DB世代などの型と入力制約 |
-| `src/domain/catalog.ts`、`pricing.ts` | 商品の取得、通常・値下げ価格、最安のセット計算 |
-| `src/domain/order.ts`、`handoff.ts` | 注文の状態遷移、札再利用後の完了取り消しの拒否 |
+| `src/domain/constants.ts`、`time.ts` | 上限値・初期値・営業時間・時間帯の長さ、日本時間の扱い |
+| `src/domain/catalog.ts`、`pricing.ts` | 商品の取得、通常・値下げ価格、旧形式の価格、最安のセット計算 |
+| `src/domain/order.ts`、`ticket.ts`、`handoff.ts` | 注文の状態遷移、札の割り当て・解放、札再利用後の完了取り消しの拒否 |
+| `src/domain/history.ts`、`snapshot.ts` | 履歴の絞り込み・並べ替え、保留中の会計と確認が必要な操作の抽出 |
 | `src/domain/sales.ts` | 売上・返金・本数・利益の集計 |
 | `src/application/ports.ts` | 画面向け`Cashier`、保存向け`LedgerRepository`の契約 |
-| `src/application/cashier-commands.ts` | 操作の準備・実行・破棄、世代と再試行の検証 |
+| `src/application/cashier-commands.ts` | 操作の準備・実行・破棄・復元、世代と再試行の検証 |
 | `src/application/backup.ts`、`order-history.ts` | バックアップの形式・関連記録・操作履歴の整合性検証 |
 | `src/storage/database.ts`、`ledger-repository.ts` | DexieのDB定義とトランザクション |
-| `src/storage/commands.ts`、`backup.ts` | 永続化アダプターの組み立て、全ストアの出力・復元 |
+| `src/storage/cashier-store.ts` | 業務処理をIndexedDB・ID生成・時計へ接続したもの |
 | `src/bootstrap.ts` | DB、時刻、ID生成、変更購読を接続 |
 
 依存は`application → domain`です。storageがapplicationの保存ポートを実装します。domainはReact・IndexedDB・Dexieを参照せず、applicationもDexieへ依存しません。
