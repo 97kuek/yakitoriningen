@@ -81,25 +81,6 @@ export function Startup({
                     </small>
                   )}
               </dd>
-              {snapshot.orders.some((o) => o.received !== null) && (
-                <>
-                  <dt>会計記録</dt>
-                  <dd>
-                    確定済み{' '}
-                    {snapshot.orders.filter((o) => o.received !== null).length}
-                    件
-                  </dd>
-                </>
-              )}
-              {snapshot.tickets.some((t) => t.orderId !== null) && (
-                <>
-                  <dt>使用中の札</dt>
-                  <dd>
-                    {snapshot.tickets.filter((t) => t.orderId !== null).length}{' '}
-                    / {snapshot.meta.ticketCount}枚
-                  </dd>
-                </>
-              )}
             </dl>
             {(pendingOrders.length > 0 || pendingOperations.length > 0) && (
               <section

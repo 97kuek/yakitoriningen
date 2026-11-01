@@ -25,7 +25,7 @@ test('初回の準備は小さなイラストの下に入力と読み込みを�
   ).toBeVisible();
 });
 
-test('再開画面で件数を確認し、そのまま保存と読み込みができる', async ({
+test('再開画面は日付と価格に絞り、保存と読み込み後も履歴を保持する', async ({
   page,
 }) => {
   await openFixture(page, await historyFixture(1));
@@ -33,7 +33,10 @@ test('再開画面で件数を確認し、そのまま保存と読み込みが�
   await expect(
     page.getByRole('heading', { name: '会計を始める前に', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('確定済み 1件')).toBeVisible();
+  await expect(page.locator('.startup-details dt')).toHaveText([
+    '日付',
+    '価格',
+  ]);
   await expect(page.getByText(/直近：/)).toHaveCount(0);
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
   await expect(page.getByText('復元用の記録ファイル（.json）')).toBeVisible();
@@ -73,12 +76,17 @@ test('再開画面で件数を確認し、そのまま保存と読み込みが�
   await dialog
     .getByRole('button', { name: 'この記録に置き換える', exact: true })
     .click();
-  await expect(page.getByText('確定済み 1件')).toBeVisible();
+  await expect(page.locator('.startup-details dt')).toHaveText([
+    '日付',
+    '価格',
+  ]);
   await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '注文', exact: true }),
   ).toBeVisible();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
+  await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
 });
 
 test('注文がない再開画面では直近の記録と確認待ちを表示しない', async ({
