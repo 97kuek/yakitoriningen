@@ -9,7 +9,7 @@ import {
 import { handoffUndoError } from '../domain/handoff';
 import { isAwaitingHandoff } from '../domain/order';
 import { needsTicketReturn } from '../domain/ticket';
-import { waitTime } from '../domain/wait-time';
+import { waitTime, elapsedWait } from '../domain/wait-time';
 import { newId } from '../lib/id';
 import { orderItems, timeText, dayText } from '../presentation/format';
 import type { Order, Snapshot } from '../domain/model';
@@ -242,11 +242,14 @@ export function Waiting({
                 ))}
               </div>
             </div>
-            <time>
-              {order.day !== snapshot.meta.day
-                ? dayText(order.day)
-                : timeText(order.createdAt)}
-            </time>
+            <span
+              className="order-wait"
+              title={`会計 ${timeText(order.paidAt ?? order.createdAt)}`}
+            >
+              {elapsedWait(order, Math.max(now, Date.now())) === null
+                ? '—'
+                : `経過${elapsedWait(order, Math.max(now, Date.now()))}分`}
+            </span>
             <IconButton
               variant="plain"
               type="button"

@@ -18,10 +18,12 @@ export function MenuFields({
   draft,
   onChange: editDraft,
   actions,
+  onAdjustStock,
 }: {
   draft: MenuForm;
   onChange: (next: MenuForm) => void;
   actions?: ReactNode;
+  onAdjustStock?: (id: string) => void;
 }) {
   const items = draft.items;
   function updateItem(id: string, change: Partial<MenuForm['items'][number]>) {
@@ -141,7 +143,7 @@ export function MenuFields({
                 }
               />
             </label>
-            <label className="menu-stock-field">
+            <div className="menu-stock-field">
               <span className="mobile-field-label">在庫（任意）</span>
               <input
                 aria-label={`${item.name || `商品${index + 1}`}の在庫`}
@@ -154,12 +156,21 @@ export function MenuFields({
                   updateItem(item.id, { stock: event.target.value })
                 }
               />
-            </label>
+              {onAdjustStock && item.stock !== '' && (
+                <IconButton
+                  icon="settings"
+                  label={`${item.name || '商品'}の在庫を調整`}
+                  onClick={() => onAdjustStock(item.id)}
+                />
+              )}
+            </div>
           </div>
         ))}
       </div>
       <p className="hint menu-stock-hint">
-        在庫は任意です。当日用意した合計本数を入力し、追加分も足してください。
+        {onAdjustStock
+          ? '追加・廃棄は在庫欄の横から調整できます。'
+          : '在庫の登録は任意です。'}
       </p>
       <section className="bundle-section">
         <h3>セット価格</h3>

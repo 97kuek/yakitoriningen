@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { dateSchema, type Snapshot } from '../domain/model';
+import type { Snapshot } from '../domain/model';
 import { findActivePrice } from '../domain/catalog';
 import { MAX_TICKETS } from '../domain/constants';
 import type { Shared } from '../ui';
@@ -22,13 +22,11 @@ export function Settings({
   onDirtyChange: (dirty: boolean) => void;
 }) {
   const active = findActivePrice(snapshot)!;
-  const [day, setDay] = useState(snapshot.meta.day);
   const [tickets, setTickets] = useState(String(snapshot.meta.ticketCount));
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [saved, setSaved] = useState('');
   const [menuDirty, setMenuDirty] = useState(false);
-  const operationDirty =
-    day !== snapshot.meta.day || tickets !== String(snapshot.meta.ticketCount);
+  const operationDirty = tickets !== String(snapshot.meta.ticketCount);
   const dirty = menuDirty || operationDirty;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   return (
@@ -55,46 +53,23 @@ export function Settings({
             hasDraft={hasDraft || dirty}
           />
           <section className="operation-section">
-            <h3>日付・番号札</h3>
+            <h3>番号札</h3>
             <form
               className="operation-form"
               onSubmit={(event) => {
                 event.preventDefault();
                 void shared.perform(async () => {
-                  dateSchema.parse(day);
-                  if (day !== snapshot.meta.day && menuDirty)
-                    throw new Error(
-                      '営業日を変える前に、入力中の商品・在庫を保存してください。',
-                    );
                   if (tickets !== String(snapshot.meta.ticketCount))
                     await shared.saveCommand({
                       type: 'tickets',
                       count: Number(tickets),
                     });
-                  if (day !== snapshot.meta.day)
-                    await shared.saveCommand({ type: 'day', day });
                   setTickets(String(Number(tickets)));
                   setSaved('保存しました。');
                 });
               }}
             >
               <div className="operation-settings">
-                <label>
-                  <span className="day-caption">
-                    営業日
-                    <span className="hint" id="business-day-hint">
-                      翌日はここを変更
-                    </span>
-                  </span>
-                  <input
-                    type="date"
-                    aria-label="営業日"
-                    aria-describedby="business-day-hint"
-                    required
-                    value={day}
-                    onChange={(event) => setDay(event.target.value)}
-                  />
-                </label>
                 <label>
                   番号札の枚数
                   <input

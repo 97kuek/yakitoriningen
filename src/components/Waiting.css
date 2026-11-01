@@ -124,6 +124,12 @@
 .waiting .order-content {
   position: relative;
 }
+.order-wait {
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: var(--font-small);
+  font-variant-numeric: tabular-nums;
+}
 
 .waiting .ticket-chip {
   flex-shrink: 0;

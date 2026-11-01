@@ -5,6 +5,7 @@ import {
   ledgerFixture,
   openFixture,
   openScreen,
+  startCounter,
   rows,
 } from './helpers';
 
@@ -168,8 +169,13 @@ test('営業日を変更すると履歴とCSVの対象日が変わり、前日�
 }) => {
   await openFixture(page, await ledgerFixture({ orders: 1 }));
   await openScreen(page, '設定');
-  await page.getByLabel('営業日').fill('2026-11-08');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page
+    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .click();
+  const preparation = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  await preparation.getByLabel('営業日').fill('2026-11-08');
+  await preparation.getByRole('button', { name: 'この営業日を準備' }).click();
+  await startCounter(page);
   await openScreen(page, '注文履歴');
   await expect(rows(page)).toHaveCount(0);
   await expect(page.getByRole('combobox', { name: '表示する日' })).toHaveCount(
@@ -179,8 +185,11 @@ test('営業日を変更すると履歴とCSVの対象日が変わり、前日�
     page.getByRole('button', { name: '表示条件の注文をCSVで保存' }),
   ).toBeDisabled();
   await openScreen(page, '設定');
-  await page.getByLabel('営業日', { exact: true }).fill('2026-11-07');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page
+    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .click();
+  await preparation.getByRole('button', { name: 'この日の営業に戻る' }).click();
+  await startCounter(page);
   await openScreen(page, '注文履歴');
   await expect(rows(page)).toHaveCount(1);
 });

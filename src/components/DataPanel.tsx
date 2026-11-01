@@ -1,14 +1,5 @@
 import { useState } from 'react';
 import type { Snapshot } from '../domain/model';
-import { MAX_TICKETS } from '../domain/constants';
-import { findActivePrice } from '../domain/catalog';
-import {
-  menuForm,
-  menuPrice,
-  menuStock,
-  type MenuForm,
-} from '../presentation/menu-form';
-import { MenuFields } from './MenuFields';
 import { summarizeSales } from '../domain/sales';
 import { pendingOrders } from '../domain/snapshot';
 import type { ActionHandler } from '../ui';
@@ -19,13 +10,12 @@ import {
   parseBackup,
 } from '../application/backup';
 import { dailySnapshot } from '../application/daily-backup';
-import { validateDaySetup } from '../domain/day';
-import { contextOf } from '../domain/snapshot';
-import { newId } from '../lib/id';
+import { restoreDays } from '../application/restore';
 import { download } from '../presentation/download';
-import { today, yen } from '../presentation/format';
-import { Button, Dialog, FilePicker, InlineError } from './controls';
+import { yen } from '../presentation/format';
+import { Button, Dialog, FilePicker, InlineError, Select } from './controls';
 import { Icon } from './Icon';
+import { DaySetup } from './DaySetup';
 
 async function fileText(file: File | undefined) {
   if (!file || file.size > MAX_BACKUP_BYTES)
@@ -51,13 +41,8 @@ export function DataPanel({
 }) {
   const [incoming, setIncoming] = useState<Snapshot | null>(null);
   const [expected, setExpected] = useState<Snapshot | null>(null);
-  const [dayBase, setDayBase] = useState<Snapshot | null>(null);
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
-  const [dayOpen, setDayOpen] = useState(false);
-  const [nextDay, setNextDay] = useState(today());
-  const [dayMenu, setDayMenu] = useState<MenuForm | null>(null);
-  const [dayTickets, setDayTickets] = useState('');
   const incomingSales = incoming ? summarizeSales(incoming.orders) : null;
   return (
     <section className="data-panel" aria-labelledby="backup-heading">
@@ -106,112 +91,16 @@ export function DataPanel({
           バックアップから復元
         </Button>
         {snapshot && (
-          <Button
-            variant="secondary"
-            className="day-setup-trigger"
-            onClick={() =>
-              void perform(async () => {
-                const current = await store.read();
-                if (!current) throw new Error('営業の記録がありません。');
-                setDayBase(current);
-                const tomorrow = new Date(`${current.meta.day}T12:00:00Z`);
-                tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-                setNextDay(tomorrow.toISOString().slice(0, 10));
-                setDayMenu(menuForm(findActivePrice(current)!));
-                setDayTickets(String(current.meta.ticketCount));
-                setDayOpen(true);
-              })
-            }
-          >
-            別の日の営業を準備
-          </Button>
+          <DaySetup
+            store={store}
+            perform={perform}
+            errorMessage={errorMessage}
+            onRestart={onRestart}
+            hasDraft={hasDraft}
+          />
         )}
       </div>
-      {dayOpen && (
-        <Dialog
-          open={dayOpen}
-          onClose={() => setDayOpen(false)}
-          title="別の日の営業を準備"
-          className="restore-dialog day-setup-dialog"
-        >
-          <InlineError message={errorMessage} />
-          <div className="restore">
-            <p>
-              前の営業日の記録は残ります。商品・価格を引き継ぎ、当日の在庫を登録できます。
-            </p>
-            {hasDraft && (
-              <p role="status">入力途中の注文や設定を先に保存してください。</p>
-            )}
-            <form
-              className="day-setup-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!dayBase || !dayMenu || hasDraft) return;
-                void perform(async () => {
-                  const current = await store.read();
-                  if (!current) throw new Error('営業の記録がありません。');
-                  validateDaySetup(current, nextDay, dayBase.meta.sequence);
-                  const operationId = newId();
-                  const context = contextOf(dayBase.meta);
-                  await store.prepare(operationId, context, {
-                    type: 'startDay',
-                    day: nextDay,
-                    price: menuPrice({
-                      ...dayMenu,
-                      id: newId(),
-                      mix: true,
-                      discounted: false,
-                      label: '通常',
-                    }),
-                    stock: menuStock(dayMenu),
-                    ticketCount: Number(dayTickets),
-                    expectedSequence: dayBase.meta.sequence,
-                  });
-                  await store.execute(operationId, context);
-                  setDayOpen(false);
-                  setDayBase(null);
-                  onRestart();
-                });
-              }}
-            >
-              <label>
-                営業日
-                <input
-                  type="date"
-                  required
-                  value={nextDay}
-                  onChange={(event) => setNextDay(event.target.value)}
-                />
-              </label>
-              <label>
-                番号札の枚数
-                <input
-                  type="number"
-                  min="1"
-                  max={MAX_TICKETS}
-                  required
-                  value={dayTickets}
-                  onChange={(event) => setDayTickets(event.target.value)}
-                />
-              </label>
-              {dayMenu && (
-                <div className="menu-pricing-settings">
-                  <div className="menu-settings">
-                    <MenuFields draft={dayMenu} onChange={setDayMenu} />
-                  </div>
-                </div>
-              )}
-              <Button
-                type="submit"
-                variant="danger"
-                disabled={!dayBase || hasDraft || nextDay === dayBase.meta.day}
-              >
-                この営業日を準備
-              </Button>
-            </form>
-          </div>
-        </Dialog>
-      )}
+
       <Dialog
         open={restoreOpen}
         onClose={() => setRestoreOpen(false)}
@@ -234,6 +123,7 @@ export function DataPanel({
               void perform(async () => {
                 const parsed = parseBackup(await fileText(file));
                 const current = await store.read();
+                restoreDays(parsed, current);
                 setExpected(current);
                 setIncoming(parsed);
               });
@@ -242,6 +132,9 @@ export function DataPanel({
           {incoming && (
             <div className="restore-preview">
               <h4>バックアップ内容</h4>
+              <p className="hint">
+                この日付の記録を復元します。他の日の記録は残ります。
+              </p>
               <table className="backup-table" aria-label="バックアップ内容">
                 <tbody>
                   <tr>

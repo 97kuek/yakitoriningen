@@ -70,3 +70,39 @@
   min-width: 0;
   flex: 1;
 }
+.menu-stock-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.menu-stock-field input {
+  min-width: 0;
+  width: 100%;
+}
+.stock-adjustment {
+  display: grid;
+  gap: 16px;
+}
+.stock-adjustment p {
+  margin: 0;
+}
+.stock-direction {
+  display: flex;
+  gap: 8px;
+}
+.stock-direction button[aria-pressed='true'] {
+  background: var(--yellow);
+  border-color: var(--ink);
+}
+.day-resume {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.day-resume .control-select {
+  flex: 1;
+  min-width: 0;
+}

@@ -6,6 +6,7 @@ import {
   ledgerFixture,
   openFixture,
   openScreen,
+  startCounter,
 } from './helpers';
 
 test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認し、未保存の経費を保つ', async ({
@@ -103,8 +104,13 @@ test('記録のない営業日を訂正したらグラフも新しい日付を�
 }) => {
   await openFixture(page, await ledgerFixture());
   await openScreen(page, '設定');
-  await page.getByLabel('営業日').fill('2026-11-08');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page
+    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .click();
+  const preparation = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  await preparation.getByLabel('営業日').fill('2026-11-08');
+  await preparation.getByRole('button', { name: 'この営業日を準備' }).click();
+  await startCounter(page);
   await openScreen(page, '集計');
   await expect(
     page.getByRole('combobox', { name: 'グラフの日付' }),
