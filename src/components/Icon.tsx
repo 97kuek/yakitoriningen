@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ListX,
   Banknote,
   ChartNoAxesColumn,
   ClipboardList,
@@ -28,6 +29,7 @@ const icons = {
   arrow: ArrowRight,
   reset: RotateCcw,
   refresh: RefreshCw,
+  clearCompleted: ListX,
   ticket: Ticket,
   tray: HandPlatter,
   chart: ChartNoAxesColumn,

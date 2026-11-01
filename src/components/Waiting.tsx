@@ -191,7 +191,7 @@ export function Waiting({
             )}
           </span>
           <IconButton
-            icon="refresh"
+            icon="clearCompleted"
             label="完了表示を片づける"
             disabled={!heldOrders.length || busy}
             onClick={() => setHeldOrderIds([])}
