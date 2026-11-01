@@ -7,3 +7,19 @@ updates:
     groups:
       github-actions:
         patterns: ['*']
+
+  # npm updates arrive as pull requests; CI must pass and nothing is deployed
+  # until a person merges them into main. Avoid merging during the festival.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      # Minor and patch updates together, so one review covers them.
+      npm-minor-and-patch:
+        update-types: ['minor', 'patch']
+    ignore:
+      # The Node.js runtime is pinned by engines and CI, not by this type package.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
