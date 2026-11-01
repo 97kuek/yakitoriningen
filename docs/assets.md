@@ -63,3 +63,11 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 生成プロンプト（組み込みツール使用、CLIへの切り替えなし）：
 
 > Create an animation sprite sheet editing the reference illustration for a yakitori cashier app empty state. Preserve exactly the same friendly yellow chick with cream headband, warm brown hand-drawn outlines, small orange beak, and empty wooden tray to its right. A flat warm off-white #fffef7 background, no texture, no text, no grid lines, no labels. Output one landscape 1536x1024 image divided into an exact 3-column by 2-row grid of six equal 512x512 cells. Each cell contains the whole same chick and tray at identical scale and aligned identical positions with ample equal margin. Tray and feet remain fixed across every frame. Animation frames reading left to right top row then bottom row: 1 eyes open neutral wings down; 2 eyes half closed wings slightly lifted; 3 eyes closed smiling wings raised gently; 4 eyes half open wings slightly lowered; 5 eyes open wings lowered; 6 same as frame1. Subtle natural blink and small wing wave, no camera movement, no background changes. Flat restrained colors, matte, simple hand-drawn mascot, no gloss, no sparks, no smoke, no 3D. This exact aligned sheet will be cut into frames and encoded as a real GIF.
+
+## 透過とループの修正（2026-11-01）
+
+組み込みimage_genで背景を透過に編集し、ffmpegで上段3コマをGIFへ符号化した。`empty-orders.gif`は無限ループ、`empty-orders-still.png`は同じGIFの先頭フレーム。画面には停止・再生操作を用意し、動きを減らす設定では静止画を使う。
+
+編集プロンプト：
+
+> Edit this exact 1536x1024 animation sprite sheet. Remove ALL off-white background to genuine transparent alpha, including the spaces surrounding every chick and tray and inside negative spaces. Preserve the exact six-cell 3-column by 2-row arrangement, poses, frame positions, scale, color and linework of every chick and tray. Do not add any objects, text, glow, shadow, halo or new background. This is for cutting into GIF frames; all clear space must be fully transparent, no paper texture or opaque background rectangle. Keep all outlines crisp and solid.
