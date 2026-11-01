@@ -115,8 +115,6 @@ npm run deploy
 
 入力中・保留の操作や未保存の設定を解消してから、画面の「更新する」を押します。更新はアプリの表示ファイルだけを切り替え、記録は同じブラウザ内に残ります。更新のためにバックアップを選択・復元する必要はありません。
 
-Firebase向けの既存設定は残っていますが、通常の公開先はCloudflare Pagesです。
-
 ## 根拠
 
 - [Pagesへの直接公開](https://developers.cloudflare.com/pages/get-started/direct-upload/)

@@ -1,37 +1,31 @@
 # Dependencies
 node_modules/
 
-# Build output and test reports
+# Build output and caches
 dist/
+dev-dist/
 build/
 coverage/
 .vite/
 *.tsbuildinfo
 
-# Environment variables (track only the example)
+# Environment variables and local secrets (track only the example)
 .env
 .env.*
 !.env.example
+.dev.vars
+.dev.vars.*
+*.local
 
-# Firebase local cache and emulator logs
-.firebase/
-firebase-debug*.log
-firestore-debug*.log
-database-debug*.log
-ui-debug*.log
-
-# Service account credentials and private keys
-*-firebase-adminsdk-*.json
+# Credentials and private keys
 *service-account*.json
-serviceAccountKey.json
 *.pem
 *.key
 *.p12
 
-# Local order exports, backups, and emulator data
+# Local order exports and backups (real sales data must never be committed)
 /exports/
 /backups/
-/firebase-export/
 
 # Package manager logs
 npm-debug.log*
@@ -43,6 +37,7 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
@@ -50,6 +45,11 @@ Thumbs.db
 # Browser test artifacts
 /test-results/
 /playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # Cloudflare local runtime and deployment state
 .wrangler/
+
+# Personal AI assistant settings
+.claude/settings.local.json

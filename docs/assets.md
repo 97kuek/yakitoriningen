@@ -41,7 +41,7 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 組み込みのimage_genで生成・編集し、最終採用分だけをpublic/assetsへ保存。生成画像の外側にぼかしが残った空状態案は不採用。ロゴの焼き鳥は鶏肉とねぎが交互に刺さった形へ修正し、照り・衣の粒・大きな焦げ穴を除いた。空状態は白地の小さなひよこと空の盆を採用し、画面では紙色になじませている。
 
 - `public/assets/shop-logo.png`：既存の文字とひよこを維持した編集。透過PNG。
-- `public/assets/empty-orders.png`：空の待ち一覧用イラスト。白地PNG。
+- `docs/design-references/empty-orders-source.png`：空の待ち一覧用イラストの元画像。白地PNG。画面では使わず、配信対象から外している。
 
 ロゴ最終編集プロンプト：
 
@@ -58,7 +58,7 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 
 - `public/assets/empty-orders.gif`：384×270、6フレーム、2.64秒で停止。
 - `public/assets/empty-orders-still.png`：動きを減らす設定用の静止画。
-- 元のPNGは保持。GIFと静止画は両方ともPWAの事前保存対象。
+- 元のPNGは`docs/design-references/`に保持。GIFと静止画は両方ともPWAの事前保存対象。
 
 生成プロンプト（組み込みツール使用、CLIへの切り替えなし）：
 
