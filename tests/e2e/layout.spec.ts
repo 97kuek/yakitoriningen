@@ -168,11 +168,18 @@ test('合計の横にセット内訳を置き、お釣りを筆算順に揃え�
   await page.getByRole('button', { name: '￥2,000', exact: true }).click();
   await page.getByRole('button', { name: 'お釣りを確認' }).click();
   const calculation = page.locator('.cash-calculation > div');
-  await expect(calculation.locator('span')).toHaveText([
+  await expect(calculation.locator('.cash-label')).toHaveText([
     'お預かり',
-    '− お会計',
+    '−お会計',
     'お釣り',
   ]);
+  // The minus sits in its own slot, so the label names start on one line.
+  const starts = await calculation
+    .locator('.cash-name')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => node.getBoundingClientRect().left),
+    );
+  expect(Math.max(...starts) - Math.min(...starts)).toBeLessThanOrEqual(1);
   const edges = await calculation
     .locator('strong')
     .evaluateAll((nodes) =>

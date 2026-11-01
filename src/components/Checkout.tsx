@@ -239,6 +239,16 @@ export function Checkout({
     </section>
   );
 }
+/** A row label with a fixed slot for the sign, so the names line up. */
+function CashLabel({ sign = '', name }: { sign?: string; name: string }) {
+  return (
+    <span className="cash-label">
+      <span className="cash-sign">{sign}</span>
+      <span className="cash-name">{name}</span>
+    </span>
+  );
+}
+
 function Payment({
   order,
   operation,
@@ -378,17 +388,17 @@ function Payment({
       ) : (
         <div className="cash-calculation" aria-label="お釣りの計算">
           <div>
-            <span>お預かり</span>
+            <CashLabel name="お預かり" />
             <strong>{yen(amount)}</strong>
           </div>
           <div>
-            <span>− お会計</span>
+            <CashLabel sign="−" name="お会計" />
             <strong data-testid="payment-total">
               {yen(order.quote.total)}
             </strong>
           </div>
           <div className="cash-change">
-            <span>お釣り</span>
+            <CashLabel name="お釣り" />
             <strong data-testid="change">
               {yen(amount - order.quote.total)}
             </strong>

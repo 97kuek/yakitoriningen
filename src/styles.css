@@ -2033,6 +2033,15 @@ input:not([type='checkbox']) {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+/* The sign hangs into the panel padding, so names keep the content's left edge. */
+.cash-label {
+  display: inline-flex;
+  align-items: baseline;
+  margin-left: -1em;
+}
+.cash-sign {
+  flex: 0 0 1em;
+}
 .cash-calculation .cash-change {
   border-top: 1px solid var(--ink);
   margin-top: 8px;
