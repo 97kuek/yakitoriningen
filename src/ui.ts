@@ -1,4 +1,11 @@
-import type { Command, Context, Price, Quantities } from './domain/model';
+import type {
+  Command,
+  Context,
+  Price,
+  Quantities,
+  Snapshot,
+} from './domain/model';
+export type BackupExporter = () => Promise<Snapshot>;
 
 export type ActionHandler = (work: () => Promise<unknown>) => Promise<void>;
 export type CommandSaver = (

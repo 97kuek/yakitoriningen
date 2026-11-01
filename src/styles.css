@@ -286,7 +286,35 @@ small {
 }
 .connection-status {
   display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-small);
   color: var(--muted);
+}
+.storage-capacity {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  font-size: var(--font-body);
+}
+.storage-capacity > div {
+  display: flex;
+  gap: 8px;
+}
+.storage-capacity dt {
+  color: var(--muted);
+}
+.storage-capacity dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.backup-reminder {
+  font-size: var(--font-small);
+}
+.session-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .header-status .icon {
   width: 22px;
@@ -307,7 +335,7 @@ small {
 main {
   width: 100%;
   max-width: 1360px;
-  margin: auto;
+  margin: 0 auto;
   padding: 18px 24px 32px;
 }
 .app-content {
@@ -356,8 +384,7 @@ main {
   font-size: var(--font-small);
 }
 .checkout {
-  border: 1.5px solid var(--ink);
-  box-shadow: 3px 3px 0 color-mix(in srgb, var(--ink) 5%, transparent);
+  border: 1.5px solid var(--line);
 }
 .checkout .section-heading {
   margin-bottom: 12px;
@@ -2136,11 +2163,30 @@ main:has(.startup-shell) .app-content {
   vertical-align: middle;
   width: 22px;
   height: 22px;
-  margin-right: 8px;
+  margin-right: 0;
   font: inherit;
   font-size: var(--font-small);
   font-weight: 400;
   border: 1px solid var(--control-border);
   border-radius: 4px;
   color: var(--muted);
+}
+.checkout .product-title {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 4px;
+  align-items: center;
+}
+.checkout .product-title > .product-key {
+  grid-column: 1;
+  grid-row: 1;
+}
+.checkout .product-title > strong {
+  grid-column: 2;
+  grid-row: 1;
+}
+.checkout .product-title > .product-stock {
+  grid-column: 2;
+  grid-row: 2;
 }

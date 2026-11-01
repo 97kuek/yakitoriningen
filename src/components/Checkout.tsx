@@ -24,6 +24,7 @@ import type { Draft, Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { Icon } from './Icon';
 import { Ticket } from './Ticket';
+import { TicketPicker } from './TicketPicker';
 
 /** Quick amounts for common notes and coins. */
 const CASH_SHORTCUTS = [500, 1000, 2000, 5000, 10000];
@@ -45,6 +46,7 @@ export function Checkout({
   resumeOrderIds: string[];
 }) {
   const [clearedDraft, setClearedDraft] = useState<Draft | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<number | null>(null);
   const activePrice = findActivePrice(snapshot)!;
   const price = draft.price ?? activePrice;
   const products = getMenu(price);
@@ -59,7 +61,22 @@ export function Checkout({
   const latestEstimate = tryQuote(draft.quantities, activePrice);
   const pending = pendingOrders(snapshot);
   const unresolved = snapshot.operations.some((op) => op.status === 'pending');
-  const hasTicket = snapshot.tickets.some((t) => !t.orderId);
+  const tickets = snapshot.tickets.filter(
+    (ticket) => ticket.number <= snapshot.meta.ticketCount,
+  );
+  const chosenTicket =
+    selectedTicket ??
+    [...tickets]
+      .filter((ticket) => ticket.orderId === null)
+      .sort((a, b) => a.number - b.number)[0]?.number ??
+    null;
+  const hasTicket = tickets.some(
+    (ticket) => ticket.number === chosenTicket && ticket.orderId === null,
+  );
+  useEffect(() => {
+    if (selectedTicket !== null)
+      nextButton.current?.focus({ preventScroll: true });
+  }, [selectedTicket]);
   const changeQuantity = (id: keyof Quantities, value: number) => {
     if (
       !Number.isInteger(value) ||
@@ -107,6 +124,11 @@ export function Checkout({
     >
       <div className="section-heading">
         <h2 id="checkout-title">注文</h2>
+        <TicketPicker
+          tickets={tickets}
+          value={chosenTicket}
+          onChange={setSelectedTicket}
+        />
         <div
           className="checkout-feedback"
           role="status"
@@ -177,14 +199,12 @@ export function Checkout({
           <div className={`product product-${index}`} key={p.id}>
             <div className="product-name">
               <div className="product-title">
-                <strong>
-                  {index < 9 && (
-                    <kbd className="product-key" aria-hidden="true">
-                      {index + 1}
-                    </kbd>
-                  )}
-                  {p.name}
-                </strong>
+                {index < 9 && (
+                  <kbd className="product-key" aria-hidden="true">
+                    {index + 1}
+                  </kbd>
+                )}
+                <strong>{p.name}</strong>
                 {remaining[p.id] !== undefined && (
                   <span
                     className={`product-stock ${remaining[p.id] <= LOW_STOCK ? 'stock-low' : ''}`}
@@ -271,6 +291,7 @@ export function Checkout({
           shared.perform(async () => {
             await shared.saveCommand({
               type: 'reserve',
+              ticket: chosenTicket!,
               orderId: newId(),
               assignmentId: newId(),
               confirmOperationId: newId(),
@@ -278,6 +299,7 @@ export function Checkout({
               price,
             });
             setClearedDraft(null);
+            setSelectedTicket(null);
             setDraft(emptyDraft());
           })
         }
@@ -287,7 +309,11 @@ export function Checkout({
         <EnterHint />
       </Button>
       {!hasTicket && (
-        <p className="notice">空き札がありません。札の回収を待ってください。</p>
+        <p className="notice">
+          {chosenTicket === null
+            ? '空き札がありません。札の回収を待ってください。'
+            : '選んだ札は使用中です。別の札を選んでください。'}
+        </p>
       )}
     </section>
   );

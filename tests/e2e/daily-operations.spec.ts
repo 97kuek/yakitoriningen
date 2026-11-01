@@ -53,28 +53,16 @@ test('営業日の準備と再開を同じ入口で行い、他の日を残し�
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
 });
 
-test('在庫を20本追加・3本廃棄すると会計画面の残りが27本になる', async ({
+test('在庫数は直接入力で保存でき、調整ダイアログを必要としない', async ({
   page,
 }) => {
   await openFixture(page, await ledgerFixture());
   await openScreen(page, '設定');
-  await page.getByLabel('ももの在庫', { exact: true }).fill('10');
+  await page.getByLabel('ももの在庫', { exact: true }).fill('27');
   await page.getByRole('button', { name: '変更を保存', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'ももの在庫を調整', exact: true })
-    .click();
-  const dialog = page.getByRole('dialog', { name: 'ももの在庫を調整' });
-  await dialog.getByLabel('調整する本数', { exact: true }).fill('20');
-  await dialog.getByRole('button', { name: '調整を記録' }).click();
-  await expect(page.getByLabel('ももの在庫', { exact: true })).toHaveValue(
-    '30',
-  );
-  await page
-    .getByRole('button', { name: 'ももの在庫を調整', exact: true })
-    .click();
-  await dialog.getByRole('button', { name: '廃棄', exact: true }).click();
-  await dialog.getByLabel('調整する本数', { exact: true }).fill('3');
-  await dialog.getByRole('button', { name: '調整を記録' }).click();
+  await expect(
+    page.getByRole('button', { name: 'ももの在庫を調整', exact: true }),
+  ).toHaveCount(0);
   await openScreen(page, '会計');
   await expect(page.locator('.product-stock')).toHaveText('残り 27本');
 });

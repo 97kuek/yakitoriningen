@@ -2,17 +2,19 @@ import { useEffect, useState } from 'react';
 import type { Snapshot } from '../domain/model';
 import { findActivePrice } from '../domain/catalog';
 import { MAX_TICKETS } from '../domain/constants';
-import type { Shared } from '../ui';
+import type { Shared, BackupExporter } from '../ui';
 import type { Cashier } from '../application/ports';
 import { DataPanel } from './DataPanel';
 import { MenuSettings } from './MenuSettings';
 import { Button } from './controls';
+import { StorageStatus } from './StorageStatus';
 export function Settings({
   snapshot,
   store,
   onRestart,
   hasDraft,
   onDirtyChange,
+  exportBackup,
   ...shared
 }: Shared & {
   snapshot: Snapshot;
@@ -20,6 +22,7 @@ export function Settings({
   onRestart: () => void;
   hasDraft: boolean;
   onDirtyChange: (dirty: boolean) => void;
+  exportBackup: BackupExporter;
 }) {
   const active = findActivePrice(snapshot)!;
   const [tickets, setTickets] = useState(String(snapshot.meta.ticketCount));
@@ -51,6 +54,7 @@ export function Settings({
             errorMessage={shared.errorMessage}
             onRestart={onRestart}
             hasDraft={hasDraft || dirty}
+            exportBackup={exportBackup}
           />
           <section className="operation-section">
             <h3>番号札</h3>
@@ -97,9 +101,7 @@ export function Settings({
           </section>
           <section className="operation-section">
             <h3>記録の保護</h3>
-            <p className="hint">
-              空き容量が少なくなっても、注文の記録を残すための設定です。バックアップのように別のファイルを作る機能ではありません。
-            </p>
+            <StorageStatus />
             <Button
               onClick={() =>
                 shared.perform(async () => {

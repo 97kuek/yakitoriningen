@@ -10,7 +10,7 @@ import {
   MAX_TICKETS,
 } from '../domain/constants';
 import { pendingOrders, unresolvedOperations } from '../domain/snapshot';
-import type { ActionHandler } from '../ui';
+import type { ActionHandler, BackupExporter } from '../ui';
 import { commandNames } from '../ui';
 import type { Cashier } from '../application/ports';
 import { Button, Dialog, InlineError } from './controls';
@@ -24,6 +24,7 @@ export function Startup({
   onStart,
   onRestart,
   errorMessage,
+  exportBackup,
 }: {
   snapshot: Snapshot | null;
   store: Cashier;
@@ -31,6 +32,7 @@ export function Startup({
   onStart: () => void;
   onRestart: () => void;
   errorMessage: string;
+  exportBackup: BackupExporter;
 }) {
   const [event, setEvent] = useState('');
   const [day, setDay] = useState(today());
@@ -203,6 +205,7 @@ export function Startup({
           perform={perform}
           errorMessage={errorMessage}
           onRestart={onRestart}
+          exportBackup={exportBackup}
         />
       </section>
     </div>

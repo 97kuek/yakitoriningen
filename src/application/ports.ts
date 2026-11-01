@@ -58,3 +58,9 @@ export interface Cashier {
     error: (error: unknown) => void;
   }): () => void;
 }
+
+/** Download reminders only; never evidence that a file reached a physical disk. */
+export interface BackupHistory {
+  lastSequence(meta: Meta): number | null;
+  record(meta: Meta): void;
+}

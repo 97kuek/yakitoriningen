@@ -127,14 +127,15 @@ export function Waiting({
   return (
     <aside className="waiting panel" aria-labelledby="waiting-title">
       <div className="section-heading">
-        <h2 id="waiting-title">
-          札回収待ち<span className="count-badge">{waiting.length}</span>
-        </h2>
+        <h2 id="waiting-title">札回収待ち</h2>
         <span
           className="wait-estimate"
           title="当日の直近10件の平均（会計確定から札回収まで）"
         >
-          平均待ち {waitMinutes === null ? '記録なし' : `約${waitMinutes}分`}
+          <span>平均待ち</span>{' '}
+          <strong>
+            {waitMinutes === null ? '記録なし' : `約${waitMinutes}分`}
+          </strong>
         </span>
         <div
           className="waiting-tools"

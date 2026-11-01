@@ -2,18 +2,12 @@ import { useState } from 'react';
 import type { Snapshot } from '../domain/model';
 import { summarizeSales } from '../domain/sales';
 import { pendingOrders } from '../domain/snapshot';
-import type { ActionHandler } from '../ui';
+import type { ActionHandler, BackupExporter } from '../ui';
 import type { Cashier } from '../application/ports';
-import {
-  encodeBackup,
-  MAX_BACKUP_BYTES,
-  parseBackup,
-} from '../application/backup';
-import { dailySnapshot } from '../application/daily-backup';
+import { MAX_BACKUP_BYTES, parseBackup } from '../application/backup';
 import { restoreDays } from '../application/restore';
-import { download } from '../presentation/download';
 import { yen } from '../presentation/format';
-import { Button, Dialog, FilePicker, InlineError, Select } from './controls';
+import { Button, Dialog, FilePicker, InlineError } from './controls';
 import { Icon } from './Icon';
 import { DaySetup } from './DaySetup';
 
@@ -31,6 +25,7 @@ export function DataPanel({
   onRestart,
   errorMessage,
   hasDraft = false,
+  exportBackup,
 }: {
   store: Cashier;
   snapshot: Snapshot | null;
@@ -38,6 +33,7 @@ export function DataPanel({
   onRestart: () => void;
   errorMessage: string;
   hasDraft?: boolean;
+  exportBackup: BackupExporter;
 }) {
   const [incoming, setIncoming] = useState<Snapshot | null>(null);
   const [expected, setExpected] = useState<Snapshot | null>(null);
@@ -58,20 +54,11 @@ export function DataPanel({
                 variant="secondary"
                 type="button"
                 className="secondary"
-                onClick={() =>
-                  perform(async () => {
-                    const current = await store.read();
-                    if (!current) throw new Error('営業の記録がありません。');
-                    const text = encodeBackup(dailySnapshot(current));
-                    parseBackup(await new Blob([text]).text());
-                    download(text, `${current.meta.day}-yakitori.json`);
-                  })
-                }
+                onClick={() => perform(exportBackup)}
               >
                 <Icon name="download" />
                 バックアップを保存
               </Button>
-              <p className="hint">営業が終わったら、当日分を保存</p>
             </div>
           </div>
         </>

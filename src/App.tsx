@@ -8,8 +8,11 @@ import {
   unresolvedOperations,
 } from './domain/snapshot';
 import { newId } from './lib/id';
-import { cashier } from './bootstrap';
-import { validateSnapshot } from './application/backup';
+import { cashier, backupHistory } from './bootstrap';
+import { validateSnapshot, encodeBackup } from './application/backup';
+import { dailySnapshot } from './application/daily-backup';
+import { download } from './presentation/download';
+import { CloseDay } from './components/CloseDay';
 import { useAppUpdate } from './hooks/useAppUpdate';
 import { useExclusiveTab } from './hooks/useExclusiveTab';
 import { useLeaveConfirmation } from './hooks/useLeaveConfirmation';
@@ -50,6 +53,7 @@ export default function App() {
   const online = useOnlineStatus();
   const [snapshot, setSnapshot] = useState<Snapshot | null | undefined>();
   const [started, setStarted] = useState(false);
+  const [, backupChanged] = useState(0);
   const [screen, setScreen] = useState<Screen>('checkout');
   const [nextScreen, setNextScreen] = useState<Screen | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -155,6 +159,15 @@ export default function App() {
     setScreen('checkout');
     setLastHandoff(null);
   };
+  const exportBackup = async () => {
+    const current = await store.read();
+    if (!current) throw new Error('営業の記録がありません。');
+    const text = encodeBackup(dailySnapshot(current));
+    download(text, `${current.meta.day}-yakitori.json`);
+    backupHistory.record(current.meta);
+    backupChanged((version) => version + 1);
+    return current;
+  };
   const shared: Shared | null = snapshot
     ? {
         perform,
@@ -172,14 +185,13 @@ export default function App() {
     : [];
   const hasDraft = count(draft.quantities) > 0;
   const locked = busy || fatal || !owned;
-  const updateBlocked =
-    locked ||
-    snapshot === undefined ||
+  const unfinished =
     settingsDirty ||
     summaryDirty ||
     hasDraft ||
     !!snapshot?.orders.some((o) => o.status === 'pending') ||
     !!snapshot?.operations.some((op) => op.status === 'pending');
+  const updateBlocked = locked || snapshot === undefined || unfinished;
   return (
     <>
       <header className="app-header">
@@ -231,17 +243,7 @@ export default function App() {
             }
           >
             <Icon name={online ? 'wifi' : 'offline'} />
-          </span>
-          <span
-            className={`storage-status${update.offlineReady ? ' ready' : ''}`}
-            title={
-              update.offlineReady
-                ? 'オフライン起動の準備済み'
-                : 'オフライン起動は要確認'
-            }
-          >
-            <Icon name="shield" />
-            <span>{update.offlineReady ? '通信なしOK' : '準備中'}</span>
+            <span>{online ? 'オンライン' : 'オフライン'}</span>
           </span>
           <IconButton
             className="icon-button"
@@ -349,6 +351,7 @@ export default function App() {
                 setStarted(true);
               }}
               onRestart={restartSession}
+              exportBackup={exportBackup}
             />
           ) : (
             <>
@@ -361,6 +364,17 @@ export default function App() {
                     label="注文と札の記録を更新"
                     disabled={busy}
                     onClick={() => perform(async () => {})}
+                  />
+                  <CloseDay
+                    snapshot={snapshot}
+                    store={store}
+                    lastBackupSequence={backupHistory.lastSequence(
+                      snapshot.meta,
+                    )}
+                    blocked={unfinished}
+                    onFinish={restartSession}
+                    exportBackup={exportBackup}
+                    {...shared}
                   />
                 </div>
               </div>
@@ -406,6 +420,7 @@ export default function App() {
                   store={store}
                   onRestart={restartSession}
                   hasDraft={hasDraft}
+                  exportBackup={exportBackup}
                   onDirtyChange={setSettingsDirty}
                   {...shared}
                 />

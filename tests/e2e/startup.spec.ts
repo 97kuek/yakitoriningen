@@ -81,7 +81,7 @@ test('再開画面はタイトルと日付に絞り、保存したバックア�
   await expect(page.locator('.startup dt')).toHaveCount(0);
   await expect(page.getByText(/直近：|確定済み/)).toHaveCount(0);
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
-  await expect(page.getByText('営業が終わったら、当日分を保存')).toBeVisible();
+  await expect(page.getByText('営業が終わったら、当日分を保存')).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: '会計を始める', exact: true }),
   ).toBeEnabled();

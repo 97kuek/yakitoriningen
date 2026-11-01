@@ -1,0 +1,29 @@
+.ticket-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: var(--yellow);
+  border-color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ticket-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.ticket-picker-grid button {
+  font-size: var(--font-large);
+  font-variant-numeric: tabular-nums;
+}
+.ticket-picker-grid button[aria-pressed='true'] {
+  background: var(--yellow);
+  border-color: var(--ink);
+}
+.ticket-picker-grid button:disabled {
+  background: var(--selected-surface);
+}
+dialog.ticket-picker-dialog {
+  width: min(440px, calc(100vw - 32px));
+}

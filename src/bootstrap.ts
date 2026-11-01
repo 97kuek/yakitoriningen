@@ -1,8 +1,10 @@
 import { liveQuery } from 'dexie';
 import type { Cashier } from './application/ports';
 import { CashierStore } from './storage/cashier-store';
+import { LocalBackupHistory } from './storage/backup-history';
 
 const store = new CashierStore();
+export const backupHistory = new LocalBackupHistory();
 
 /** Composition root: only this module wires browser persistence into the UI. */
 export const cashier: Cashier = {

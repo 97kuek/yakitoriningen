@@ -18,12 +18,10 @@ export function MenuFields({
   draft,
   onChange: editDraft,
   actions,
-  onAdjustStock,
 }: {
   draft: MenuForm;
   onChange: (next: MenuForm) => void;
   actions?: ReactNode;
-  onAdjustStock?: (id: string) => void;
 }) {
   const items = draft.items;
   function updateItem(id: string, change: Partial<MenuForm['items'][number]>) {
@@ -67,10 +65,13 @@ export function MenuFields({
       </div>
       <div className="menu-columns" aria-hidden="true">
         <span />
-        <span>セット対象・商品名</span>
+        <span className="menu-name-headings">
+          <span>セット対象</span>
+          <span>商品名</span>
+        </span>
         <span>通常価格</span>
         <span>値下げ価格</span>
-        <span>用意した本数</span>
+        <span>在庫数</span>
       </div>
       <div className="menu-rows">
         {items.map((item, index) => (
@@ -156,22 +157,10 @@ export function MenuFields({
                   updateItem(item.id, { stock: event.target.value })
                 }
               />
-              {onAdjustStock && item.stock !== '' && (
-                <IconButton
-                  icon="settings"
-                  label={`${item.name || '商品'}の在庫を調整`}
-                  onClick={() => onAdjustStock(item.id)}
-                />
-              )}
             </div>
           </div>
         ))}
       </div>
-      <p className="hint menu-stock-hint">
-        {onAdjustStock
-          ? '追加・廃棄は在庫欄の横から調整できます。'
-          : '在庫の登録は任意です。'}
-      </p>
       <section className="bundle-section">
         <h3>セット価格</h3>
         <label className="checkbox">
