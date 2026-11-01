@@ -107,3 +107,9 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 `empty-orders-handdrawn.webp`はwelcome-stallのクレヨン風に合わせて組み込みimage_genで生成した透過イラスト。派手な照りのある肉は使わず、ひよこと木の盆・竹串だけにした。WebPへ480pxに縮小し、CSSで4秒の穏やかな上下ループを付ける。動きを減らす設定では静止する。従来のGIFは使用しない。ヘッダーの人力飛行機は外し、画面のフォントで店名を表示する。
 
 編集指定：keep textured chick, remove halo/shadow/white outline, empty wooden tray and two bamboo sticks, genuine transparent alpha.
+
+## 筆文字ロゴ
+
+`public/assets/logo-brush.webp` は提供画像 `S__206790678_0.jpg` を参照し、2026-11-01に画像生成で整えたロゴです。黒い筆文字と赤い「鳥」、左の焼き鳥串を残し、飛行機と背景模様を除きました。透過PNGを640px幅のWebPへ変換し、ヘッダーで表示します。
+
+共有カード用の `share-stall.jpg` は既存の屋台イラストをJPEGへ変換したものです。index.htmlのOGPに指定し、タイトル・説明はPWAマニフェストと揃えています。
