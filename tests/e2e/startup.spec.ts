@@ -12,23 +12,30 @@ import {
   startNewEvent,
 } from './helpers';
 
-test('初回の準備はイラストの下に入力を置き、復元ファイルの形式と問題を画面内で示す', async ({
+test('開始画面はPCではイラストと入力を横に並べてスクロールせずに操作でき、復元ファイルの問題を画面内で示す', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
   const art = page.getByRole('img', { name: 'ひよこたちが営む焼き鳥の屋台' });
-  const form = page.locator('.startup form');
-  await expect(form).toBeVisible();
-  const imageBox = (await art.boundingBox())!;
-  expect(imageBox.y + imageBox.height).toBeLessThan(
-    (await form.boundingBox())!.y,
-  );
+  const panel = page.locator('.startup.panel');
+  await expect(page.locator('.startup form')).toBeVisible();
+  const artBox = (await art.boundingBox())!;
+  const panelBox = (await panel.boundingBox())!;
+  expect(artBox.x + artBox.width).toBeLessThan(panelBox.x);
   expect(
-    Math.abs(
-      imageBox.width -
-        (await page.locator('.startup.panel').boundingBox())!.width,
-    ),
-  ).toBeLessThan(1);
+    Math.abs(artBox.y + artBox.height / 2 - (panelBox.y + panelBox.height / 2)),
+  ).toBeLessThan(2);
+  const overflow = () =>
+    page.evaluate(
+      () => document.documentElement.scrollHeight - window.innerHeight,
+    );
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  await page.setViewportSize({ width: 700, height: 900 });
+  expect((await art.boundingBox())!.y).toBeLessThan(
+    (await panel.boundingBox())!.y,
+  );
+  await page.setViewportSize({ width: 1280, height: 720 });
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: '新しく作る', exact: true }),
