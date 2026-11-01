@@ -10,7 +10,7 @@ import { encodeBackup, ordersCsv, parseBackup } from '../application/backup';
 import { newEvent } from '../application/new-event';
 import { newId } from '../lib/id';
 import { today } from '../presentation/format';
-import { Button, Dialog } from './controls';
+import { Button, Dialog, FilePicker } from './controls';
 import { Icon } from './Icon';
 export function download(
   text: string,
@@ -98,7 +98,7 @@ export function DataPanel({
                 <Icon name="download" />
                 記録を保存
               </Button>
-              <p className="hint">再開やPCの引き継ぎに使います。</p>
+              <p className="hint">復元用の記録ファイル（.json）</p>
             </div>
             <div className="data-action">
               <Button
@@ -120,32 +120,28 @@ export function DataPanel({
                 <Icon name="chart" />
                 売上一覧を保存
               </Button>
-              <p className="hint">売上を表で確認できます。</p>
+              <p className="hint">表で確認する一覧（.csv）</p>
             </div>
           </div>
           {archive && (
             <div className="archive-check">
-              <label>
-                保存したファイルを確認
-                <input
-                  type="file"
-                  accept=".json,application/json"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = '';
-                    void perform(async () => {
-                      const read = parseBackup(await fileText(file));
-                      if (canonical(read) !== canonical(archive))
-                        throw new Error(
-                          '直前に保存した内容と違います。保存したファイルを選び直してください。',
-                        );
-                      setVerified(true);
-                      onVerified(archive);
-                      setStatus('');
-                    });
-                  }}
-                />
-              </label>
+              <FilePicker
+                label="保存したファイルを確認"
+                accept=".json,application/json"
+                onFile={(file) => {
+                  setVerified(false);
+                  void perform(async () => {
+                    const read = parseBackup(await fileText(file));
+                    if (canonical(read) !== canonical(archive))
+                      throw new Error(
+                        '直前に保存した内容と違います。保存したファイルを選び直してください。',
+                      );
+                    setVerified(true);
+                    onVerified(archive);
+                    setStatus('');
+                  });
+                }}
+              />
               <p>
                 {verified ? (
                   <>
@@ -293,22 +289,17 @@ export function DataPanel({
               ? '会計を止めてから開いてください。現在の記録は置き換わります。先に記録を保存し、ファイルを確認してください。'
               : '保存したファイルを選び、内容を確認してください。'}
           </p>
-          <label>
-            開くファイル
-            <input
-              type="file"
-              accept=".json,application/json"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = '';
-                setIncoming(null);
-                setRestoreConfirmed(false);
-                void perform(async () =>
-                  setIncoming(parseBackup(await fileText(file))),
-                );
-              }}
-            />
-          </label>
+          <FilePicker
+            label="記録ファイル（.json）"
+            accept=".json,application/json"
+            onFile={(file) => {
+              setIncoming(null);
+              setRestoreConfirmed(false);
+              void perform(async () =>
+                setIncoming(parseBackup(await fileText(file))),
+              );
+            }}
+          />
           {incoming && (
             <div className="restore-preview">
               <h4>開く内容</h4>

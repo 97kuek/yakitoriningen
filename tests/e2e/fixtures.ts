@@ -102,6 +102,6 @@ export async function openFixture(page: Page, snapshot: Snapshot) {
     snapshot,
   );
   await page.reload();
-  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める', exact: true }).click();
 }

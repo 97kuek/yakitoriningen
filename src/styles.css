@@ -2279,3 +2279,45 @@ select {
     margin: 14px 0;
   }
 }
+
+/* Consistent controls across the cashier and preparation screens. */
+.startup-details dt,
+.startup-menu-price,
+.product-name small,
+.price-strip small {
+  font-size: var(--font-body);
+}
+.data-panel input[type='file'] {
+  width: 100%;
+  padding: 6px;
+  font: inherit;
+  color: var(--muted);
+}
+.data-panel input[type='file']::file-selector-button {
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 8px 12px;
+  margin-right: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.operation-section,
+.bundle-section {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+.payment-controls {
+  margin-top: auto;
+}
+.payment .payment-secondary {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  min-height: 48px;
+}
+.payment .payment-secondary > button {
+  margin: 0;
+}

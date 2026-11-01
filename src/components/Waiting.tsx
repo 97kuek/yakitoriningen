@@ -25,6 +25,7 @@ export function Waiting({
 }) {
   const [ticketSearch, setTicketSearch] = useState('');
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [undoNotice, setUndoNotice] = useState('');
   const [heldRecoveryIds, setHeldRecoveryIds] = useState<string[]>([]);
   // Keep every completed row until the operator explicitly clears it. Removing
   // it on a timer would let a later click reach another order at that position.
@@ -136,7 +137,7 @@ export function Waiting({
             type="search"
             inputMode="numeric"
             maxLength={3}
-            placeholder="札番号で絞り込み"
+            placeholder="例：1"
             value={ticketSearch}
             onChange={(event) => setTicketSearch(event.target.value)}
           />
@@ -156,26 +157,18 @@ export function Waiting({
               </Button>
             )}
           </div>
-          <IconButton
-            icon="refresh"
-            label="完了表示を片づける"
-            disabled={!heldOrders.length || busy}
-            onClick={() => setHeldOrderIds([])}
-          />
-        </div>
-      </div>
-      <div className="handoff-feedback" role="status">
-        {completedOrder && lastHandoff && (
-          <>
-            <div className="handoff-result">
-              <span>札 {completedOrder.ticket} を受け渡し済みにしました。</span>
-              <Button
-                variant="plain"
-                type="button"
-                className="link-button"
-                disabled={busy || undoError !== null}
-                aria-describedby={undoError ? 'handoff-undo-reason' : undefined}
-                onClick={() =>
+          <span className="waiting-undo-slot" title={undoError ?? ''}>
+            {completedOrder && lastHandoff && (
+              <IconButton
+                icon="reset"
+                label="元に戻す"
+                disabled={busy}
+                aria-describedby={undoError ? 'undo-reason' : undefined}
+                onClick={() => {
+                  if (undoError) {
+                    setUndoNotice(undoError);
+                    return;
+                  }
                   void perform(async () => {
                     await saveCommand({
                       type: 'undoHandoff',
@@ -187,15 +180,23 @@ export function Waiting({
                       ids.filter((id) => id !== completedOrder.id),
                     );
                     onHandoffChange(null);
-                  })
-                }
-              >
-                元に戻す
-              </Button>
-            </div>
-            {undoError && <small id="handoff-undo-reason">{undoError}</small>}
-          </>
-        )}
+                  });
+                }}
+              />
+            )}
+            {undoError && (
+              <span id="undo-reason" className="sr-only">
+                {undoError}
+              </span>
+            )}
+          </span>
+          <IconButton
+            icon="refresh"
+            label="完了表示を片づける"
+            disabled={!heldOrders.length || busy}
+            onClick={() => setHeldOrderIds([])}
+          />
+        </div>
       </div>
       {(waiting.length > 0 || heldOrders.length > 0) && (
         <div
@@ -234,8 +235,7 @@ export function Waiting({
             }
           >
             <span className="ticket-badge">
-              <small>札</small>
-              <strong>{order.ticket}</strong>
+              <strong aria-label={`札 ${order.ticket}`}>{order.ticket}</strong>
             </span>
             <div className="order-content">
               <div className="order-quantities">
@@ -289,6 +289,11 @@ export function Waiting({
           <p className="empty-text">この札の待ち注文はありません。</p>
         )}
       </div>
+      {undoNotice && (
+        <Dialog open title="元に戻せません" onClose={() => setUndoNotice('')}>
+          <p>{undoNotice}</p>
+        </Dialog>
+      )}
       {recoveryOpen && (
         <Dialog
           open

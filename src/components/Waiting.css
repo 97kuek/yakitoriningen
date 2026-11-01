@@ -153,3 +153,40 @@
   background: transparent;
   border-color: var(--line);
 }
+
+.waiting .handoff-feedback:not(.has-feedback) {
+  height: 0;
+  min-height: 0;
+}
+.waiting .handoff-completed-note {
+  position: static;
+  display: block;
+  line-height: 1.3;
+  white-space: normal;
+}
+.waiting .ticket-badge {
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  background: var(--selected-surface);
+  min-width: 42px;
+  min-height: 42px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .waiting .empty img {
+    animation: mascot-sway 3s ease-in-out infinite;
+  }
+  @keyframes mascot-sway {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(2deg);
+    }
+  }
+}
+
+.waiting-undo-slot {
+  width: var(--control-size);
+  height: var(--control-size);
+}

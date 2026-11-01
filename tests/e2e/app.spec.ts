@@ -17,7 +17,7 @@ async function setup(page: Page, capture = false) {
   await page.getByLabel('開催回').fill('早稲田祭 2026');
   await page.getByLabel('営業日').fill('2026-11-07');
   await page.getByRole('button', { name: '新しく作る' }).click();
-  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める' }).click();
   if (capture) {
     await page.getByRole('heading', { name: '注文', exact: true }).waitFor();
@@ -60,17 +60,17 @@ test('会計・受け渡し・札回収・入力保持・再起動・取消', as
   await expect(page.getByText('別々に記録', { exact: true })).toHaveCount(0);
   await page.reload();
   await expect(page.getByText('確定済み 1件')).toBeVisible();
-  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める' }).click();
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  await expect(page.getByTestId('net-sales')).toHaveText('￥600');
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
+  await expect(page.getByRole('table')).toContainText('￥600');
   await page.getByRole('button', { name: '全額返金' }).click();
   await page.getByLabel('取消理由').fill('返金済み');
   await page.getByRole('button', { name: '返金を始める' }).click();
   await expect(page.getByText('返金の準備ができました。')).toBeVisible();
   await page.getByLabel('全額返金し、現金を確認しました').check();
   await page.getByRole('button', { name: '返金を記録' }).click();
-  await expect(page.getByTestId('net-sales')).toHaveText('￥0');
+  await expect(page.getByRole('table')).toContainText('取消済み');
 });
 test('価格変更は入力中の注文を変えず次の空注文へ適用する', async ({ page }) => {
   await setup(page);
@@ -102,7 +102,7 @@ test('オフラインで再起動して保留注文を照合できる', async ({
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByText('途中の会計 1件')).toBeVisible();
-  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める' }).click();
   await expect(page.getByRole('heading', { name: 'お会計' })).toBeVisible();
   await page.getByRole('button', { name: '会計を確定' }).click();
@@ -135,7 +135,7 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
   await page
     .getByRole('button', { name: '保存した記録を開く', exact: true })
     .click();
-  await page.getByLabel('開くファイル').setInputFiles({
+  await page.getByLabel('記録ファイル（.json）').setInputFiles({
     name: 'restore.json',
     mimeType: 'application/json',
     buffer: first,
@@ -143,7 +143,7 @@ test('JSONを出力・読み直し、確認した内容へ復元する', async (
   await page.getByLabel('開く内容と現在の記録の保存を確認した').check();
   await page.getByRole('button', { name: 'この記録に置き換える' }).click();
   await expect(page.getByText('確定済み 1件')).toBeVisible();
-  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める' }).click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
 });
@@ -196,7 +196,7 @@ test('二重起動した画面の操作を止め、元の画面を閉じてか�
   ).toBeDisabled();
   await page.close();
   await second.getByRole('button', { name: 'この画面で再確認' }).click();
-  await second.getByLabel('日付・価格・件数を確認した').check();
+  await second.getByLabel('日付・価格を確認した').check();
   await second.getByRole('button', { name: '会計を始める' }).click();
   await expect(
     second.getByRole('heading', { name: '注文', exact: true }),
@@ -210,7 +210,6 @@ test('最新価格で上限超過しても入力中の価格を保持して画�
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await page.getByRole('button', { name: '設定', exact: true }).click();
   await page.getByLabel('ももの通常価格（円）').fill('100000000');
-  await page.getByRole('button', { name: 'セット価格', exact: true }).click();
   await page.getByLabel('セット価格を使う').uncheck();
   await page.getByRole('button', { name: '変更を保存' }).click();
   await page.getByRole('button', { name: '会計', exact: true }).click();
@@ -280,7 +279,7 @@ test('履歴には当日の重複日付や内部番号を表示しない', async
   await setup(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await pay(page, '1000');
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   const table = page.getByRole('table');
   await expect(table).not.toContainText('2026-11-07');
   expect(await table.innerText()).not.toMatch(/\b[a-f0-9]{8}\b/);
@@ -336,7 +335,7 @@ test('戻すファイルに問題があれば開いている画面の中で理�
     .getByRole('button', { name: '保存した記録を開く', exact: true })
     .click();
   const modal = page.getByRole('dialog', { name: '保存した記録を開く' });
-  await modal.getByLabel('開くファイル').setInputFiles({
+  await modal.getByLabel('記録ファイル（.json）').setInputFiles({
     name: 'invalid.json',
     mimeType: 'application/json',
     buffer: Buffer.from('{"bad":true}'),
@@ -385,7 +384,7 @@ test('確認待ちの記録は再試行に失敗しても途中で消えない',
       }),
   );
   await page.reload();
-  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める' }).click();
   await expect(
     page.getByRole('heading', { name: '確認が必要な記録' }),
@@ -464,7 +463,6 @@ test('設定は項目ごとに分かれ、入力を保ったまま切り替え�
   await page.getByLabel('ももの通常価格（円）').fill('177');
   await page.getByRole('button', { name: '記録・その他', exact: true }).click();
   await expect(page.getByLabel('ももの通常価格（円）')).not.toBeVisible();
-  await page.getByRole('button', { name: '日付・番号札', exact: true }).click();
   await expect(page.getByLabel('会計に記録する日付')).toBeVisible();
   await page.getByRole('button', { name: '商品・価格', exact: true }).click();
   await expect(page.getByLabel('ももの通常価格（円）')).toHaveValue('177');
@@ -483,79 +481,22 @@ test('設定は項目ごとに分かれ、入力を保ったまま切り替え�
     fullPage: true,
   });
 });
-test('開催全体の経費から利益を計算し、売上と販売本数をグラフで確認できる', async ({
-  page,
-}) => {
-  await setup(page);
-  await page.getByRole('button', { name: 'ももを1本増やす' }).click();
-  await pay(page, '1000');
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  await expect(page.getByTestId('net-sales')).toHaveText('￥150');
-  await expect(page.getByTestId('profit')).toHaveText('未登録');
-  await page.getByRole('button', { name: '経費を登録', exact: true }).click();
-  await page.getByLabel('開催回全体の経費（円）').fill('50');
-  await page.getByRole('button', { name: '経費を保存', exact: true }).click();
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  await expect(page.getByTestId('expense-total')).toHaveText('￥50');
-  await expect(page.getByTestId('profit')).toHaveText('￥100');
-  await expect(page.getByRole('figure', { name: '日別の売上' })).toBeVisible();
-  await expect(
-    page.getByRole('figure', { name: '種類別の販売本数' }),
-  ).toContainText(/もも\s*1本/);
-  await page.screenshot({
-    path: 'test-results/sales-profit.png',
-    fullPage: true,
-  });
-});
-test('営業日別の内訳に変えても開催回全体の経費・利益を保ち、0円と赤字を表示する', async ({
-  page,
-}) => {
+test('営業日の切り替え後も注文履歴を日ごとに確認できる', async ({ page }) => {
   await setup(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await pay(page, '1000');
   await page.getByRole('button', { name: '設定', exact: true }).click();
-  await page.getByRole('button', { name: '経費', exact: true }).click();
-  await page.getByLabel('開催回全体の経費（円）').fill('200');
-  await page.getByRole('button', { name: '経費を保存', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('経費を保存しました。');
   await page.getByRole('button', { name: '記録・その他', exact: true }).click();
-  await page.getByRole('button', { name: '日付・番号札', exact: true }).click();
   await page.getByLabel('会計に記録する日付').fill('2026-11-08');
   await page.getByRole('button', { name: '日付を変更', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('日付を変更しました。');
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  await page.getByRole('combobox', { name: '表示範囲' }).click();
-  await page
-    .getByRole('option', { name: '日付 2026-11-08', exact: true })
-    .click();
-  await expect(page.getByTestId('profit')).toHaveText('-￥50');
-  await expect(page.getByTestId('expense-total')).toHaveText('￥200');
-  await expect(
-    page.getByText('この日の売上 ￥0', { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('figure', { name: '時刻別の売上' }),
-  ).toContainText('会計が入ると表示されます。');
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
-  await page.screenshot({
-    path: 'test-results/sales-mobile.png',
-    fullPage: true,
-  });
-  await page.getByRole('button', { name: '経費を変更', exact: true }).click();
-  await page.getByLabel('開催回全体の経費（円）').fill('0');
-  await page.getByRole('button', { name: '経費を保存', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('経費を保存しました。');
-  await page.reload();
-  await page.getByLabel('日付・価格・件数を確認した').check();
-  await page.getByRole('button', { name: '会計を始める' }).click();
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  await expect(page.getByTestId('profit')).toHaveText('￥150');
-  await expect(page.getByTestId('expense-total')).toHaveText('￥0');
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
+  const select = page.getByRole('combobox', { name: '表示する日' });
+  await select.click();
+  await page.getByRole('option', { name: '2日目（11/8）' }).click();
+  await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(0);
+  await select.click();
+  await page.getByRole('option', { name: '1日目（11/7）' }).click();
+  await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
 });
 test('保存前の設定は会計や売上へ移動しても残る', async ({ page }) => {
   await setup(page);
@@ -571,7 +512,7 @@ test('入金前に本数を修正し、設定変更前の価格で会計でき�
   await setup(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
-  await page.getByRole('button', { name: '本数を修正', exact: true }).click();
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
   await expect(page.getByLabel('ももの本数')).toHaveValue('1');
   await page.getByRole('button', { name: 'かわを1本増やす' }).click();
   await pay(page, '1000');
@@ -593,8 +534,7 @@ test('受け渡し完了を戻しても次の注文の入力と売上は変わ�
   await page.getByRole('button', { name: '元に戻す', exact: true }).click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   await expect(page.getByLabel('かわの本数')).toHaveValue('1');
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  await expect(page.getByTestId('net-sales')).toHaveText('￥150');
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
 });
 test('履歴は札番号と受け渡し状態で探せて集計額は変わらない', async ({
   page,
@@ -609,14 +549,13 @@ test('履歴は札番号と受け渡し状態で探せて集計額は変わら�
     .first()
     .getByRole('button', { name: '受け渡し完了（札も回収）', exact: true })
     .click();
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   await page.getByLabel('札番号で検索').fill('2');
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
   await expect(page.getByRole('table')).toContainText('かわ');
   await page.getByLabel('札番号で検索').fill('');
   await page.getByLabel('未受け渡しだけ表示').check();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
-  await expect(page.getByTestId('net-sales')).toHaveText('￥300');
 });
 test('返金は段階ごとに操作を1つ示し、入力に二重枠を出さない', async ({
   page,
@@ -624,7 +563,7 @@ test('返金は段階ごとに操作を1つ示し、入力に二重枠を出さ�
   await setup(page);
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await pay(page);
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   await page.getByRole('button', { name: '全額返金', exact: true }).click();
   const modal = page.getByRole('dialog', { name: '全額返金', exact: true });
   await expect(
@@ -646,7 +585,6 @@ test('追加商品の対象セットと個別値下げを会計し、削除後�
   await page.getByLabel('商品4の名前', { exact: true }).fill('つくね');
   await page.getByLabel('つくねの通常価格（円）').fill('200');
   await page.getByLabel('つくねの値下げ価格（円）').fill('80');
-  await page.getByRole('button', { name: 'セット価格', exact: true }).click();
   await page.getByLabel('つくね', { exact: true }).check();
   await page.getByLabel('かわ', { exact: true }).uncheck();
   await page.getByLabel('ねぎま', { exact: true }).uncheck();
@@ -688,23 +626,19 @@ test('追加商品の対象セットと個別値下げを会計し、削除後�
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   await expect(page.getByRole('table')).toContainText('つくね 2本');
-  await expect(page.getByTestId('net-sales')).toHaveText('￥530');
-  await expect(
-    page.getByRole('figure', { name: '種類別の販売本数' }),
-  ).toContainText(/つくね\s*3本/);
 });
 test('表示範囲は共通の選択UIをキーボードで操作できる', async ({ page }) => {
   await setup(page);
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  const select = page.getByRole('combobox', { name: '表示範囲' });
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
+  const select = page.getByRole('combobox', { name: '表示する日' });
   await select.focus();
   await select.press('ArrowDown');
-  await expect(page.getByRole('listbox', { name: '表示範囲' })).toBeVisible();
+  await expect(page.getByRole('listbox', { name: '表示する日' })).toBeVisible();
   await select.press('ArrowDown');
   await select.press('Enter');
-  await expect(select).toHaveText('日付 2026-11-07');
+  await expect(select).toHaveText('1日目（11/7）');
   await expect(select).toBeFocused();
   await select.press('Enter');
   await select.press('Escape');
@@ -715,9 +649,8 @@ test('履歴が51件以上あっても50件ずつ表示し、全体の売上は�
   page,
 }) => {
   await openFixture(page, await historyFixture(51));
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(50);
-  await expect(page.getByTestId('net-sales')).toHaveText('￥7,650');
   await page.getByRole('button', { name: '前の50件', exact: true }).click();
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
   await expect(

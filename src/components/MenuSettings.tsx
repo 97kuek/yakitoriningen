@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { createMenuDraft, getUnitPrice } from '../domain/catalog';
+import { createMenuDraft } from '../domain/catalog';
 import { priceSchema } from '../domain/model';
 import type { Price, MenuItem } from '../domain/model';
 import { newId } from '../lib/id';
 import type { Shared } from '../ui';
-import { yen } from '../presentation/format';
-import { Button, Disclosure, IconButton } from './controls';
+import { Button, IconButton } from './controls';
 import { Icon } from './Icon';
 import './MenuSettings.css';
 
@@ -71,13 +70,6 @@ export function MenuSettings({
         <p className="menu-selling-current">
           販売中：{current.discounted ? '値下げ価格' : '通常価格'}
         </p>
-        <ul className="menu-selling-prices" aria-label="販売中の単価">
-          {current.items.map((item) => (
-            <li key={item.id}>
-              {item.name} {yen(getUnitPrice(item, current))}
-            </li>
-          ))}
-        </ul>
         <div className="menu-selling-actions">
           <Button
             disabled={busy || !current.discounted}
@@ -96,10 +88,11 @@ export function MenuSettings({
             値下げ価格
           </Button>
         </div>
-        <p className="hint menu-selling-note">次の注文から適用します。</p>
-        <p className="menu-mode-result" role="status">
-          {modeSaved}
-        </p>
+        {modeSaved && (
+          <p className="menu-mode-result" role="status">
+            {modeSaved}
+          </p>
+        )}
       </section>
       <form
         className="menu-settings"
@@ -212,7 +205,8 @@ export function MenuSettings({
           <Icon name="plus" />
           商品を追加
         </Button>
-        <Disclosure title="セット価格">
+        <section className="bundle-section">
+          <h3>セット価格</h3>
           <label className="checkbox">
             <input
               type="checkbox"
@@ -296,8 +290,7 @@ export function MenuSettings({
               値下げ中もセットを使う
             </label>
           </fieldset>
-        </Disclosure>
-        <p className="hint">入力中・会計済みの注文は変わりません。</p>
+        </section>
         <p role="status" className="settings-result">
           {saved}
         </p>

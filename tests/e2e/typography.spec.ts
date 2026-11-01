@@ -46,7 +46,7 @@ test('営業開始・会計・売上・設定・返金の文字サイズは3種�
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await expectThreeSizes(page);
   await page.getByRole('button', { name: '会計を確定', exact: true }).click();
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   await expectThreeSizes(page);
   await page.getByRole('button', { name: '全額返金', exact: true }).click();
   await expectThreeSizes(page);

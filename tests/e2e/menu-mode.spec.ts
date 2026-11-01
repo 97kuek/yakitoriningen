@@ -59,8 +59,8 @@ test('販売価格の切り替えは未保存の商品編集を保持し、入�
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await expect(page.getByTestId('total')).toHaveText('￥80');
   await pay(page, '80');
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  await expect(page.getByTestId('net-sales')).toHaveText('￥280');
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
+  await expect(page.getByRole('table').locator('tbody tr')).not.toHaveCount(0);
   await settings(page);
   await page
     .getByRole('button', { name: '通常価格に切り替える', exact: true })
@@ -91,7 +91,7 @@ test('未入力の商品があっても販売価格だけ切り替えられ、�
   await expect(page.getByTestId('total')).toHaveText('￥50');
   await expect(page.getByLabel('名前未入力の本数')).toHaveCount(0);
   await page.reload();
-  await page.getByLabel('日付・価格・件数を確認した').check();
+  await page.getByLabel('日付・価格を確認した').check();
   await page.getByRole('button', { name: '会計を始める', exact: true }).click();
   await page.getByRole('button', { name: 'ももを1本増やす' }).click();
   await expect(page.getByTestId('total')).toHaveText('￥50');

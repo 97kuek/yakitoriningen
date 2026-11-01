@@ -34,6 +34,6 @@ test('保存した前年の記録を確認してから新しい開催回に切�
     .getByRole('button', { name: '新しい開催回に切り替える' })
     .click();
   await expect(page.getByText('早稲田祭 2027', { exact: true })).toBeVisible();
-  await expect(page.getByText('確定済み 0件')).toBeVisible();
+  await expect(page.getByText('確定済み 0件')).toHaveCount(0);
   await expect(page.getByText('もも ￥200')).toBeVisible();
 });

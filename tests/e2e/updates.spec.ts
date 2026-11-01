@@ -5,12 +5,12 @@ test('表示範囲は標準メニューや二重枠を使わず、開閉して�
   page,
 }) => {
   await openFixture(page, await historyFixture(0));
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
-  const control = page.getByRole('combobox', { name: '表示範囲' });
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
+  const control = page.getByRole('combobox', { name: '表示する日' });
   await expect(page.locator('select')).toHaveCount(0);
   const before = await control.boundingBox();
   await control.click();
-  await expect(page.getByRole('listbox', { name: '表示範囲' })).toBeVisible();
+  await expect(page.getByRole('listbox', { name: '表示する日' })).toBeVisible();
   await expect(control).toHaveCSS('outline-style', 'none');
   await expect(control).toHaveCSS('box-shadow', 'none');
   const after = await control.boundingBox();

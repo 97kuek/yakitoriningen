@@ -396,3 +396,44 @@ dialog.control-dialog {
   opacity: 1;
   transform: none;
 }
+.file-picker {
+  position: relative;
+}
+.data-panel .file-picker-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.file-picker-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: var(--control-size);
+  color: var(--muted);
+  font-weight: 400;
+  cursor: pointer;
+}
+.file-picker-control > span:first-child {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  font-weight: 600;
+}
+.file-picker-control > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-picker-input:focus-visible + .file-picker-control > span:first-child {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}

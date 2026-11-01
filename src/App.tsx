@@ -233,7 +233,7 @@ export default function App() {
             {(
               [
                 { key: '会計', label: '会計', icon: 'cash' },
-                { key: '履歴・集計', label: '売上・履歴', icon: 'chart' },
+                { key: '履歴・集計', label: '注文履歴', icon: 'chart' },
                 { key: '設定・データ', label: '設定', icon: 'settings' },
               ] as { key: string; label: string; icon: IconName }[]
             ).map((item) => (
@@ -249,13 +249,7 @@ export default function App() {
                 }}
               >
                 <Icon name={item.icon} />
-                <span
-                  className={
-                    item.key === '設定・データ' ? 'sr-only' : undefined
-                  }
-                >
-                  {item.label}
-                </span>
+                <span>{item.label}</span>
               </Button>
             ))}
           </nav>
@@ -341,10 +335,10 @@ export default function App() {
             <span>
               会計が終わったら、記録を保存・確認してから更新してください。
             </span>
-            <Button
+            <IconButton
+              icon="refresh"
+              label="更新する"
               variant="secondary"
-              type="button"
-              className="secondary"
               disabled={
                 tabOwnership.state !== 'owned' ||
                 !snapshot ||
@@ -356,10 +350,7 @@ export default function App() {
               onClick={() => {
                 void updateServiceWorker(true);
               }}
-            >
-              <Icon name="refresh" />
-              更新する
-            </Button>
+            />
           </div>
         )}
         <fieldset
@@ -427,15 +418,7 @@ export default function App() {
                 </div>
               )}
               {tab === '履歴・集計' && (
-                <History
-                  snapshot={snapshot}
-                  store={store}
-                  onEditExpenses={() => {
-                    setSettingsInitial('expenses');
-                    setTab('設定・データ');
-                  }}
-                  {...shared}
-                />
+                <History snapshot={snapshot} store={store} {...shared} />
               )}
               <div hidden={tab !== '設定・データ'}>
                 <Settings

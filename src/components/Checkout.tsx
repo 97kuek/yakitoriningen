@@ -138,8 +138,7 @@ export function Checkout({
         ) : null}
       </div>
       <div className="price-strip">
-        <span className="price-label">{price.label}</span>
-        <span>{price.discounted ? '値下げ価格' : '通常価格'}</span>
+        {price.discounted && <span className="price-label">値下げ中</span>}
         {price.bundleEnabled &&
           (!price.discounted || price.bundleDuringDiscount) && (
             <span>
@@ -196,7 +195,6 @@ export function Checkout({
                   value={draft.quantities[p.id] ?? 0}
                   onChange={(e) => changeQuantity(p.id, Number(e.target.value))}
                 />
-                <span>本</span>
               </div>
               <IconButton
                 variant="secondary"
@@ -279,6 +277,7 @@ function Payment({
 }) {
   const products = getMenu(order.price);
   const [received, setReceived] = useState('');
+  const [confirmReady, setConfirmReady] = useState(true);
   const [confirmAction, setConfirmAction] = useState<'edit' | 'cancel' | null>(
     null,
   );
@@ -293,9 +292,15 @@ function Payment({
       ? operation.command.received
       : Number(received);
   useEffect(() => {
+    if (!staged || confirmReady) return;
+    const timer = window.setTimeout(() => setConfirmReady(true), 500);
+    return () => window.clearTimeout(timer);
+  }, [staged, confirmReady]);
+  useEffect(() => {
     const stage = staged ? 'confirm' : 'received';
     if (
       !busy &&
+      (!staged || confirmReady) &&
       focusedStage.current !== stage &&
       window.matchMedia('(pointer: fine)').matches
     ) {
@@ -304,7 +309,7 @@ function Payment({
       });
       focusedStage.current = stage;
     }
-  }, [busy, staged]);
+  }, [busy, staged, confirmReady]);
   return (
     <section className="payment" aria-label={`札${order.ticket}の入金`}>
       <div className="section-heading">
@@ -337,8 +342,10 @@ function Payment({
       </div>
       {!staged ? (
         <form
+          id={`payment-${order.id}`}
           onSubmit={(e) => {
             e.preventDefault();
+            setConfirmReady(false);
             void perform(() =>
               store.prepare(order.confirmOperationId, context, {
                 type: 'pay',
@@ -388,40 +395,6 @@ function Payment({
                 </Button>
               ))}
           </div>
-          <Button
-            variant="primary"
-            type="submit"
-            className="primary checkout-button wide"
-            disabled={!received || amount < order.quote.total}
-          >
-            お釣りを確認
-            <Icon name="arrow" />
-          </Button>
-          <Button
-            variant="plain"
-            type="button"
-            className="link-button payment-edit"
-            onClick={() =>
-              void perform(async () => {
-                await saveCommand({
-                  type: 'cancel',
-                  ...target,
-                  reason: '入金前の本数修正',
-                });
-                onEdit();
-              })
-            }
-          >
-            本数を修正
-          </Button>
-          <Button
-            variant="plain"
-            type="button"
-            className="link-button muted payment-back"
-            onClick={() => setConfirmAction('cancel')}
-          >
-            この注文を取り消す
-          </Button>
         </form>
       ) : (
         <>
@@ -435,34 +408,80 @@ function Payment({
               {yen(amount - order.quote.total)}
             </strong>
           </div>
-          <p className="payment-instruction">
-            現金を受け取り、お釣りを渡してください。
-          </p>
+        </>
+      )}
+      <div className="payment-controls">
+        {staged ? (
           <Button
             variant="primary"
-            type="button"
             ref={confirmButton}
-            className="primary checkout-button wide"
-            onClick={() =>
-              perform(async () => {
+            className="checkout-button wide"
+            disabled={!confirmReady}
+            onKeyDown={(event) => {
+              if (event.repeat && (event.key === 'Enter' || event.key === ' '))
+                event.preventDefault();
+            }}
+            onClick={(event) => {
+              if (event.detail > 1) return;
+              void perform(async () => {
                 await store.execute(order.confirmOperationId, context);
                 onConfirmed();
-              })
-            }
+              });
+            }}
           >
             <Icon name="check" />
             会計を確定
           </Button>
+        ) : (
           <Button
-            variant="plain"
-            type="button"
-            className="link-button muted payment-back"
-            onClick={() => setConfirmAction('edit')}
+            variant="primary"
+            type="submit"
+            form={`payment-${order.id}`}
+            className="checkout-button wide"
+            disabled={!received || amount < order.quote.total}
           >
-            入金額を修正
+            お釣りを確認
+            <Icon name="arrow" />
           </Button>
-        </>
-      )}
+        )}
+        <div className="payment-secondary">
+          {staged ? (
+            <Button
+              variant="plain"
+              className="link-button"
+              onClick={() => setConfirmAction('edit')}
+            >
+              入金額を修正
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="plain"
+                className="link-button"
+                onClick={() =>
+                  void perform(async () => {
+                    await saveCommand({
+                      type: 'cancel',
+                      ...target,
+                      reason: '入金前の本数修正',
+                    });
+                    onEdit();
+                  })
+                }
+              >
+                戻る
+              </Button>
+              <Button
+                variant="plain"
+                className="link-button muted"
+                onClick={() => setConfirmAction('cancel')}
+              >
+                注文を取り消す
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
       {confirmAction && (
         <Dialog
           open

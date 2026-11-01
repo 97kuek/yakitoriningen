@@ -10,7 +10,7 @@ async function sell(page: Page) {
 }
 
 async function refundFirst(page: Page) {
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   await page
     .getByRole('button', { name: '全額返金', exact: true })
     .first()
@@ -112,7 +112,7 @@ test('すでに回収済みの札は返金後に再度回収を求めない', as
   await expect(
     page.getByRole('dialog', { name: '返金を記録しました', exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByTestId('net-sales')).toHaveText('￥0');
+  await expect(page.getByRole('table').locator('tbody tr')).not.toHaveCount(0);
 });
 
 test('回収待ちが複数あるとき二度押ししても別の札を回収しない', async ({

@@ -56,6 +56,39 @@ export function IconButton({
   );
 }
 
+export function FilePicker({
+  label,
+  accept,
+  onFile,
+}: {
+  label: string;
+  accept: string;
+  onFile: (file: File | undefined) => void;
+}) {
+  const [name, setName] = useState('');
+  return (
+    <label className="file-picker">
+      <span>{label}</span>
+      <input
+        className="file-picker-input"
+        aria-label={label}
+        type="file"
+        accept={accept}
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          setName(file?.name ?? '');
+          event.currentTarget.value = '';
+          onFile(file);
+        }}
+      />
+      <span className="file-picker-control" aria-hidden="true">
+        <span>ファイルを選ぶ</span>
+        <span>{name || '選択されていません'}</span>
+      </span>
+    </label>
+  );
+}
+
 export function Disclosure({
   title,
   children,

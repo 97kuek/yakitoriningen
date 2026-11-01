@@ -5,7 +5,7 @@ import type { Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { DataPanel } from './DataPanel';
 import { MenuSettings } from './MenuSettings';
-import { Button, Disclosure } from './controls';
+import { Button } from './controls';
 export type SettingsSection = 'price' | 'expenses' | 'backup';
 export function Settings({
   snapshot,
@@ -80,7 +80,7 @@ export function Settings({
                   type: 'expense',
                   amount: Number(expense),
                 });
-                setSaved('経費を保存しました。売上画面に利益が表示されます。');
+                setSaved('経費を保存しました。');
               });
             }}
           >
@@ -118,7 +118,8 @@ export function Settings({
             onVerified={onVerified}
             hasDraft={hasDraft}
           />
-          <Disclosure title="日付・番号札">
+          <section className="operation-section">
+            <h3>日付・番号札</h3>
             <div className="operation-settings">
               <form
                 onSubmit={(event) => {
@@ -179,10 +180,11 @@ export function Settings({
                 </Button>
               </form>
             </div>
-          </Disclosure>
-          <Disclosure title="記録を消えにくくする設定">
+          </section>
+          <section className="operation-section">
+            <h3>記録の保護</h3>
             <p className="hint">
-              手動での削除やPC故障にはバックアップが必要です。
+              ブラウザによる自動削除を防ぎます。故障に備え、記録の保存も必要です。
             </p>
             <Button
               onClick={() =>
@@ -195,7 +197,7 @@ export function Settings({
                 })
               }
             >
-              記録の保護を要求
+              記録の自動削除を防ぐ
             </Button>
             {persisted !== null && (
               <p role="status">
@@ -204,7 +206,7 @@ export function Settings({
                   : '記録の保護は許可されませんでした。記録を保存してください。'}
               </p>
             )}
-          </Disclosure>
+          </section>
         </section>
         <p className="settings-result" role="status">
           {saved}

@@ -1,10 +1,8 @@
 import { useRef, useState } from 'react';
 import { dayText, orderText, timeText, yen } from '../presentation/format';
-import { profit, summarizeSales } from '../domain/sales';
 import { historyPage } from '../domain/history';
 import { Button, Dialog, IconButton, Select } from './controls';
 import { RefundDialog } from './RefundDialog';
-import { SalesCharts } from './SalesCharts';
 import { OrderDetails, receiptNumber } from './OrderDetails';
 
 import type { Order, Snapshot } from '../domain/model';
@@ -19,110 +17,59 @@ export function History({
   store,
   busy,
   saveCommand,
-  onEditExpenses,
 }: Shared & {
   snapshot: Snapshot;
   store: Cashier;
-  onEditExpenses: () => void;
 }) {
-  const [scope, setScope] = useState<'day' | 'event'>('event');
+  const [scope, setScope] = useState('event');
   const [cancel, setCancel] = useState<Order | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const detailsTrigger = useRef<HTMLButtonElement | null>(null);
   const [ticketSearch, setTicketSearch] = useState('');
   const [waitingOnly, setWaitingOnly] = useState(false);
   const [page, setPage] = useState(0);
+  const days = [
+    ...new Set([
+      snapshot.meta.day,
+      ...snapshot.orders.map((order) => order.day),
+      ...snapshot.operations.flatMap((operation) =>
+        operation.status === 'done' && operation.command.type === 'day'
+          ? [operation.day, operation.command.day]
+          : [],
+      ),
+    ]),
+  ].sort();
   const orders = snapshot.orders.filter(
-    (o) => scope === 'event' || o.day === snapshot.meta.day,
+    (order) => scope === 'event' || order.day === scope,
   );
   const history = historyPage(orders, ticketSearch, waitingOnly, page);
-  const total = summarizeSales(snapshot.orders);
-  const selected = summarizeSales(orders);
-  const earnings = profit(total.sales, snapshot.meta.expenseTotal);
   const details = snapshot.orders.find((order) => order.id === detailsId);
   return (
     <section className="panel history">
       <div className="section-heading">
         <h2>
           <Icon name="chart" />
-          売上・履歴
+          注文履歴
         </h2>
-        <span>開催回全体</span>
+        <Select
+          value={scope}
+          label="表示する日"
+          onChange={(value) => {
+            setScope(value);
+            setPage(0);
+          }}
+          options={[
+            { value: 'event', label: 'すべて' },
+            ...days.map((day, index) => ({
+              value: day,
+              label:
+                days.length <= 2
+                  ? `${index + 1}日目（${dayText(day)}）`
+                  : dayText(day),
+            })),
+          ]}
+        />
       </div>
-      <div className="profit-equation">
-        <div>
-          <span>売上</span>
-          <strong data-testid="net-sales">{yen(total.sales)}</strong>
-          <small>返金を差し引いた金額</small>
-        </div>
-        <span aria-hidden="true">−</span>
-        <div>
-          <span>経費</span>
-          <strong data-testid="expense-total">
-            {snapshot.meta.expenseTotal == null
-              ? '未登録'
-              : yen(snapshot.meta.expenseTotal)}
-          </strong>
-          <Button
-            variant="plain"
-            type="button"
-            className="link-button"
-            onClick={onEditExpenses}
-          >
-            {snapshot.meta.expenseTotal == null ? '経費を登録' : '経費を変更'}
-          </Button>
-        </div>
-        <span aria-hidden="true">＝</span>
-        <div>
-          <span>利益</span>
-          <strong
-            className={earnings !== null && earnings < 0 ? 'danger-text' : ''}
-            data-testid="profit"
-          >
-            {earnings === null ? '未登録' : yen(earnings)}
-          </strong>
-          <small>
-            {earnings === null
-              ? '経費を登録すると表示します'
-              : '売上から経費を引いた金額'}
-          </small>
-        </div>
-      </div>
-      <div className="sales-detail-heading">
-        <h3>売上の内訳</h3>
-        <label className="inline-label">
-          表示範囲
-          <Select
-            value={scope}
-            label="表示範囲"
-            onChange={(value) => {
-              setScope(value as 'day' | 'event');
-              setPage(0);
-            }}
-            options={[
-              { value: 'event', label: '開催回全体' },
-              { value: 'day', label: `日付 ${snapshot.meta.day}` },
-            ]}
-          />
-        </label>
-      </div>
-      <div className="sales-breakdown-line">
-        <span>
-          {selected.count}本 / {selected.orders}件
-        </span>
-        {selected.refunds > 0 && <span>返金 {yen(selected.refunds)}</span>}
-        <span>
-          {scope === 'day' ? `この日の売上 ${yen(selected.sales)}` : ''}
-        </span>
-      </div>
-      <SalesCharts
-        orders={orders}
-        scope={scope}
-        price={snapshot.prices.find(
-          (price) => price.id === snapshot.meta.activePriceId,
-        )!}
-      />
-      <h3 className="history-heading">注文履歴</h3>
       <div className="history-filters">
         <label>
           札番号で検索

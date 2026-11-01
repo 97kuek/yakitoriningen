@@ -79,10 +79,7 @@ test('同じ位置を150ms間隔で二度押しても一件だけ完了し、次
   expect(Math.abs(secondAfter!.y - secondBefore!.y)).toBeLessThan(1);
   await complete(page).first().click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
-  await page
-    .locator('.handoff-feedback')
-    .getByRole('button', { name: '元に戻す', exact: true })
-    .click();
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(2);
 });
 
@@ -109,13 +106,11 @@ test('札を再利用すると完了を戻せない理由が分かる', async ({
   await page.getByLabel('お預かり金額').fill('500');
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await page.getByRole('button', { name: '会計を確定', exact: true }).click();
-  const feedback = page.locator('.handoff-feedback');
+  const feedback = page.locator('.waiting-undo-slot');
+  await feedback.getByRole('button', { name: '元に戻す', exact: true }).click();
   await expect(
-    feedback.getByRole('button', { name: '元に戻す', exact: true }),
-  ).toBeDisabled();
-  await expect(feedback).toContainText(
-    'この札は既に再利用されています。完了を取り消せません。',
-  );
+    page.getByRole('dialog', { name: '元に戻せません' }),
+  ).toContainText('この札は既に再利用されています。完了を取り消せません。');
 });
 
 test('同じ秒・札・商品・金額の会計を詳細で区別し、同じ情報を見て返金できる', async ({
@@ -123,7 +118,7 @@ test('同じ秒・札・商品・金額の会計を詳細で区別し、同じ�
 }) => {
   const snapshot = await queueFixture(2, true);
   await openFixture(page, snapshot);
-  await page.getByRole('button', { name: '売上・履歴', exact: true }).click();
+  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
   const rows = page.getByRole('table').locator('tbody tr');
   const receipts: string[] = [];
   const amounts: string[] = [];
