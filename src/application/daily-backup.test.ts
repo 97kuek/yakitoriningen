@@ -184,3 +184,85 @@ it('日別復元後に札枚数を減らして戻しても、過去の完了を�
     ),
   ).toContain('再利用');
 });
+
+it('前日のバックアップを戻しても翌日の注文・経費・会計番号を失わない', async () => {
+  const { store, run, pay } = await setup();
+  await pay();
+  await run({ type: 'expense', amount: 100 });
+  const first = dailySnapshot((await store.read())!);
+  await run({ type: 'day', day: '2026-11-08' });
+  const secondOrder = await pay();
+  await run({ type: 'stock', quantities: { momo: 30 } });
+  await run({ type: 'expense', amount: 200 });
+  const before = (await store.read())!;
+  const secondLogs = before.logs.filter((log) =>
+    before.operations.some(
+      (op) => op.id === log.operationId && op.day === '2026-11-08',
+    ),
+  );
+  await store.restore(first, before);
+  const restored = parseBackup(encodeBackup((await store.read())!));
+  expect(restored.orders).toHaveLength(2);
+  expect(
+    restored.orders.find((order) => order.id === secondOrder.orderId),
+  ).toEqual(before.orders.find((order) => order.id === secondOrder.orderId));
+  expect(restored.logs).toEqual(expect.arrayContaining(secondLogs));
+  expect(dailyExpense(restored, '2026-11-08')).toBe(200);
+  expect(remainingStock(restored, '2026-11-08').momo).toBe(28);
+  expect(restored.meta.day).toBe('2026-11-07');
+  expect(restored.meta.generation).not.toBe(before.meta.generation);
+});
+
+it('別日の使用中の札がある復元は記録を変更せず拒否する', async () => {
+  const { store, run, pay } = await setup();
+  await pay();
+  const first = dailySnapshot((await store.read())!);
+  await run({ type: 'day', day: '2026-11-08' });
+  await run({
+    type: 'reserve',
+    orderId: newId(),
+    assignmentId: newId(),
+    confirmOperationId: newId(),
+    quantities: { momo: 1 },
+    price: first.prices[0],
+  });
+  const before = (await store.read())!;
+  await expect(store.restore(first, before)).rejects.toThrow('別の日');
+  expect(await store.read()).toEqual(before);
+});
+
+it('独立した別日の記録と会計番号が衝突する場合は元の記録を保持する', async () => {
+  const first = await setup();
+  await first.pay();
+  const backup = dailySnapshot((await first.store.read())!);
+  const second = await setup();
+  await second.run({ type: 'day', day: '2026-11-08' });
+  await second.pay();
+  const before = (await second.store.read())!;
+  await expect(second.store.restore(backup, before)).rejects.toThrow(
+    '会計番号',
+  );
+  expect(await second.store.read()).toEqual(before);
+});
+
+it('同じ日を再度復元しても他の日の注文は重複せず、後続会計もバックアップ可能', async () => {
+  const { store, run, pay } = await setup();
+  await pay();
+  const backup = dailySnapshot((await store.read())!);
+  await run({ type: 'day', day: '2026-11-08' });
+  await pay();
+  await store.restore(backup, await store.read());
+  await store.restore(backup, await store.read());
+  const current = (await store.read())!;
+  const context = {
+    databaseId: current.meta.databaseId,
+    generation: current.meta.generation,
+  };
+  const id = newId();
+  await store.prepare(id, context, { type: 'expense', amount: 123 });
+  await store.execute(id, context);
+  const restored = parseBackup(encodeBackup((await store.read())!));
+  expect(restored.orders).toHaveLength(2);
+  expect(restored.logs.at(-1)?.sequence).toBe(current.meta.sequence + 1);
+  expect(dailyExpense(restored)).toBe(123);
+});

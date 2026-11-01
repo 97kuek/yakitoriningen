@@ -1,8 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import type { Order, Operation, Snapshot } from './model';
-import { waitTime, dailyWaitTime } from './wait-time';
+import { waitTime, dailyWaitTime, elapsedWait } from './wait-time';
 
 const now = Date.parse('2026-11-01T03:30:00Z');
+it('経過時間は会計確定から数え、予約・回収済み・不正な時刻を除外する', () => {
+  const order = {
+    status: 'paid',
+    paidAt: '2026-11-01T03:22:30Z',
+    returned: false,
+  } as Order;
+  expect(elapsedWait(order, now)).toBe(7);
+  expect(elapsedWait(order, now + 60_000)).toBe(8);
+  expect(
+    elapsedWait(
+      { ...order, paidAt: new Date(now + 60_000).toISOString() },
+      now,
+    ),
+  ).toBe(0);
+  expect(
+    elapsedWait({ ...order, status: 'pending', paidAt: null }, now),
+  ).toBeNull();
+  expect(elapsedWait({ ...order, returned: true }, now)).toBeNull();
+  expect(elapsedWait({ ...order, paidAt: 'bad' }, now)).toBeNull();
+});
 function fixture(minutes: number[]): Snapshot {
   return {
     meta: { day: '2026-11-01' },

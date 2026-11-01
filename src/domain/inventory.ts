@@ -1,4 +1,5 @@
 import type { Snapshot, Quantities } from './model';
+import { MAX_STOCK } from './constants';
 
 /** Registered supply for one business day. Refunds do not put food back. */
 export function stockForDay(
@@ -8,20 +9,42 @@ export function stockForDay(
   const sequence = new Map(
     snapshot.logs.map((log) => [log.operationId, log.sequence]),
   );
-  const latest = snapshot.operations
+  let stock: Quantities = {};
+  const operations = snapshot.operations
     .filter(
       (op) =>
         op.day === day &&
         op.status === 'done' &&
-        ['stock', 'catalog', 'startDay'].includes(op.command.type),
+        ['stock', 'catalog', 'startDay', 'adjustStock'].includes(
+          op.command.type,
+        ),
     )
-    .sort((a, b) => (sequence.get(b.id) ?? 0) - (sequence.get(a.id) ?? 0))[0];
-  if (!latest) return {};
-  const command = latest.command;
-  if (command.type === 'stock') return command.quantities;
-  return command.type === 'catalog' || command.type === 'startDay'
-    ? command.stock
-    : {};
+    .sort((a, b) => (sequence.get(a.id) ?? 0) - (sequence.get(b.id) ?? 0));
+  for (const { command } of operations) {
+    if (command.type === 'stock') stock = { ...command.quantities };
+    else if (command.type === 'catalog' || command.type === 'startDay')
+      stock = { ...command.stock };
+    else if (command.type === 'adjustStock')
+      stock[command.productId] += command.change;
+  }
+  return stock;
+}
+
+/** Validate a physical addition/discard against registered stock and current reservations. */
+export function adjustedStock(
+  snapshot: Snapshot,
+  productId: string,
+  change: number,
+): Quantities {
+  const stock = stockForDay(snapshot);
+  if (!Object.hasOwn(stock, productId))
+    throw new Error('先にこの商品の在庫を登録してください。');
+  const next = stock[productId] + change;
+  if (!Number.isInteger(change) || change === 0 || next < 0 || next > MAX_STOCK)
+    throw new Error('在庫の調整本数を確認してください。');
+  const quantities = { ...stock, [productId]: next };
+  validateStock(snapshot, quantities);
+  return quantities;
 }
 
 export function stockBalance(

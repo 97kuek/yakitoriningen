@@ -15,8 +15,17 @@ import type {
   Snapshot,
   Catalog,
 } from '../domain/model';
-import { availableStock, validateStock } from '../domain/inventory';
-import { validateDaySetup } from '../domain/day';
+import {
+  availableStock,
+  validateStock,
+  adjustedStock,
+} from '../domain/inventory';
+import {
+  validateDaySetup,
+  validateDayChange,
+  daySettings,
+} from '../domain/day';
+import { restoreDays } from './restore';
 import { quote } from '../domain/pricing';
 import { getMenu } from '../domain/catalog';
 import { handoffUndoError } from '../domain/handoff';
@@ -89,8 +98,15 @@ export class CashierCommands {
     const price = priceSchema.parse(
       settings?.price ?? normalPrice(this.newId()),
     );
-    const catalog = settings
-      ? commandSchema.parse({ type: 'catalog', price, stock: settings.stock })
+    const opening = settings
+      ? commandSchema.parse({
+          type: 'startDay',
+          day,
+          price,
+          stock: settings.stock,
+          ticketCount: tickets,
+          expectedSequence: 0,
+        })
       : null;
     const meta = metaSchema.parse({
       key: META_KEY,
@@ -108,19 +124,19 @@ export class CashierCommands {
       await tx.meta.add(meta);
       await tx.prices.add(price);
       await tx.tickets.bulkAdd(freeTickets(tickets));
-      if (catalog) {
+      if (opening) {
         const operation = operationSchema.parse({
           id: this.newId(),
           context: contextOf(meta),
           event: meta.event,
           day: meta.day,
-          command: catalog,
+          command: opening,
           status: 'done',
           result: '設定',
           createdAt: this.now(),
         });
         await tx.operations.add(operation);
-        await this.appendLog(tx, meta, operation.id, catalog.type, '設定');
+        await this.appendLog(tx, meta, operation.id, opening.type, '設定');
       }
     });
     return contextOf(meta);
@@ -148,7 +164,10 @@ export class CashierCommands {
         id,
         context,
         event: meta.event,
-        day: command.type === 'startDay' ? command.day : meta.day,
+        day:
+          command.type === 'startDay' || command.type === 'resumeDay'
+            ? command.day
+            : meta.day,
         command,
         status: 'pending',
         result: null,
@@ -174,6 +193,7 @@ export class CashierCommands {
         (command.type === 'reserve' ||
           (!('orderId' in command) &&
             command.type !== 'startDay' &&
+            command.type !== 'resumeDay' &&
             command.type !== 'day'))
       )
         throw new Error(
@@ -184,19 +204,26 @@ export class CashierCommands {
         result = await this.reserve(tx, meta, op, command);
       } else if ('orderId' in command) {
         result = await this.changeOrder(tx, id, command);
-      } else if (command.type === 'startDay') {
-        validateDaySetup(
-          (await readSnapshot(tx))!,
-          command.day,
-          command.expectedSequence,
-          id,
-        );
-        if (await tx.prices.get(command.price.id))
-          throw new Error('価格の版が既に使われています。');
-        await tx.prices.add(command.price);
-        await this.resizeTickets(tx, command.ticketCount, meta.sequence + 1);
-        meta.activePriceId = command.price.id;
-        meta.ticketCount = command.ticketCount;
+      } else if (command.type === 'startDay' || command.type === 'resumeDay') {
+        const snapshot = (await readSnapshot(tx))!;
+        if (command.type === 'startDay') {
+          validateDaySetup(snapshot, command.day, command.expectedSequence, id);
+          if (await tx.prices.get(command.price.id))
+            throw new Error('価格の版が既に使われています。');
+        } else validateDayChange(snapshot, command.expectedSequence, id);
+        const settings =
+          command.type === 'startDay'
+            ? command
+            : daySettings(snapshot, command.day);
+        const opening = this.captureTickets(meta, snapshot);
+        if (opening) {
+          await tx.operations.add(opening);
+          await this.appendLog(tx, meta, opening.id, 'tickets', '設定');
+        }
+        if (command.type === 'startDay') await tx.prices.add(command.price);
+        await this.resizeTickets(tx, settings.ticketCount, meta.sequence + 1);
+        meta.activePriceId = settings.price.id;
+        meta.ticketCount = settings.ticketCount;
         meta.day = command.day;
       } else if (command.type === 'price' || command.type === 'catalog') {
         if (command.type === 'catalog')
@@ -207,6 +234,12 @@ export class CashierCommands {
         meta.activePriceId = command.price.id;
       } else if (command.type === 'stock') {
         validateStock((await readSnapshot(tx))!, command.quantities);
+      } else if (command.type === 'adjustStock') {
+        adjustedStock(
+          (await readSnapshot(tx))!,
+          command.productId,
+          command.change,
+        );
       } else if (command.type === 'expense') {
         meta.expenseTotal = command.amount;
       } else if (command.type === 'day') {
@@ -219,6 +252,29 @@ export class CashierCommands {
       await tx.operations.put({ ...op, status: 'done', result });
       return result;
     });
+  }
+
+  /** Capture an unlogged legacy opening count before leaving that day. */
+  private captureTickets(meta: Meta, snapshot: Snapshot): Operation | null {
+    if (
+      snapshot.operations.some(
+        (op) =>
+          op.day === meta.day &&
+          op.status === 'done' &&
+          (op.command.type === 'tickets' || op.command.type === 'startDay'),
+      )
+    )
+      return null;
+    return {
+      id: this.newId(),
+      context: contextOf(meta),
+      event: meta.event,
+      day: meta.day,
+      command: { type: 'tickets', count: meta.ticketCount },
+      status: 'done',
+      result: '設定',
+      createdAt: this.now(),
+    };
   }
 
   async discard(id: string, context: Context): Promise<void> {
@@ -241,17 +297,18 @@ export class CashierCommands {
   }
 
   /**
-   * Replace the whole ledger with a validated snapshot and a new generation.
+   * Restore the dates in a validated snapshot, preserving other days and changing generation.
    * `expected` is the ledger the operator previewed; any later change aborts the restore.
    */
   async restore(snapshot: Snapshot, expected: Snapshot | null): Promise<void> {
-    const incoming = validateSnapshot(snapshot);
+    const validated = validateSnapshot(snapshot);
     await this.repository.write(async (tx) => {
       const current = await readSnapshot(tx);
       if (canonical(current) !== canonical(expected))
         throw new Error(
           '確認中に記録が変更されました。画面を開き直してください。',
         );
+      const incoming = restoreDays(validated, current);
       for (const table of Object.values(tx)) await table.clear();
       await tx.meta.add({ ...incoming.meta, generation: this.newId() });
       await tx.prices.bulkAdd(incoming.prices);

@@ -1,7 +1,16 @@
-import type { Snapshot } from './model';
+import type { Order, Snapshot } from './model';
 
 const MAX_SAMPLES = 10;
 type WaitRecords = Pick<Snapshot, 'orders' | 'operations' | 'logs'>;
+
+/** Whole minutes since payment, independent of observed averages from completed orders. */
+export function elapsedWait(order: Order, now: number): number | null {
+  if (order.status !== 'paid' || order.returned || !order.paidAt) return null;
+  const elapsed = now - Date.parse(order.paidAt);
+  return Number.isFinite(elapsed)
+    ? Math.max(0, Math.floor(elapsed / 60_000))
+    : null;
+}
 
 /** Recent paid-to-ticket-return durations; this is observed service time, not a queue prediction. */
 function samples(snapshot: WaitRecords, day: string, now: number) {

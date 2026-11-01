@@ -21,10 +21,19 @@ function details(op: Operation, snapshot: Snapshot): string {
     const order = snapshot.orders.find((o) => o.id === c.orderId);
     return `札 ${order?.ticket ?? '不明'} ／ ${order ? yen(order.quote.total) : '金額不明'}${c.type === 'cancel' ? ` ／ 取消理由：${c.reason}` : ''}`;
   }
-  if (c.type === 'startDay') return `営業日 ${c.day}`;
+  if (c.type === 'startDay' || c.type === 'resumeDay') return `営業日 ${c.day}`;
   if (c.type === 'catalog') return '商品・価格・在庫を保存';
   if (c.type === 'price') return `${c.price.label} ／ 1本 ${yen(c.price.unit)}`;
   if (c.type === 'stock') return '当日の在庫を保存';
+  if (c.type === 'adjustStock') {
+    const name =
+      getMenu(
+        snapshot.prices.find(
+          (price) => price.id === snapshot.meta.activePriceId,
+        )!,
+      ).find((item) => item.id === c.productId)?.name ?? '商品';
+    return `${name} ${c.change > 0 ? '追加' : '廃棄'} ${Math.abs(c.change)}本`;
+  }
   if (c.type === 'expense') return `当日の経費 ${yen(c.amount)}`;
   if (c.type === 'day') return `営業日 ${c.day}`;
   return `番号札 1〜${c.count}`;

@@ -24,6 +24,126 @@ async function setup() {
   };
   return { store, context, run };
 }
+it('在庫の追加・廃棄を差分で保存し、予約分未満への廃棄を拒否する', async () => {
+  const { store, run } = await setup();
+  await run({ type: 'stock', quantities: { momo: 10 } });
+  await run({ type: 'adjustStock', productId: 'momo', change: 20 });
+  await run({ type: 'adjustStock', productId: 'momo', change: -3 });
+  expect(remainingStock((await store.read())!).momo).toBe(27);
+  await run({
+    type: 'reserve',
+    orderId: newId(),
+    assignmentId: newId(),
+    confirmOperationId: newId(),
+    quantities: { momo: 25 },
+    price: (await store.read())!.prices[0],
+  });
+  await expect(
+    run({ type: 'adjustStock', productId: 'momo', change: -3 }),
+  ).rejects.toThrow();
+  expect(remainingStock((await store.read())!).momo).toBe(27);
+  expect(
+    remainingStock(parseBackup(encodeBackup((await store.read())!))).momo,
+  ).toBe(27);
+});
+it('保存済みの営業日に戻るとその日の商品・在庫・札枚数を使う', async () => {
+  const { store, run } = await setup();
+  const price = normalPrice(newId());
+  await run({ type: 'catalog', price, stock: { momo: 40 } });
+  await run({ type: 'tickets', count: 12 });
+  await run({
+    type: 'startDay',
+    day: '2026-11-08',
+    price: normalPrice(newId()),
+    stock: { momo: 80 },
+    ticketCount: 20,
+    expectedSequence: (await store.read())!.meta.sequence,
+  });
+  await run({
+    type: 'resumeDay',
+    day: '2026-11-07',
+    expectedSequence: (await store.read())!.meta.sequence,
+  });
+  const resumed = (await store.read())!;
+  expect(resumed.meta.day).toBe('2026-11-07');
+  expect(resumed.meta.activePriceId).toBe(price.id);
+  expect(resumed.meta.ticketCount).toBe(12);
+  expect(remainingStock(resumed).momo).toBe(40);
+  expect(() => parseBackup(encodeBackup(resumed))).not.toThrow();
+});
+
+it.each([true, false])(
+  '札枚数の変更操作がなくても初日の12枚を再開できる（初回設定 %s）',
+  async (withSettings) => {
+    const db = new Database(`initial-tickets-${newId()}`);
+    databases.push(db);
+    const store = new CashierStore(db);
+    const context = await store.initialize(
+      '試験',
+      '2026-11-07',
+      12,
+      withSettings ? { price: normalPrice(newId()), stock: {} } : undefined,
+    );
+    for (const command of [
+      {
+        type: 'startDay' as const,
+        day: '2026-11-08',
+        price: normalPrice(newId()),
+        stock: {},
+        ticketCount: 30,
+      },
+      { type: 'resumeDay' as const, day: '2026-11-07' },
+    ]) {
+      const id = newId();
+      await store.prepare(id, context, {
+        ...command,
+        expectedSequence: (await store.read())!.meta.sequence,
+      });
+      await store.execute(id, context);
+    }
+    expect((await store.read())!.meta.ticketCount).toBe(12);
+    const restored = (await store.read())!;
+    expect(() => parseBackup(encodeBackup(restored))).not.toThrow();
+  },
+);
+
+it('旧初期設定のバックアップ復元後も日付を往復して初日の札枚数を保つ', async () => {
+  const { store, run } = await setup();
+  await run({ type: 'catalog', price: normalPrice(newId()), stock: {} });
+  await run({ type: 'tickets', count: 12 });
+  const first = dailySnapshot((await store.read())!);
+  const legacy = {
+    ...first,
+    operations: first.operations.filter((op) => op.command.type !== 'tickets'),
+    logs: first.logs.filter((log) => log.type !== 'tickets'),
+    meta: { ...first.meta, omittedLogs: 1 },
+  };
+  parseBackup(encodeBackup(legacy));
+  await run({
+    type: 'startDay',
+    day: '2026-11-08',
+    price: normalPrice(newId()),
+    stock: {},
+    ticketCount: 30,
+    expectedSequence: (await store.read())!.meta.sequence,
+  });
+  await store.restore(legacy, await store.read());
+  for (const day of ['2026-11-08', '2026-11-07']) {
+    const current = (await store.read())!;
+    const id = newId();
+    const context = {
+      databaseId: current.meta.databaseId,
+      generation: current.meta.generation,
+    };
+    await store.prepare(id, context, {
+      type: 'resumeDay',
+      day,
+      expectedSequence: current.meta.sequence,
+    });
+    await store.execute(id, context);
+  }
+  expect((await store.read())!.meta.ticketCount).toBe(12);
+});
 it('商品と任意の在庫を一括保存し、翌日の準備でも前日の注文を残す', async () => {
   const { store, run } = await setup();
   const price = normalPrice(newId());

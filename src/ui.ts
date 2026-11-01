@@ -34,6 +34,8 @@ export const commandNames: Record<Command['type'], string> = {
   price: '価格変更',
   expense: '経費の変更',
   stock: '在庫の変更',
+  adjustStock: '在庫の調整',
+  resumeDay: '営業日の再開',
   catalog: '商品・価格・在庫の変更',
   startDay: '営業日の準備',
   day: '営業日変更',

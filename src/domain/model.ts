@@ -242,6 +242,25 @@ export const commandSchema = z.discriminatedUnion('type', [
     .strict(),
   z.object({ type: z.literal('expense'), amount: moneySchema }).strict(),
   z.object({ type: z.literal('stock'), quantities: stockSchema }).strict(),
+  z
+    .object({
+      type: z.literal('adjustStock'),
+      productId: productIdSchema,
+      change: z
+        .number()
+        .int()
+        .min(-MAX_STOCK)
+        .max(MAX_STOCK)
+        .refine((value) => value !== 0),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('resumeDay'),
+      day: dateSchema,
+      expectedSequence: z.number().int().nonnegative(),
+    })
+    .strict(),
   z.object({ type: z.literal('day'), day: dateSchema }).strict(),
   z.object({ type: z.literal('tickets'), count: ticketNumberSchema }).strict(),
 ]);
