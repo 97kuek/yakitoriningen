@@ -111,12 +111,11 @@ test('通信なしで再起動しても途中の会計を札と金額で示し�
   page,
   context,
 }) => {
-  await loadFixture(page, await ledgerFixture());
+  await loadFixture(page, await ledgerFixture(), { offline: true });
   await expect(
     page.getByRole('heading', { name: '確認が必要な会計', exact: true }),
   ).toHaveCount(0);
   await startCounter(page);
-  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   await addSkewers(page, 'もも');
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
   await page.getByLabel('お預かり金額').fill('200');
@@ -264,7 +263,7 @@ test('新しい開催回はバックアップを省略しても準備でき、�
   await expect(page.getByText('もも ￥200')).toBeVisible();
 });
 
-test('更新は自動で再読み込みせず、入力中・未保存の間は止め、記録を残して適用する', async ({
+test('画面に戻ったとき更新を確認しても入力中の注文を再読み込みしない', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -275,24 +274,29 @@ test('更新は自動で再読み込みせず、入力中・未保存の間は�
       return original.call(this);
     };
   });
+  await openFixture(page, await ledgerFixture(), { offline: true });
+  await addSkewers(page, 'もも');
+  const checks = () =>
+    page.evaluate(
+      () => (window as unknown as { updateChecks: number }).updateChecks,
+    );
+  const before = await checks();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect.poll(checks).toBeGreaterThan(before);
+  await expect(page.getByLabel('ももの本数')).toHaveValue('1');
+});
+
+test('更新にバックアップの再読込は不要で、入力中・未保存の間は止め、記録を残して適用する', async ({
+  page,
+}) => {
   const workerPath = 'dist/sw.js';
   const original = await readFile(workerPath, 'utf8');
   try {
-    await openFixture(page, await ledgerFixture({ orders: 1 }));
-    await page.waitForFunction(
-      () => navigator.serviceWorker.controller !== null,
-    );
+    await openFixture(page, await ledgerFixture({ orders: 1 }), {
+      offline: true,
+    });
     const quantity = page.getByLabel('ももの本数', { exact: true });
     await quantity.fill('1');
-    const checks = () =>
-      page.evaluate(
-        () => (window as unknown as { updateChecks: number }).updateChecks,
-      );
-    const before = await checks();
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect.poll(checks).toBeGreaterThan(before);
-    await expect(quantity).toHaveValue('1');
-
     // Serve a new worker from the dedicated test build, like a deployment.
     await writeFile(workerPath, `${original}\n// update-test ${Date.now()}\n`);
     await page.evaluate(async () =>

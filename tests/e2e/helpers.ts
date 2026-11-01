@@ -82,10 +82,24 @@ export async function ledgerFixture(
   }
 }
 
+type LoadOptions = {
+  /**
+   * Wait for the service worker before reloading. A worker that activates
+   * during the reload does not control the new page, so offline and update
+   * tests would wait forever.
+   */
+  offline?: boolean;
+};
+
 /** Replaces the app database with a fixture and reloads to the resume screen. */
-export async function loadFixture(page: Page, snapshot: Snapshot) {
+export async function loadFixture(
+  page: Page,
+  snapshot: Snapshot,
+  { offline = false }: LoadOptions = {},
+) {
   await page.goto('/');
   await page.locator('.startup').waitFor();
+  if (offline) await page.evaluate(() => navigator.serviceWorker.ready);
   await page.evaluate(
     (snapshot) =>
       new Promise<void>((resolve, reject) => {
@@ -123,11 +137,19 @@ export async function loadFixture(page: Page, snapshot: Snapshot) {
     snapshot,
   );
   await page.reload();
+  if (offline)
+    await page.waitForFunction(
+      () => navigator.serviceWorker.controller !== null,
+    );
 }
 
 /** Loads a fixture and starts the counter. */
-export async function openFixture(page: Page, snapshot: Snapshot) {
-  await loadFixture(page, snapshot);
+export async function openFixture(
+  page: Page,
+  snapshot: Snapshot,
+  options?: LoadOptions,
+) {
+  await loadFixture(page, snapshot, options);
   await startCounter(page);
 }
 
