@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
 import { newEvent } from './new-event';
-import { historyFixture } from '../../tests/e2e/fixtures';
+import { ledgerFixture } from '../../tests/e2e/helpers';
 
 it('記録を空にし、商品と札の設定を引き継ぐ', async () => {
-  const previous = await historyFixture(1, { unit: 200 });
+  const previous = await ledgerFixture({ orders: 1, price: { unit: 200 } });
   const next = newEvent(
     previous,
     '早稲田祭 2027',
@@ -26,7 +26,7 @@ it('記録を空にし、商品と札の設定を引き継ぐ', async () => {
 });
 
 it('未完了の会計や操作が残っていれば拒否する', async () => {
-  const previous = await historyFixture(1);
+  const previous = await ledgerFixture({ orders: 1 });
   const occupied = {
     ...previous,
     tickets: previous.tickets.map((ticket, index) =>
@@ -47,10 +47,8 @@ it('未完了の会計や操作が残っていれば拒否する', async () => {
 });
 
 it('旧形式の値下げ価格では通常価格を勝手に決めず切り替えを止める', async () => {
-  const previous = await historyFixture(0, {
-    label: '値下げ',
-    unit: 50,
-    bundleEnabled: false,
+  const previous = await ledgerFixture({
+    price: { label: '値下げ', unit: 50, bundleEnabled: false },
   });
   expect(() => newEvent(previous, '次の祭', '2027-11-06', () => 'id')).toThrow(
     /通常価格へ戻し/,

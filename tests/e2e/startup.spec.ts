@@ -1,8 +1,18 @@
-import { test, expect } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
-import { historyFixture, openFixture } from './fixtures';
+import { readFile, writeFile } from 'node:fs/promises';
+import { expect, test } from '@playwright/test';
+import {
+  addSkewers,
+  ledgerFixture,
+  loadFixture,
+  openFixture,
+  openScreen,
+  pay,
+  rows,
+  startCounter,
+  startNewEvent,
+} from './helpers';
 
-test('初回の準備はパネルと同じ幅のイラストの下に入力を表示する', async ({
+test('初回の準備はイラストの下に入力を置き、復元ファイルの形式と問題を画面内で示す', async ({
   page,
 }) => {
   await page.goto('/');
@@ -10,8 +20,9 @@ test('初回の準備はパネルと同じ幅のイラストの下に入力を�
   const form = page.locator('.startup form');
   await expect(form).toBeVisible();
   const imageBox = (await art.boundingBox())!;
-  const formBox = (await form.boundingBox())!;
-  expect(imageBox.y + imageBox.height).toBeLessThan(formBox.y);
+  expect(imageBox.y + imageBox.height).toBeLessThan(
+    (await form.boundingBox())!.y,
+  );
   expect(
     Math.abs(
       imageBox.width -
@@ -22,19 +33,26 @@ test('初回の準備はパネルと同じ幅のイラストの下に入力を�
   await expect(
     page.getByRole('button', { name: '新しく作る', exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'バックアップから復元', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'バックアップから復元', exact: true }),
-  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'バックアップから復元', exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'バックアップから復元' });
+  const file = dialog.getByLabel('記録ファイル（.json）');
+  await expect(file).toHaveAttribute('accept', '.json,application/json');
+  await file.setInputFiles({
+    name: 'invalid.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{"bad":true}'),
+  });
+  await expect(dialog.getByRole('alert')).toContainText(
+    '入力内容かバックアップファイルを確認してください。',
+  );
 });
 
-test('再開画面は日付と価格に絞り、保存と読み込み後も履歴を保持する', async ({
+test('再開画面は日付と価格に絞り、保存したバックアップで後の変更を確認して戻せる', async ({
   page,
 }) => {
-  await openFixture(page, await historyFixture(1));
-  await page.reload();
+  await loadFixture(page, await ledgerFixture({ orders: 1 }));
   await expect(
     page.getByRole('heading', { name: '会計を始める前に', exact: true }),
   ).toBeVisible();
@@ -42,14 +60,10 @@ test('再開画面は日付と価格に絞り、保存と読み込み後も履�
     '日付',
     '価格',
   ]);
-  await expect(page.getByText(/直近：/)).toHaveCount(0);
+  await expect(page.getByText(/直近：|確定済み/)).toHaveCount(0);
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
   await expect(
     page.getByText('注文・設定を戻すためのファイル（.json）'),
-  ).toBeVisible();
-  await expect(page.getByText('Excelなどで開く一覧（.csv）')).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: 'バックアップから復元', exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: '会計を始める', exact: true }),
@@ -59,66 +73,58 @@ test('再開画面は日付と価格に絞り、保存と読み込み後も履�
     .getByRole('button', { name: 'バックアップを保存', exact: true })
     .click();
   const buffer = await readFile((await (await downloading).path())!);
-  const saved = { name: 'saved.json', mimeType: 'application/json', buffer };
+
+  // Sell after the backup; restoring must bring back the saved state only.
+  await startCounter(page);
+  await addSkewers(page, 'かわ');
+  await pay(page, '200');
+  await expect(page.getByTestId('waiting-order')).toHaveCount(1);
+  await openScreen(page, '設定');
   await page
     .getByRole('button', { name: 'バックアップから復元', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', {
-    name: 'バックアップから復元',
-    exact: true,
-  });
+  const dialog = page.getByRole('dialog', { name: 'バックアップから復元' });
   await dialog
     .getByLabel('記録ファイル（.json）', { exact: true })
-    .setInputFiles(saved);
+    .setInputFiles({
+      name: 'saved.json',
+      mimeType: 'application/json',
+      buffer,
+    });
+  await expect(dialog.getByRole('table')).toContainText('開催回');
   await expect(
     dialog.getByRole('button', { name: 'この内容で再開' }),
   ).toBeDisabled();
   await dialog.getByLabel('バックアップ内容を確認した').check();
-  await expect(dialog.getByRole('table')).toContainText('開催回');
   await dialog.getByRole('button', { name: 'この内容で再開' }).click();
   await expect(page.locator('.startup-details dt')).toHaveText([
     '日付',
     '価格',
   ]);
-  await page.getByLabel('日付・価格を確認した').check();
-  await page.getByRole('button', { name: '会計を始める', exact: true }).click();
-  await expect(
-    page.getByRole('heading', { name: '注文', exact: true }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: '注文履歴', exact: true }).click();
-  await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(1);
+  await startCounter(page);
+  await expect(page.getByTestId('waiting-order')).toHaveCount(0);
+  await openScreen(page, '注文履歴');
+  await expect(rows(page)).toHaveCount(1);
 });
 
-test('注文がない再開画面では直近の記録と確認待ちを表示しない', async ({
+test('通信なしで再起動しても途中の会計を札と金額で示し、同じ入金を確定できる', async ({
   page,
+  context,
 }) => {
-  await openFixture(page, await historyFixture(0));
-  await page.reload();
-  await expect(page.getByText('確定済み 0件')).toHaveCount(0);
-  await expect(page.getByText(/直近：/)).toHaveCount(0);
+  await loadFixture(page, await ledgerFixture());
   await expect(
     page.getByRole('heading', { name: '確認が必要な会計', exact: true }),
   ).toHaveCount(0);
-});
-
-test('保留の会計と入金の確認待ちは開閉せず札と金額が分かる', async ({
-  page,
-}) => {
-  await openFixture(page, await historyFixture(0));
-  await page
-    .getByRole('button', { name: 'ももを1本増やす', exact: true })
-    .click();
+  await startCounter(page);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await addSkewers(page, 'もも');
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
   await page.getByLabel('お預かり金額').fill('200');
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: '会計を確定', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: '会計を確定' })).toBeVisible();
+  await context.setOffline(true);
   await page.reload();
-  const pending = page.getByRole('region', {
-    name: '確認が必要な会計',
-    exact: true,
-  });
+  const pending = page.getByRole('region', { name: '確認が必要な会計' });
   await expect(
     pending.getByText('途中の会計 1件', { exact: true }),
   ).toBeVisible();
@@ -133,4 +139,187 @@ test('保留の会計と入金の確認待ちは開閉せず札と金額が分�
     pending.getByText('現金と札を確認し、二度受け取らないでください。'),
   ).toBeVisible();
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
+  await startCounter(page);
+  await expect(page.getByRole('heading', { name: 'お会計' })).toBeVisible();
+  await page.getByRole('button', { name: '会計を確定' }).click();
+  await expect(page.getByTestId('waiting-order')).toContainText(/もも\s*1本/);
+});
+
+test('確認待ちの記録は再試行に失敗しても途中で消えない', async ({ page }) => {
+  await startNewEvent(page);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('yakitoriningen-v1');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction(['meta', 'operations'], 'readwrite');
+          const metaRequest = tx.objectStore('meta').get('main');
+          metaRequest.onsuccess = () => {
+            const meta = metaRequest.result;
+            tx.objectStore('operations').add({
+              id: 'pending-test',
+              context: {
+                databaseId: meta.databaseId,
+                generation: meta.generation,
+              },
+              event: meta.event,
+              day: meta.day,
+              command: {
+                type: 'deliver',
+                orderId: 'missing-order',
+                assignmentId: 'missing-assignment',
+              },
+              status: 'pending',
+              result: null,
+              createdAt: new Date().toISOString(),
+            });
+          };
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onabort = () => reject(tx.error);
+        };
+      }),
+  );
+  await page.reload();
+  await startCounter(page);
+  await expect(
+    page.getByRole('heading', { name: '確認が必要な記録' }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    const missing: string[] = [];
+    Object.defineProperty(window, '__missingRecovery', { value: missing });
+    new MutationObserver(() => {
+      if (!document.querySelector('.recovery')) missing.push('missing');
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await page.getByRole('button', { name: '確認して記録', exact: true }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { __missingRecovery: string[] })
+          .__missingRecovery,
+    ),
+  ).toEqual([]);
+});
+
+test('二重起動した画面の操作を止め、元の画面を閉じてから再開できる', async ({
+  page,
+  context,
+}) => {
+  await startNewEvent(page);
+  const second = await context.newPage();
+  await second.goto('/');
+  await expect(second.getByText('別の画面で使用中です')).toBeVisible();
+  await expect(
+    second.getByRole('button', { name: '会計を始める' }),
+  ).toBeDisabled();
+  await page.close();
+  await second.getByRole('button', { name: 'この画面で再確認' }).click();
+  await startCounter(second);
+  await expect(
+    second.getByRole('heading', { name: '注文', exact: true }),
+  ).toBeVisible();
+});
+
+test('新しい開催回はバックアップを省略しても準備でき、価格と札枚数を引き継ぐ', async ({
+  page,
+}) => {
+  await loadFixture(
+    page,
+    await ledgerFixture({ orders: 1, price: { unit: 200, discounted: true } }),
+  );
+  const prepare = page.getByRole('button', {
+    name: '新しい開催回を準備',
+    exact: true,
+  });
+  await prepare.click();
+  const dialog = page.getByRole('dialog', { name: '新しい開催回を準備' });
+  await expect(dialog.getByRole('checkbox')).toHaveCount(0);
+  await dialog.getByLabel('開催回', { exact: true }).fill('早稲田祭 2027');
+  await dialog.getByLabel('1日目の日付').fill('2027-11-06');
+  const confirm = dialog.getByRole('button', {
+    name: '新しい開催回に切り替える',
+  });
+  await expect(confirm).toBeEnabled();
+  await dialog.getByRole('button', { name: '閉じる' }).click();
+
+  const downloading = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'バックアップを保存', exact: true })
+    .click();
+  const file = await downloading;
+  expect(file.suggestedFilename()).toBe('2026-11-07-yakitori.json');
+  const buffer = await readFile((await file.path())!);
+  expect(JSON.parse(buffer.toString()).data.orders).toHaveLength(1);
+  await expect(page.getByLabel('保存したファイルを確認')).toHaveCount(0);
+
+  await prepare.click();
+  await confirm.click();
+  await expect(page.locator('.startup-event')).toHaveText('早稲田祭 2027');
+  await expect(page.getByText('もも ￥200')).toBeVisible();
+});
+
+test('更新は自動で再読み込みせず、入力中・未保存の間は止め、記録を残して適用する', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const original = ServiceWorkerRegistration.prototype.update;
+    (window as unknown as { updateChecks: number }).updateChecks = 0;
+    ServiceWorkerRegistration.prototype.update = function () {
+      (window as unknown as { updateChecks: number }).updateChecks++;
+      return original.call(this);
+    };
+  });
+  const workerPath = 'dist/sw.js';
+  const original = await readFile(workerPath, 'utf8');
+  try {
+    await openFixture(page, await ledgerFixture({ orders: 1 }));
+    await page.waitForFunction(
+      () => navigator.serviceWorker.controller !== null,
+    );
+    const quantity = page.getByLabel('ももの本数', { exact: true });
+    await quantity.fill('1');
+    const checks = () =>
+      page.evaluate(
+        () => (window as unknown as { updateChecks: number }).updateChecks,
+      );
+    const before = await checks();
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect.poll(checks).toBeGreaterThan(before);
+    await expect(quantity).toHaveValue('1');
+
+    // Serve a new worker from the dedicated test build, like a deployment.
+    await writeFile(workerPath, `${original}\n// update-test ${Date.now()}\n`);
+    await page.evaluate(async () =>
+      (await navigator.serviceWorker.getRegistration())!.update(),
+    );
+    const update = page.getByRole('button', { name: '更新する', exact: true });
+    await expect(update).toBeVisible({ timeout: 15000 });
+    await expect(update).toBeDisabled();
+    await expect(quantity).toHaveValue('1');
+    await quantity.fill('0');
+    await expect(update).toBeEnabled();
+    await openScreen(page, '設定');
+    await page.getByLabel('ももの通常価格（円）').fill('177');
+    await expect(update).toBeDisabled();
+    await page.getByLabel('ももの通常価格（円）').fill('150');
+    await expect(update).toBeEnabled();
+    await openScreen(page, '集計');
+    await page.getByLabel('開催回全体の経費（円）').fill('100');
+    await expect(update).toBeDisabled();
+    await page.getByLabel('開催回全体の経費（円）').fill('');
+    await expect(update).toBeEnabled();
+    await update.click();
+    await startCounter(page);
+    await openScreen(page, '注文履歴');
+    await expect(rows(page)).toHaveCount(1);
+    await expect(page.locator('.history tbody')).toContainText('￥150');
+  } finally {
+    await writeFile(workerPath, original);
+  }
 });
