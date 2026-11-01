@@ -42,7 +42,7 @@ export function Waiting({
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
-  const waitMinutes = waitTime(snapshot, now);
+  const waitMinutes = waitTime(snapshot, Math.max(now, Date.now()));
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [undoNotice, setUndoNotice] = useState('');
   const [heldRecoveryIds, setHeldRecoveryIds] = useState<string[]>([]);
@@ -128,16 +128,14 @@ export function Waiting({
     <aside className="waiting panel" aria-labelledby="waiting-title">
       <div className="section-heading">
         <h2 id="waiting-title">
-          受け渡し待ち<span className="count-badge">{waiting.length}</span>
+          札回収待ち<span className="count-badge">{waiting.length}</span>
         </h2>
-        {waitMinutes !== null && (
-          <span
-            className="wait-estimate"
-            title="直近30分に完了した最大10件の平均（会計確定から札回収まで）"
-          >
-            目安 約{waitMinutes}分
-          </span>
-        )}
+        <span
+          className="wait-estimate"
+          title="当日の直近10件の平均（会計確定から札回収まで）"
+        >
+          平均待ち {waitMinutes === null ? '記録なし' : `約${waitMinutes}分`}
+        </span>
         <div
           className="waiting-tools"
           hidden={!unreturnedOrders.length && !lastHandoff}
@@ -159,9 +157,10 @@ export function Waiting({
             </div>
             <span className="waiting-undo-slot" title={undoError ?? ''}>
               {completedOrder && lastHandoff && (
-                <IconButton
-                  icon="reset"
-                  label="元に戻す"
+                <Button
+                  variant="plain"
+                  aria-label="札回収を取り消す"
+                  title="直前の札回収を取り消す"
                   disabled={busy}
                   aria-describedby={undoError ? 'undo-reason' : undefined}
                   onClick={() => {
@@ -179,7 +178,9 @@ export function Waiting({
                       onHandoffChange(null);
                     });
                   }}
-                />
+                >
+                  回収を戻す
+                </Button>
               )}
               {undoError && (
                 <span id="undo-reason" className="sr-only">
@@ -256,7 +257,7 @@ export function Waiting({
                 if (event.detail > 1) return;
                 completeHandoff(order);
               }}
-              label="受け渡し完了（札も回収）"
+              label="札を回収"
               icon="check"
             />
           </article>

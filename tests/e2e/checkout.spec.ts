@@ -84,7 +84,7 @@ test('キーボードだけで会計でき、お預かり金額は二重枠を�
   await expect(confirm).toBeFocused();
   await expect(page.getByTestId('change')).toHaveText('￥850');
   await expect(
-    page.getByRole('heading', { name: '受け渡し待ち', exact: false }),
+    page.getByRole('heading', { name: '札回収待ち', exact: false }),
   ).toBeVisible();
   await confirm.press('Enter');
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
@@ -300,4 +300,62 @@ test('Enterで会計の各段階を進め、長押しで段階を飛ばさない
   await expect(
     page.getByRole('button', { name: '会計へ', exact: true }),
   ).toBeDisabled();
+});
+
+test('在庫を超えて入力できず、共通の更新でも入力と札を保持し、回収1件から平均待ちを表示する', async ({
+  page,
+}) => {
+  await startNewEvent(page);
+  await openScreen(page, '設定');
+  await page.getByLabel('ももの在庫').fill('2');
+  await page.getByRole('button', { name: '変更を保存', exact: true }).click();
+  await openScreen(page, '会計');
+  await addSkewers(page, 'もも', 2);
+  await expect(
+    page.getByRole('button', { name: 'ももを1本増やす' }),
+  ).toBeDisabled();
+  await expect(page.locator('.product-stock')).toHaveText('残り 2本');
+  await expect(page.locator('.product-stock')).toHaveClass(/stock-low/);
+  await page.getByRole('button', { name: '注文と札の記録を更新' }).click();
+  await expect(page.getByLabel('ももの本数')).toHaveValue('2');
+  await pay(page);
+  await expect(page.getByTestId('waiting-order')).toHaveCount(1);
+  await expect(page.locator('.product-stock')).toHaveText('残り 0本');
+  await expect(page.locator('.wait-estimate')).toHaveText('平均待ち 記録なし');
+  await page.getByRole('button', { name: '札を回収', exact: true }).click();
+  await expect(page.getByTestId('waiting-order')).toHaveCount(0);
+  await expect(page.locator('.wait-estimate')).toContainText('約1分');
+  await openScreen(page, '集計');
+  await expect(page.locator('.summary tbody')).toContainText('約1分');
+  const picker = page.locator('.summary .file-picker-input');
+  const box = (await picker.boundingBox())!;
+  expect(box.width).toBeLessThanOrEqual(1);
+  expect(box.height).toBeLessThanOrEqual(1);
+});
+
+test('1・2・3キーで商品を増やし、長押し・数値入力・会計中・別画面では増やさない', async ({
+  page,
+}) => {
+  await startNewEvent(page);
+  await page.locator('body').press('1');
+  await page.locator('body').press('1');
+  await page.locator('body').press('2');
+  await page.locator('body').press('3');
+  await expect(page.getByLabel('ももの本数')).toHaveValue('2');
+  await expect(page.getByLabel('かわの本数')).toHaveValue('1');
+  await expect(page.getByLabel('ねぎまの本数')).toHaveValue('1');
+  await page.locator('body').focus();
+  await page.keyboard.down('1');
+  await page.keyboard.down('1');
+  await page.keyboard.up('1');
+  await expect(page.getByLabel('ももの本数')).toHaveValue('3');
+  await page.getByLabel('かわの本数').fill('2');
+  await expect(page.getByLabel('かわの本数')).toHaveValue('2');
+  await page.getByRole('button', { name: '会計へ', exact: true }).click();
+  await page.getByLabel('お預かり金額').fill('2000');
+  await expect(page.getByTestId('payment-total')).toHaveText('￥750');
+  await openScreen(page, '設定');
+  await page.locator('body').press('1');
+  await openScreen(page, '会計');
+  await expect(page.getByTestId('payment-total')).toHaveText('￥750');
 });

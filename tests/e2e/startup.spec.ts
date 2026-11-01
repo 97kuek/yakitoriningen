@@ -20,6 +20,13 @@ test('開始画面はPCではイラストと入力を横に並べてスクロー
   const art = page.getByRole('img', { name: 'ひよこたちが営む焼き鳥の屋台' });
   const panel = page.locator('.startup.panel');
   await expect(page.locator('.startup form')).toBeVisible();
+  const initialSetup = page.getByRole('dialog', {
+    name: '営業の準備',
+    exact: true,
+  });
+  await expect(initialSetup).toBeVisible();
+  await expect(initialSetup.getByLabel('ももの在庫')).toBeVisible();
+  await expect(initialSetup.getByLabel('ももの通常価格（円）')).toBeVisible();
   const artBox = (await art.boundingBox())!;
   const panelBox = (await panel.boundingBox())!;
   expect(artBox.x + artBox.width).toBeLessThan(panelBox.x);
@@ -40,6 +47,9 @@ test('開始画面はPCではイラストと入力を横に並べてスクロー
   await expect(
     page.getByRole('button', { name: '新しく作る', exact: true }),
   ).toBeVisible();
+  await initialSetup
+    .getByRole('button', { name: '閉じる', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'バックアップから復元', exact: true })
     .click();
@@ -98,7 +108,7 @@ test('再開画面はタイトルと日付に絞り、保存したバックア�
       mimeType: 'application/json',
       buffer,
     });
-  await expect(dialog.getByRole('table')).toContainText('開催回');
+  await expect(dialog.getByRole('table')).toContainText('営業名');
   await expect(
     dialog.getByRole('button', { name: 'この内容で再開' }),
   ).toBeDisabled();
@@ -231,7 +241,7 @@ test('二重起動した画面の操作を止め、元の画面を閉じてか�
   ).toBeVisible();
 });
 
-test('新しい開催回はバックアップを省略しても準備でき、価格と札枚数を引き継ぐ', async ({
+test('別の日の準備は前日の注文を残し、価格と札枚数を引き継ぐ', async ({
   page,
 }) => {
   await loadFixture(
@@ -239,20 +249,19 @@ test('新しい開催回はバックアップを省略しても準備でき、�
     await ledgerFixture({ orders: 1, price: { unit: 200, discounted: true } }),
   );
   const prepare = page.getByRole('button', {
-    name: '翌年の開催を準備',
+    name: '別の日の営業を準備',
     exact: true,
   });
   await prepare.click();
-  const dialog = page.getByRole('dialog', { name: '翌年の開催を準備' });
+  const dialog = page.getByRole('dialog', { name: '別の日の営業を準備' });
   await expect(dialog.getByLabel('前年のバックアップを保存した')).toHaveCount(
     0,
   );
   await expect(dialog.getByLabel('番号札の枚数')).toHaveValue('20');
   await expect(dialog.getByLabel('ももの通常価格（円）')).toHaveValue('200');
-  await dialog.getByLabel('開催回', { exact: true }).fill('早稲田祭 2027');
-  await dialog.getByLabel('1日目の日付').fill('2027-11-06');
+  await dialog.getByLabel('営業日').fill('2027-11-06');
   const confirm = dialog.getByRole('button', {
-    name: '新しい開催回に切り替える',
+    name: 'この営業日を準備',
   });
   await expect(confirm).toBeEnabled();
   await dialog.getByRole('button', { name: '閉じる' }).click();
@@ -269,7 +278,7 @@ test('新しい開催回はバックアップを省略しても準備でき、�
 
   await prepare.click();
   await confirm.click();
-  await expect(page.locator('.startup-event')).toHaveText('早稲田祭 2027');
+  await expect(page.locator('.startup-event')).toHaveText('試験用の開催回');
   await startCounter(page);
   await expect(page.locator('.product').first()).toContainText('￥200');
 });
@@ -339,7 +348,7 @@ test('更新にバックアップの再読込は不要で、入力中・未保�
   }
 });
 
-test('新しい開催回の準備で商品・セット・札を編集し、一括で切り替える', async ({
+test('別の日の準備で商品・セット・札・任意在庫を一括保存する', async ({
   page,
 }) => {
   await loadFixture(
@@ -347,22 +356,21 @@ test('新しい開催回の準備で商品・セット・札を編集し、一�
     await ledgerFixture({ orders: 1, price: { mix: false } }),
   );
   await page
-    .getByRole('button', { name: '翌年の開催を準備', exact: true })
+    .getByRole('button', { name: '別の日の営業を準備', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', { name: '翌年の開催を準備' });
-  await dialog.getByLabel('開催回', { exact: true }).fill('早稲田祭 2027');
-  await dialog.getByLabel('1日目の日付').fill('2027-11-06');
+  const dialog = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  await dialog.getByLabel('営業日').fill('2027-11-06');
   await dialog.getByLabel('番号札の枚数').fill('25');
   await dialog.getByLabel('商品1の名前').fill('つくね');
   await dialog.getByLabel('つくねの通常価格（円）').fill('180');
   await dialog.getByLabel('セットの価格（円）').fill('700');
-  await dialog
-    .getByRole('button', { name: '新しい開催回に切り替える' })
-    .click();
+  await dialog.getByLabel('つくねの在庫').fill('100');
+  await dialog.getByRole('button', { name: 'この営業日を準備' }).click();
   await startCounter(page);
   await expect(page.getByTestId('waiting-order')).toHaveCount(0);
   await expect(page.locator('.product').first()).toContainText('つくね');
   await expect(page.locator('.product').first()).toContainText('￥180');
+  await expect(page.locator('.product').first()).toContainText('残り 100本');
   await expect(page.locator('.price-strip')).toContainText('￥700');
   await addSkewers(page, 'つくね', 3);
   await addSkewers(page, 'かわ', 2);
@@ -372,4 +380,22 @@ test('新しい開催回の準備で商品・セット・札を編集し、一�
   await openScreen(page, '注文履歴');
   await expect(rows(page)).toHaveCount(0);
   await expect(page.locator('.history-empty img')).toBeVisible();
+});
+
+test('初めてのブラウザでは準備画面が開き、入力エラーを画面内に示して商品と在庫を保存する', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const setup = page.getByRole('dialog', { name: '営業の準備', exact: true });
+  await expect(setup).toBeVisible();
+  await setup.getByLabel('営業名').fill('  初回の練習  ');
+  await setup.getByLabel('商品1の名前').fill('   ');
+  await setup.getByRole('button', { name: '新しく作る', exact: true }).click();
+  await expect(setup.getByRole('alert')).toBeVisible();
+  await setup.getByLabel('商品1の名前').fill('もも');
+  await setup.getByLabel('ももの在庫').fill('30');
+  await setup.getByRole('button', { name: '新しく作る', exact: true }).click();
+  await expect(page.locator('.startup-event')).toHaveText('初回の練習');
+  await startCounter(page);
+  await expect(page.locator('.product-stock')).toHaveText('残り 30本');
 });

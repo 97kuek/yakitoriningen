@@ -45,7 +45,9 @@ test('同じ位置を150ms間隔で二度押しても一件だけ完了し、次
   await page.waitForTimeout(HANDOFF_GUARD_MS);
   await completeButton(page).first().click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
-  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await page
+    .getByRole('button', { name: '札回収を取り消す', exact: true })
+    .click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(2);
 });
 
@@ -96,7 +98,7 @@ test('受け渡しは1回で記録して入力中の注文と位置を保ち、�
 
   const undo = page
     .locator('.waiting-undo-slot')
-    .getByRole('button', { name: '元に戻す', exact: true });
+    .getByRole('button', { name: '札回収を取り消す', exact: true });
   await undo.click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   await expect(page.getByLabel('ねぎまの本数')).toHaveValue('1');
@@ -132,7 +134,7 @@ test('札検索欄を表示せず、完了後も別の札が同じ位置へ現�
   await page
     .getByTestId('waiting-order')
     .last()
-    .getByRole('button', { name: '受け渡し完了（札も回収）' })
+    .getByRole('button', { name: '札を回収' })
     .click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(11);
 });

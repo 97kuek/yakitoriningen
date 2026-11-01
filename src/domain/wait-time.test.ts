@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Order, Operation, Snapshot } from './model';
-import { waitTime } from './wait-time';
+import { waitTime, dailyWaitTime } from './wait-time';
 
 const now = Date.parse('2026-11-01T03:30:00Z');
 function fixture(minutes: number[]): Snapshot {
@@ -34,8 +34,9 @@ function fixture(minutes: number[]): Snapshot {
   } as Snapshot;
 }
 describe('waitTime', () => {
-  it('requires three actual completions and rounds their mean in minutes', () => {
-    expect(waitTime(fixture([2, 4]), now)).toBeNull();
+  it('shows a mean after the first return and rounds minutes', () => {
+    expect(waitTime(fixture([2]), now)).toBe(2);
+    expect(waitTime(fixture([]), now)).toBeNull();
     expect(waitTime(fixture([2, 4, 9]), now)).toBe(5);
     expect(waitTime(fixture([0, 0, 0]), now)).toBe(1);
   });
@@ -53,14 +54,15 @@ describe('waitTime', () => {
     snapshot.orders[7].assignmentId = 'different';
     expect(waitTime(snapshot, now)).toBe(5);
   });
-  it('ignores stale, future and invalid timestamps, and does not count a return twice', () => {
+  it('keeps earlier returns, excludes future/invalid times and deduplicates returns', () => {
     const snapshot = fixture([5, 5, 5, 100, 100, 100]);
     snapshot.logs[3].at = new Date(now - 31 * 60_000).toISOString();
     snapshot.logs[4].at = new Date(now + 60_000).toISOString();
     snapshot.logs[5].at = 'invalid';
     snapshot.logs.push({ ...snapshot.logs[0], sequence: 20 });
-    expect(waitTime(snapshot, now)).toBe(5);
-    expect(waitTime(snapshot, now + 31 * 60_000)).toBeNull();
+    expect(waitTime(snapshot, now)).toBe(22);
+    expect(waitTime(fixture([5]), now + 31 * 60_000)).toBe(5);
+    expect(dailyWaitTime(fixture([5]), snapshot.meta.day)).toBe(5);
   });
   it('supports separately returned tickets', () => {
     const snapshot = fixture([3, 6, 9]);

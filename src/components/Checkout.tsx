@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { IconButton, Button, preventKeyRepeat } from './controls';
+import { IconButton, Button, EnterHint, preventKeyRepeat } from './controls';
 import { count } from '../domain/model';
 import type { Operation, Order, Quantities, Snapshot } from '../domain/model';
 import {
@@ -8,13 +8,17 @@ import {
   getMenu,
   getUnitPrice,
 } from '../domain/catalog';
-import { MAX_MONEY, MAX_QUANTITY } from '../domain/constants';
+import { MAX_MONEY, MAX_QUANTITY, LOW_STOCK } from '../domain/constants';
 import { tryQuote } from '../domain/pricing';
 import { pendingOrders } from '../domain/snapshot';
 import { newId } from '../lib/id';
 import { orderItems, yen } from '../presentation/format';
-import { remainingStock } from '../domain/inventory';
-import { useCheckoutEnter } from '../hooks/useCheckoutEnter';
+import {
+  remainingStock,
+  availableStock,
+  stockBalance,
+} from '../domain/inventory';
+import { useCheckoutKeys } from '../hooks/useCheckoutKeys';
 import { emptyDraft } from '../ui';
 import type { Draft, Shared } from '../ui';
 import type { Cashier } from '../application/ports';
@@ -45,9 +49,11 @@ export function Checkout({
   const price = draft.price ?? activePrice;
   const products = getMenu(price);
   const remaining = remainingStock(snapshot);
+  const available = availableStock(snapshot);
+  const balance = stockBalance(snapshot);
   const checkoutRoot = useRef<HTMLElement>(null);
   const nextButton = useRef<HTMLButtonElement>(null);
-  useCheckoutEnter(checkoutRoot, nextButton);
+  useCheckoutKeys(checkoutRoot, nextButton);
   // An invalid total cannot be submitted; the draft stays editable.
   const estimate = tryQuote(draft.quantities, price);
   const latestEstimate = tryQuote(draft.quantities, activePrice);
@@ -55,7 +61,12 @@ export function Checkout({
   const unresolved = snapshot.operations.some((op) => op.status === 'pending');
   const hasTicket = snapshot.tickets.some((t) => !t.orderId);
   const changeQuantity = (id: keyof Quantities, value: number) => {
-    if (!Number.isInteger(value) || value < 0 || value > MAX_QUANTITY) return;
+    if (
+      !Number.isInteger(value) ||
+      value < 0 ||
+      value > Math.min(MAX_QUANTITY, available[id] ?? MAX_QUANTITY)
+    )
+      return;
     setClearedDraft(null);
     const quantities = Object.fromEntries(
       products.map((product) => [
@@ -126,7 +137,7 @@ export function Checkout({
             setDraft(emptyDraft());
           }}
           label="注文をクリア"
-          icon="reset"
+          icon="close"
         />
       </div>
       <div className="price-strip">
@@ -166,10 +177,20 @@ export function Checkout({
           <div className={`product product-${index}`} key={p.id}>
             <div className="product-name">
               <div className="product-title">
-                <strong>{p.name}</strong>
+                <strong>
+                  {index < 9 && (
+                    <kbd className="product-key" aria-hidden="true">
+                      {index + 1}
+                    </kbd>
+                  )}
+                  {p.name}
+                </strong>
                 {remaining[p.id] !== undefined && (
-                  <span className="product-stock">
+                  <span
+                    className={`product-stock ${remaining[p.id] <= LOW_STOCK ? 'stock-low' : ''}`}
+                  >
                     残り {remaining[p.id]}本
+                    {balance[p.id] < 0 ? '・在庫を確認' : ''}
                   </span>
                 )}
               </div>
@@ -191,7 +212,7 @@ export function Checkout({
                   aria-label={`${p.name}の本数`}
                   type="number"
                   min="0"
-                  max={MAX_QUANTITY}
+                  max={Math.min(MAX_QUANTITY, available[p.id] ?? MAX_QUANTITY)}
                   value={draft.quantities[p.id] ?? 0}
                   onChange={(e) => changeQuantity(p.id, Number(e.target.value))}
                 />
@@ -200,7 +221,12 @@ export function Checkout({
                 variant="secondary"
                 type="button"
                 className="increase"
-                disabled={(draft.quantities[p.id] ?? 0) === MAX_QUANTITY}
+                data-product-key={index < 9 ? index + 1 : undefined}
+                aria-keyshortcuts={index < 9 ? String(index + 1) : undefined}
+                disabled={
+                  (draft.quantities[p.id] ?? 0) >=
+                  Math.min(MAX_QUANTITY, available[p.id] ?? MAX_QUANTITY)
+                }
                 onClick={() =>
                   changeQuantity(p.id, (draft.quantities[p.id] ?? 0) + 1)
                 }
@@ -232,7 +258,15 @@ export function Checkout({
         type="button"
         ref={nextButton}
         className="primary checkout-button wide"
-        disabled={!estimate?.count || unresolved || !hasTicket}
+        disabled={
+          !estimate?.count ||
+          unresolved ||
+          !hasTicket ||
+          Object.entries(draft.quantities).some(
+            ([id, value]) =>
+              available[id] !== undefined && value > available[id],
+          )
+        }
         onClick={() =>
           shared.perform(async () => {
             await shared.saveCommand({
@@ -250,6 +284,7 @@ export function Checkout({
       >
         会計へ
         <Icon name="arrow" />
+        <EnterHint />
       </Button>
       {!hasTicket && (
         <p className="notice">空き札がありません。札の回収を待ってください。</p>
@@ -288,7 +323,7 @@ function Payment({
   const [confirmReady, setConfirmReady] = useState(true);
   const paymentRoot = useRef<HTMLElement>(null);
   const primaryButton = useRef<HTMLButtonElement>(null);
-  useCheckoutEnter(paymentRoot, primaryButton);
+  useCheckoutKeys(paymentRoot, primaryButton);
   const receivedInput = useRef<HTMLInputElement>(null);
   const confirmButton = primaryButton;
   const focusedStage = useRef<string | null>(null);
@@ -447,6 +482,7 @@ function Payment({
           >
             <Icon name="check" />
             会計を確定
+            <EnterHint />
           </Button>
         ) : (
           <Button
@@ -459,6 +495,7 @@ function Payment({
           >
             お釣りを確認
             <Icon name="arrow" />
+            <EnterHint />
           </Button>
         )}
         <div className="payment-secondary">

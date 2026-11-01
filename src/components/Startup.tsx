@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { today, yen } from '../presentation/format';
-import type { Snapshot } from '../domain/model';
+import { normalPrice, type Snapshot } from '../domain/model';
+import { menuForm, menuPrice, menuStock } from '../presentation/menu-form';
+import { newId } from '../lib/id';
+import { MenuFields } from './MenuFields';
 import {
   DEFAULT_TICKET_COUNT,
   MAX_EVENT_NAME_LENGTH,
@@ -10,7 +13,7 @@ import { pendingOrders, unresolvedOperations } from '../domain/snapshot';
 import type { ActionHandler } from '../ui';
 import { commandNames } from '../ui';
 import type { Cashier } from '../application/ports';
-import { Button } from './controls';
+import { Button, Dialog, InlineError } from './controls';
 import { DataPanel } from './DataPanel';
 import { Icon } from './Icon';
 import { eventNameExample } from '../presentation/festival';
@@ -19,18 +22,20 @@ export function Startup({
   store,
   perform,
   onStart,
-  onRestored,
+  onRestart,
   errorMessage,
 }: {
   snapshot: Snapshot | null;
   store: Cashier;
   perform: ActionHandler;
   onStart: () => void;
-  onRestored: () => void;
+  onRestart: () => void;
   errorMessage: string;
 }) {
   const [event, setEvent] = useState('');
   const [day, setDay] = useState(today());
+  const [setupOpen, setSetupOpen] = useState(!snapshot);
+  const [menu, setMenu] = useState(() => menuForm(normalPrice(newId())));
   const [tickets, setTickets] = useState(DEFAULT_TICKET_COUNT);
   const reserved = snapshot ? pendingOrders(snapshot) : [];
   const pendingOperations = snapshot ? unresolvedOperations(snapshot) : [];
@@ -99,7 +104,7 @@ export function Startup({
             )}
             {snapshot.meta.day !== today() && (
               <p className="hint">
-                今日と違う日付です。必要なら設定で変更してください。
+                今日と違う日付です。別の日は「別の日の営業を準備」から。
               </p>
             )}
             <Button
@@ -115,54 +120,78 @@ export function Startup({
         ) : (
           <>
             <h2>営業の準備</h2>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void perform(() => store.initialize(event, day, tickets));
-              }}
+            <Button
+              variant="primary"
+              className="wide"
+              onClick={() => setSetupOpen(true)}
             >
-              <label>
-                開催回
-                <input
-                  value={event}
-                  required
-                  maxLength={MAX_EVENT_NAME_LENGTH}
-                  placeholder={eventNameExample()}
-                  onChange={(e) => setEvent(e.target.value)}
-                />
-              </label>
-              <div className="form-row">
-                <label>
-                  営業日
-                  <input
-                    type="date"
-                    required
-                    value={day}
-                    onChange={(e) => setDay(e.target.value)}
-                  />
-                </label>
-                <label>
-                  番号札の枚数
-                  <input
-                    type="number"
-                    min="1"
-                    max={MAX_TICKETS}
-                    required
-                    value={tickets}
-                    onChange={(e) => setTickets(Number(e.target.value))}
-                  />
-                </label>
-              </div>
-              <Button
-                variant="primary"
-                type="submit"
-                className="primary wide"
-                disabled={!event.trim()}
+              営業を準備
+            </Button>
+            <Dialog
+              open={setupOpen}
+              onClose={() => setSetupOpen(false)}
+              title="営業の準備"
+              className="day-setup-dialog"
+            >
+              <InlineError message={errorMessage} />
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void perform(() =>
+                    store.initialize(event, day, tickets, {
+                      price: menuPrice(menu),
+                      stock: menuStock(menu),
+                    }),
+                  );
+                }}
               >
-                新しく作る
-                <Icon name="arrow" />
-              </Button>
-            </form>
+                <label>
+                  営業名
+                  <input
+                    value={event}
+                    required
+                    maxLength={MAX_EVENT_NAME_LENGTH}
+                    placeholder={eventNameExample()}
+                    onChange={(e) => setEvent(e.target.value)}
+                  />
+                </label>
+                <div className="form-row">
+                  <label>
+                    営業日
+                    <input
+                      type="date"
+                      required
+                      value={day}
+                      onChange={(e) => setDay(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    番号札の枚数
+                    <input
+                      type="number"
+                      min="1"
+                      max={MAX_TICKETS}
+                      required
+                      value={tickets}
+                      onChange={(e) => setTickets(Number(e.target.value))}
+                    />
+                  </label>
+                </div>
+                <div className="menu-pricing-settings">
+                  <MenuFields draft={menu} onChange={setMenu} />
+                </div>
+
+                <Button
+                  variant="primary"
+                  type="submit"
+                  className="primary wide"
+                  disabled={!event.trim()}
+                >
+                  新しく作る
+                  <Icon name="arrow" />
+                </Button>
+              </form>
+            </Dialog>
             <p className="hint">
               営業の続きは、下の「バックアップから復元」から。
             </p>
@@ -173,7 +202,7 @@ export function Startup({
           store={store}
           perform={perform}
           errorMessage={errorMessage}
-          onRestored={onRestored}
+          onRestart={onRestart}
         />
       </section>
     </div>

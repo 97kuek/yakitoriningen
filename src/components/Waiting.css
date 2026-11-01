@@ -130,7 +130,10 @@
   white-space: nowrap;
 }
 .waiting-undo-slot {
-  width: var(--control-size);
+  display: flex;
+  align-items: center;
+  width: auto;
+  white-space: nowrap;
   height: var(--control-size);
 }
 
@@ -186,4 +189,8 @@
 }
 .waiting .waiting-tools {
   margin: 0;
+}
+
+.waiting-recovery-slot:empty {
+  display: none;
 }

@@ -6,6 +6,7 @@ import {
   MAX_MONEY,
   MAX_PRODUCT_NAME_LENGTH,
   MAX_PRODUCTS,
+  MAX_STOCK,
 } from '../domain/constants';
 import type { MenuForm } from '../presentation/menu-form';
 import { newId } from '../lib/id';
@@ -35,7 +36,7 @@ export function MenuFields({
     <>
       <div className="menu-editor-toolbar">
         <div className="menu-setting-heading">
-          <h3>商品・セットの編集</h3>
+          <h3>商品・価格・在庫</h3>
           <div className="menu-editor-actions">
             <IconButton
               icon="plus"
@@ -52,6 +53,7 @@ export function MenuFields({
                       name: '',
                       price: String(DEFAULT_UNIT_PRICE),
                       discountPrice: String(DEFAULT_DISCOUNT_PRICE),
+                      stock: '',
                     },
                   ],
                 });
@@ -66,6 +68,7 @@ export function MenuFields({
         <span>セット対象・商品名</span>
         <span>通常価格</span>
         <span>値下げ価格</span>
+        <span>用意した本数</span>
       </div>
       <div className="menu-rows">
         {items.map((item, index) => (
@@ -138,9 +141,26 @@ export function MenuFields({
                 }
               />
             </label>
+            <label className="menu-stock-field">
+              <span className="mobile-field-label">在庫（任意）</span>
+              <input
+                aria-label={`${item.name || `商品${index + 1}`}の在庫`}
+                type="number"
+                min="0"
+                max={MAX_STOCK}
+                placeholder="未登録"
+                value={item.stock ?? ''}
+                onChange={(event) =>
+                  updateItem(item.id, { stock: event.target.value })
+                }
+              />
+            </label>
           </div>
         ))}
       </div>
+      <p className="hint menu-stock-hint">
+        在庫は任意です。当日用意した合計本数を入力し、追加分も足してください。
+      </p>
       <section className="bundle-section">
         <h3>セット価格</h3>
         <label className="checkbox">

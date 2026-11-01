@@ -85,7 +85,9 @@ export function dailySnapshot(
   });
 }
 /** Reporting only: no restore or write. Duplicate dates are rejected, never added twice. */
-export function combineDailyBackups(snapshots: Snapshot[]): Snapshot {
+export function combineDailyBackups(
+  snapshots: Snapshot[],
+): Pick<Snapshot, 'meta' | 'orders' | 'operations' | 'logs'> {
   if (!snapshots.length) throw new Error('バックアップを選んでください。');
   const days = new Set<string>();
   const daily = snapshots.map((snapshot) => {
@@ -99,7 +101,7 @@ export function combineDailyBackups(snapshots: Snapshot[]): Snapshot {
     return dailySnapshot(snapshot);
   });
   return {
-    ...daily[0],
+    meta: daily[0].meta,
     orders: daily.flatMap((snapshot) => snapshot.orders),
     operations: daily.flatMap((snapshot) => snapshot.operations),
     logs: daily.flatMap((snapshot) => snapshot.logs),

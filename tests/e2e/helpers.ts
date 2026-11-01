@@ -161,7 +161,7 @@ export async function startCounter(page: Page) {
 /** Creates a new event through the first-run form. */
 export async function startNewEvent(page: Page) {
   await page.goto('/');
-  await page.getByLabel('開催回').fill('早稲田祭 2026');
+  await page.getByLabel('営業名').fill('早稲田祭 2026');
   await page.getByLabel('営業日').fill(FIXTURE_DAY);
   await page.getByRole('button', { name: '新しく作る' }).click();
   await startCounter(page);
@@ -190,7 +190,7 @@ export async function pay(page: Page, received = '1000') {
 export const completeButton = (page: Page) =>
   page
     .getByTestId('waiting-order')
-    .getByRole('button', { name: '受け渡し完了（札も回収）', exact: true });
+    .getByRole('button', { name: '札を回収', exact: true });
 
 /** Fully refunds the newest paid order from the history screen. */
 export async function refundNewest(page: Page, reason = '注文間違い') {

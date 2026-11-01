@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '../domain/model';
 import { MAX_MONEY } from '../domain/constants';
+import { dailyWaitTime } from '../domain/wait-time';
 import { profit, summarizeSales } from '../domain/sales';
 import { dayText, yen } from '../presentation/format';
 import type { Shared } from '../ui';
@@ -116,10 +117,12 @@ export function Summary({
               <th>会計</th>
               <th>販売本数</th>
               <th>売上</th>
+              <th>平均待ち</th>
             </tr>
           </thead>
           <tbody>
             {days.map((day) => {
+              const averageWait = dailyWaitTime(report, day);
               const sales = summarizeSales(
                 report.orders.filter((order) => order.day === day),
               );
@@ -129,6 +132,7 @@ export function Summary({
                   <td>{sales.orders}件</td>
                   <td>{sales.count}本</td>
                   <td>{yen(sales.sales)}</td>
+                  <td>{averageWait === null ? '—' : `約${averageWait}分`}</td>
                 </tr>
               );
             })}
@@ -139,6 +143,7 @@ export function Summary({
               <td>{total.orders}件</td>
               <td>{total.count}本</td>
               <td>{yen(total.sales)}</td>
+              <td>—</td>
             </tr>
           </tfoot>
         </table>

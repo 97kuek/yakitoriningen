@@ -305,6 +305,7 @@ small {
   color: var(--ink);
 }
 main {
+  width: 100%;
   max-width: 1360px;
   margin: auto;
   padding: 18px 24px 32px;
@@ -1231,26 +1232,25 @@ dialog {
 .restore-trigger {
   margin-top: 18px;
 }
-.new-event-trigger {
+.day-setup-trigger {
   margin: 18px 0 0 8px;
 }
 .restore-dialog .restore {
   margin-top: 0;
 }
-.new-event-form {
+.day-setup-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
-.control-dialog .new-event-form > label {
+.control-dialog .day-setup-form > label {
   margin: 0;
 }
-.new-event-form > :first-child,
-.new-event-form > .menu-pricing-settings,
-.new-event-form > button {
+.day-setup-form > .menu-pricing-settings,
+.day-setup-form > button {
   grid-column: 1 / -1;
 }
-.new-event-form .hint {
+.day-setup-form .hint {
   margin: 0;
 }
 .restore-dialog .restore-preview {
@@ -1453,7 +1453,7 @@ input:not([type='checkbox']) {
   font-size: var(--font-large);
 }
 
-/* The wordmark uses the same Japanese typeface as the interface. */
+/* Hand-painted wordmark from the original shop sign. */
 .brand {
   gap: 8px;
   min-height: 58px;
@@ -2034,10 +2034,10 @@ input:not([type='checkbox']) {
   padding-top: 16px;
 }
 
-dialog.control-dialog.new-event-dialog {
+dialog.control-dialog.day-setup-dialog {
   width: min(900px, calc(100vw - 32px));
 }
-.new-event-form > .menu-pricing-settings {
+.day-setup-form > .menu-pricing-settings {
   width: 100%;
   max-width: none;
 }
@@ -2046,30 +2046,6 @@ dialog.control-dialog.new-event-dialog {
 .operation-form .hint {
   margin: 0;
   font-weight: 400;
-}
-.stock-settings table {
-  width: 100%;
-  max-width: 700px;
-}
-.stock-settings th,
-.stock-settings td {
-  text-align: left;
-  font-size: var(--font-body);
-  font-weight: 400;
-  padding: 8px 12px 8px 0;
-}
-.stock-settings input {
-  max-width: 180px;
-}
-.product-title {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.product-stock {
-  font-size: var(--font-small);
-  color: var(--muted);
-  white-space: nowrap;
 }
 .about-details a {
   color: var(--ink);
@@ -2088,4 +2064,83 @@ dialog.control-dialog.new-event-dialog {
 }
 .day-caption .hint {
   white-space: nowrap;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+main:has(.startup-shell) {
+  flex: 1;
+  width: 100%;
+  display: grid;
+  align-content: center;
+}
+main:has(.startup-shell) .app-content {
+  width: 100%;
+}
+.settings-content > section > h3 {
+  margin-bottom: 14px;
+}
+.menu-pricing-settings,
+.menu-settings {
+  max-width: none;
+}
+.menu-columns,
+.menu-row {
+  grid-template-columns: 40px minmax(150px, 1.5fr) repeat(3, minmax(90px, 1fr));
+}
+.product-stock.stock-low {
+  color: var(--red);
+}
+@media (max-width: 600px) {
+  .menu-row {
+    grid-template-columns: 40px 1fr 1fr;
+  }
+  .menu-row > label:nth-of-type(1) {
+    grid-column: 2;
+  }
+  .menu-row > label:nth-of-type(2) {
+    grid-column: 3;
+  }
+  .menu-row > .menu-stock-field {
+    grid-column: 2 / 4;
+    grid-row: 3;
+  }
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  display: block;
+  width: 200px;
+  height: 56px;
+  object-fit: cover;
+}
+@media (max-width: 780px) {
+  .brand-logo {
+    width: 180px;
+    height: 50px;
+  }
+}
+
+.product-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  font: inherit;
+  font-size: var(--font-small);
+  font-weight: 400;
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  color: var(--muted);
 }

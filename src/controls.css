@@ -348,7 +348,8 @@ dialog.control-dialog {
   position: relative;
 }
 
-.data-panel .file-picker-input {
+.file-picker .file-picker-input {
+  border: 0;
   position: absolute;
   width: 1px;
   height: 1px;
@@ -389,4 +390,20 @@ dialog.control-dialog {
 .file-picker-input:focus-visible + .file-picker-control > span:first-child {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
+}
+
+.control-button:has(.key-hint) {
+  position: relative;
+  padding-inline: 64px;
+}
+.key-hint {
+  position: absolute;
+  right: 12px;
+  font: inherit;
+  font-size: var(--font-small);
+  line-height: 1.4;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 1px 5px;
+  opacity: 0.8;
 }

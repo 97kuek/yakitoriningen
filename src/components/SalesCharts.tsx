@@ -95,7 +95,11 @@ function SlotBars({
   );
 }
 
-export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
+export function SalesCharts({
+  snapshot,
+}: {
+  snapshot: Pick<Snapshot, 'meta' | 'orders'>;
+}) {
   const [selectedDay, setDay] = useState(snapshot.meta.day);
   const days = festivalDays(snapshot);
   const day = days.includes(selectedDay) ? selectedDay : snapshot.meta.day;

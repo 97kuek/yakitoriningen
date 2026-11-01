@@ -113,6 +113,15 @@ export function FilePicker({
   );
 }
 
+/** Visual reminder; the action's accessible name stays concise. */
+export function EnterHint() {
+  return (
+    <kbd className="key-hint" aria-hidden="true">
+      Enter
+    </kbd>
+  );
+}
+
 export interface SelectOption {
   value: string;
   label: string;

@@ -237,7 +237,7 @@ test('未保存の商品編集は画面の往復・ダイアログ・再読み�
   await save.click();
   await expect.poll(() => leaveIsBlocked(page)).toBe(false);
 
-  const heading = page.getByRole('heading', { name: '商品・セットの編集' });
+  const heading = page.getByRole('heading', { name: '商品・価格・在庫' });
   const headingBefore = (await heading.boundingBox())!;
   await modeButton(page, '値下げ').click();
   await expect(modeButton(page, '値下げ')).toHaveAttribute(
@@ -265,7 +265,7 @@ test('日付と札枚数は編集時だけ保存を表示して両方を保持�
     .getByRole('button', { name: 'バックアップから復元', exact: true })
     .boundingBox())!;
   const next = (await page
-    .getByRole('button', { name: '翌年の開催を準備', exact: true })
+    .getByRole('button', { name: '別の日の営業を準備', exact: true })
     .boundingBox())!;
   expect(restore.y).toBe(next.y);
   expect(restore.width).toBe(next.width);
@@ -296,8 +296,8 @@ test('在庫を日別に登録し、残数と未保存の入力を保持する',
   await openFixture(page, await ledgerFixture({ orders: 1 }));
   await openScreen(page, '設定');
   await page.getByLabel('ももの在庫').fill('1000');
-  await page.getByRole('button', { name: '在庫を保存', exact: true }).click();
-  await expect(page.locator('.stock-settings')).toContainText('999本');
+  await page.getByRole('button', { name: '変更を保存', exact: true }).click();
+  await expect(page.getByLabel('ももの在庫')).toHaveValue('1000');
   await openScreen(page, '会計');
   await expect(page.locator('.product-stock')).toHaveText('残り 999本');
   await openScreen(page, '設定');
@@ -306,7 +306,7 @@ test('在庫を日別に登録し、残数と未保存の入力を保持する',
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(
     page
-      .getByText('営業日を変える前に、入力中の在庫を保存してください。')
+      .getByText('営業日を変える前に、入力中の商品・在庫を保存してください。')
       .first(),
   ).toBeVisible();
   await expect(page.getByLabel('ももの在庫')).toHaveValue('1001');
@@ -314,11 +314,11 @@ test('在庫を日別に登録し、残数と未保存の入力を保持する',
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByLabel('ももの在庫')).toHaveValue('');
   await page.getByLabel('ももの在庫').fill('50');
-  await page.getByRole('button', { name: '在庫を保存', exact: true }).click();
+  await page.getByRole('button', { name: '変更を保存', exact: true }).click();
   await openScreen(page, '会計');
   await expect(page.locator('.product-stock')).toHaveText('残り 50本');
   await openScreen(page, '設定');
   await page.getByLabel('営業日', { exact: true }).fill('2026-11-07');
   await page.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.locator('.stock-settings')).toContainText('999本');
+  await expect(page.getByLabel('ももの在庫')).toHaveValue('1000');
 });

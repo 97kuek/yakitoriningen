@@ -7,7 +7,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       manifest: {
-        name: '焼き鳥人間 会計',
+        name: '焼き鳥人間 会計システム',
+        description: 'WASAの早稲田祭出店「焼き鳥人間」の会計・注文共有システム',
         short_name: '焼き鳥人間',
         lang: 'ja',
         start_url: '/',

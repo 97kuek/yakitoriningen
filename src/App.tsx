@@ -150,7 +150,7 @@ export default function App() {
     await store.prepare(id, context, command);
     return store.execute(id, context);
   };
-  const resetAfterRestore = () => {
+  const restartSession = () => {
     discardLocalState();
     setScreen('checkout');
     setLastHandoff(null);
@@ -192,7 +192,14 @@ export default function App() {
             if (!locked) navigate('checkout');
           }}
         >
-          <h1>焼き鳥人間</h1>
+          <h1 className="sr-only">焼き鳥人間</h1>
+          <img
+            className="brand-logo"
+            src="/assets/logo-brush.webp"
+            alt=""
+            width="640"
+            height="230"
+          />
         </a>
         {started && snapshot && (
           <nav className="tabs" aria-label="画面の切り替え">
@@ -341,13 +348,21 @@ export default function App() {
                 );
                 setStarted(true);
               }}
-              onRestored={resetAfterRestore}
+              onRestart={restartSession}
             />
           ) : (
             <>
               <div className="session-bar">
                 <strong>{festivalTitle(snapshot)}</strong>
-                <span role="status">{busy ? '保存中…' : ''}</span>
+                <div className="session-actions">
+                  <span role="status">{busy ? '保存中…' : ''}</span>
+                  <IconButton
+                    icon="refresh"
+                    label="注文と札の記録を更新"
+                    disabled={busy}
+                    onClick={() => perform(async () => {})}
+                  />
+                </div>
               </div>
               <Recovery
                 operations={unresolved}
@@ -389,7 +404,7 @@ export default function App() {
                 <Settings
                   snapshot={snapshot}
                   store={store}
-                  onRestored={resetAfterRestore}
+                  onRestart={restartSession}
                   hasDraft={hasDraft}
                   onDirtyChange={setSettingsDirty}
                   {...shared}

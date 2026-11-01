@@ -5,20 +5,19 @@ import { MAX_TICKETS } from '../domain/constants';
 import type { Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { DataPanel } from './DataPanel';
-import { StockSettings } from './StockSettings';
 import { MenuSettings } from './MenuSettings';
 import { Button } from './controls';
 export function Settings({
   snapshot,
   store,
-  onRestored,
+  onRestart,
   hasDraft,
   onDirtyChange,
   ...shared
 }: Shared & {
   snapshot: Snapshot;
   store: Cashier;
-  onRestored: () => void;
+  onRestart: () => void;
   hasDraft: boolean;
   onDirtyChange: (dirty: boolean) => void;
 }) {
@@ -28,10 +27,9 @@ export function Settings({
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [saved, setSaved] = useState('');
   const [menuDirty, setMenuDirty] = useState(false);
-  const [stockDirty, setStockDirty] = useState(false);
   const operationDirty =
     day !== snapshot.meta.day || tickets !== String(snapshot.meta.ticketCount);
-  const dirty = menuDirty || stockDirty || operationDirty;
+  const dirty = menuDirty || operationDirty;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   return (
     <section className="panel settings">
@@ -40,25 +38,21 @@ export function Settings({
         <section aria-label="商品・価格">
           <h3>商品・価格</h3>
           <MenuSettings
+            key={snapshot.meta.day}
             active={active}
+            snapshot={snapshot}
             onDirtyChange={setMenuDirty}
             {...shared}
           />
         </section>
-        <StockSettings
-          key={snapshot.meta.day}
-          snapshot={snapshot}
-          onDirtyChange={setStockDirty}
-          {...shared}
-        />
         <section aria-label="バックアップ・日付・番号札">
           <DataPanel
             store={store}
             snapshot={snapshot}
             perform={shared.perform}
             errorMessage={shared.errorMessage}
-            onRestored={onRestored}
-            hasDraft={hasDraft}
+            onRestart={onRestart}
+            hasDraft={hasDraft || dirty}
           />
           <section className="operation-section">
             <h3>日付・番号札</h3>
@@ -68,9 +62,9 @@ export function Settings({
                 event.preventDefault();
                 void shared.perform(async () => {
                   dateSchema.parse(day);
-                  if (day !== snapshot.meta.day && stockDirty)
+                  if (day !== snapshot.meta.day && menuDirty)
                     throw new Error(
-                      '営業日を変える前に、入力中の在庫を保存してください。',
+                      '営業日を変える前に、入力中の商品・在庫を保存してください。',
                     );
                   if (tickets !== String(snapshot.meta.ticketCount))
                     await shared.saveCommand({

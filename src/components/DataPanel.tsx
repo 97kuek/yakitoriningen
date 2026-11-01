@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import type { Snapshot } from '../domain/model';
-import { MAX_EVENT_NAME_LENGTH, MAX_TICKETS } from '../domain/constants';
+import { MAX_TICKETS } from '../domain/constants';
 import { findActivePrice } from '../domain/catalog';
-import { menuForm, menuPrice, type MenuForm } from '../presentation/menu-form';
+import {
+  menuForm,
+  menuPrice,
+  menuStock,
+  type MenuForm,
+} from '../presentation/menu-form';
 import { MenuFields } from './MenuFields';
 import { summarizeSales } from '../domain/sales';
 import { pendingOrders } from '../domain/snapshot';
@@ -14,13 +19,13 @@ import {
   parseBackup,
 } from '../application/backup';
 import { dailySnapshot } from '../application/daily-backup';
-import { newEvent } from '../application/new-event';
+import { validateDaySetup } from '../domain/day';
+import { contextOf } from '../domain/snapshot';
 import { newId } from '../lib/id';
 import { download } from '../presentation/download';
 import { today, yen } from '../presentation/format';
 import { Button, Dialog, FilePicker, InlineError } from './controls';
 import { Icon } from './Icon';
-import { eventNameExample } from '../presentation/festival';
 
 async function fileText(file: File | undefined) {
   if (!file || file.size > MAX_BACKUP_BYTES)
@@ -33,27 +38,26 @@ export function DataPanel({
   store,
   snapshot,
   perform,
-  onRestored,
+  onRestart,
   errorMessage,
   hasDraft = false,
 }: {
   store: Cashier;
   snapshot: Snapshot | null;
   perform: ActionHandler;
-  onRestored: () => void;
+  onRestart: () => void;
   errorMessage: string;
   hasDraft?: boolean;
 }) {
   const [incoming, setIncoming] = useState<Snapshot | null>(null);
   const [expected, setExpected] = useState<Snapshot | null>(null);
-  const [eventBase, setEventBase] = useState<Snapshot | null>(null);
+  const [dayBase, setDayBase] = useState<Snapshot | null>(null);
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
-  const [newEventOpen, setNewEventOpen] = useState(false);
-  const [eventName, setEventName] = useState('');
-  const [eventDay, setEventDay] = useState(today());
-  const [eventMenu, setEventMenu] = useState<MenuForm | null>(null);
-  const [eventTickets, setEventTickets] = useState('');
+  const [dayOpen, setDayOpen] = useState(false);
+  const [nextDay, setNextDay] = useState(today());
+  const [dayMenu, setDayMenu] = useState<MenuForm | null>(null);
+  const [dayTickets, setDayTickets] = useState('');
   const incomingSales = incoming ? summarizeSales(incoming.orders) : null;
   return (
     <section className="data-panel" aria-labelledby="backup-heading">
@@ -104,73 +108,79 @@ export function DataPanel({
         {snapshot && (
           <Button
             variant="secondary"
-            className="new-event-trigger"
+            className="day-setup-trigger"
             onClick={() =>
               void perform(async () => {
                 const current = await store.read();
                 if (!current) throw new Error('営業の記録がありません。');
-                setEventBase(current);
-                setEventMenu(menuForm(findActivePrice(current)!));
-                setEventTickets(String(current.meta.ticketCount));
-                setNewEventOpen(true);
+                setDayBase(current);
+                const tomorrow = new Date(`${current.meta.day}T12:00:00Z`);
+                tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+                setNextDay(tomorrow.toISOString().slice(0, 10));
+                setDayMenu(menuForm(findActivePrice(current)!));
+                setDayTickets(String(current.meta.ticketCount));
+                setDayOpen(true);
               })
             }
           >
-            翌年の開催を準備
+            別の日の営業を準備
           </Button>
         )}
       </div>
-      {newEventOpen && (
+      {dayOpen && (
         <Dialog
-          open={newEventOpen}
-          onClose={() => setNewEventOpen(false)}
-          title="翌年の開催を準備"
-          className="restore-dialog new-event-dialog"
+          open={dayOpen}
+          onClose={() => setDayOpen(false)}
+          title="別の日の営業を準備"
+          className="restore-dialog day-setup-dialog"
         >
           <InlineError message={errorMessage} />
           <div className="restore">
             <p>
-              新しい開催回に切り替えると、記録が削除されます。
-              <br />
-              記録を保存したい場合は、「バックアップを保存」を選択してください。
+              前の営業日の記録は残ります。商品・価格を引き継ぎ、当日の在庫を登録できます。
             </p>
             {hasDraft && (
-              <p role="status">入力途中の注文を確認してください。</p>
+              <p role="status">入力途中の注文や設定を先に保存してください。</p>
             )}
             <form
-              className="new-event-form"
+              className="day-setup-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!eventBase || !eventMenu || hasDraft) return;
+                if (!dayBase || !dayMenu || hasDraft) return;
                 void perform(async () => {
-                  const next = newEvent(eventBase, eventName, eventDay, newId, {
-                    price: menuPrice({ ...eventMenu, mix: true }),
-                    ticketCount: Number(eventTickets),
+                  const current = await store.read();
+                  if (!current) throw new Error('営業の記録がありません。');
+                  validateDaySetup(current, nextDay, dayBase.meta.sequence);
+                  const operationId = newId();
+                  const context = contextOf(dayBase.meta);
+                  await store.prepare(operationId, context, {
+                    type: 'startDay',
+                    day: nextDay,
+                    price: menuPrice({
+                      ...dayMenu,
+                      id: newId(),
+                      mix: true,
+                      discounted: false,
+                      label: '通常',
+                    }),
+                    stock: menuStock(dayMenu),
+                    ticketCount: Number(dayTickets),
+                    expectedSequence: dayBase.meta.sequence,
                   });
-                  await store.restore(next, eventBase);
-                  setNewEventOpen(false);
-                  setEventBase(null);
-                  onRestored();
+                  await store.execute(operationId, context);
+                  setDayOpen(false);
+                  setDayBase(null);
+                  onRestart();
                 });
               }}
             >
               <label>
-                開催回
-                <input
-                  value={eventName}
-                  required
-                  maxLength={MAX_EVENT_NAME_LENGTH}
-                  placeholder={eventNameExample(1)}
-                  onChange={(event) => setEventName(event.target.value)}
-                />
-              </label>
-              <label>
-                1日目の日付
+                営業日
                 <input
                   type="date"
                   required
-                  value={eventDay}
-                  onChange={(event) => setEventDay(event.target.value)}
+                  value={nextDay}
+                  onChange={(event) => setNextDay(event.target.value)}
                 />
               </label>
               <label>
@@ -180,23 +190,23 @@ export function DataPanel({
                   min="1"
                   max={MAX_TICKETS}
                   required
-                  value={eventTickets}
-                  onChange={(event) => setEventTickets(event.target.value)}
+                  value={dayTickets}
+                  onChange={(event) => setDayTickets(event.target.value)}
                 />
               </label>
-              {eventMenu && (
+              {dayMenu && (
                 <div className="menu-pricing-settings">
                   <div className="menu-settings">
-                    <MenuFields draft={eventMenu} onChange={setEventMenu} />
+                    <MenuFields draft={dayMenu} onChange={setDayMenu} />
                   </div>
                 </div>
               )}
               <Button
                 type="submit"
                 variant="danger"
-                disabled={!eventBase || hasDraft || !eventName.trim()}
+                disabled={!dayBase || hasDraft || nextDay === dayBase.meta.day}
               >
-                新しい開催回に切り替える
+                この営業日を準備
               </Button>
             </form>
           </div>
@@ -235,7 +245,7 @@ export function DataPanel({
               <table className="backup-table" aria-label="バックアップ内容">
                 <tbody>
                   <tr>
-                    <th scope="row">開催回</th>
+                    <th scope="row">営業名</th>
                     <td>{incoming.meta.event}</td>
                   </tr>
                   <tr>
@@ -290,7 +300,7 @@ export function DataPanel({
                     setIncoming(null);
                     setRestoreOpen(false);
                     setRestoreConfirmed(false);
-                    onRestored();
+                    onRestart();
                   })
                 }
               >

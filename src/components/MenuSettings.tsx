@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
 import { createMenuDraft, priceLabel } from '../domain/catalog';
 import { priceSchema } from '../domain/model';
-import type { Price } from '../domain/model';
-import { menuForm, menuPrice, type MenuForm } from '../presentation/menu-form';
+import type { Price, Snapshot } from '../domain/model';
+import {
+  menuForm,
+  menuPrice,
+  menuStock,
+  type MenuForm,
+} from '../presentation/menu-form';
+import { stockForDay } from '../domain/inventory';
 import { newId } from '../lib/id';
 import type { Shared } from '../ui';
 import { Button } from './controls';
@@ -22,17 +28,21 @@ function menuContents(price: MenuForm) {
 
 export function MenuSettings({
   active,
+  snapshot,
   perform,
   saveCommand,
   busy,
   onDirtyChange,
-}: { active: Price; onDirtyChange: (dirty: boolean) => void } & Pick<
-  Shared,
-  'perform' | 'saveCommand' | 'busy'
->) {
-  const [draft, setDraft] = useState<MenuForm>(() => menuForm(active));
+}: {
+  active: Price;
+  snapshot: Snapshot;
+  onDirtyChange: (dirty: boolean) => void;
+} & Pick<Shared, 'perform' | 'saveCommand' | 'busy'>) {
+  const [draft, setDraft] = useState<MenuForm>(() =>
+    menuForm(active, stockForDay(snapshot)),
+  );
   const [savedContents, setSavedContents] = useState(() =>
-    menuContents(menuForm(active)),
+    menuContents(menuForm(active, stockForDay(snapshot))),
   );
   const [saved, setSaved] = useState('');
   const current = createMenuDraft(active);
@@ -92,7 +102,11 @@ export function MenuSettings({
               label: priceLabel(current.discounted),
               mix: true,
             });
-            await saveCommand({ type: 'price', price });
+            await saveCommand({
+              type: 'catalog',
+              price,
+              stock: menuStock(draft),
+            });
             setSavedContents(menuContents(draft));
             setSaved('保存しました。');
           });

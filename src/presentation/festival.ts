@@ -48,5 +48,7 @@ export const timeSlotOptions: TimeSlot[] = [
 
 /** Placeholder for an event name, e.g. `例：早稲田祭 2026`. */
 export function eventNameExample(yearsAhead = 0): string {
-  return `例：早稲田祭 ${new Date().getFullYear() + yearsAhead}`;
+  return yearsAhead
+    ? `例：早稲田祭 ${new Date().getFullYear() + yearsAhead}`
+    : '例：早稲田祭';
 }
