@@ -1456,8 +1456,18 @@ dialog {
 .restore-trigger {
   margin-top: 18px;
 }
+.new-event-trigger {
+  margin: 18px 0 0 8px;
+}
 .restore-dialog .restore {
   margin-top: 0;
+}
+.new-event-form {
+  display: grid;
+  gap: 12px;
+}
+.new-event-form .hint {
+  margin: 0;
 }
 .restore-dialog .restore-preview {
   margin-top: 15px;

@@ -7,6 +7,9 @@ import type { ActionHandler } from '../ui';
 import { canonical } from '../application/serialization';
 import type { Cashier } from '../application/ports';
 import { encodeBackup, ordersCsv, parseBackup } from '../application/backup';
+import { newEvent } from '../application/new-event';
+import { newId } from '../lib/id';
+import { today } from '../presentation/format';
 import { Button, Dialog } from './controls';
 import { Icon } from './Icon';
 export function download(
@@ -35,6 +38,7 @@ export function DataPanel({
   onRestored,
   onVerified,
   errorMessage,
+  hasDraft = false,
 }: {
   store: Cashier;
   snapshot: Snapshot | null;
@@ -42,6 +46,7 @@ export function DataPanel({
   onRestored: () => void;
   onVerified: (s: Snapshot) => void;
   errorMessage: string;
+  hasDraft?: boolean;
 }) {
   const [incoming, setIncoming] = useState<Snapshot | null>(null);
   const [archive, setArchive] = useState<Snapshot | null>(null);
@@ -49,6 +54,15 @@ export function DataPanel({
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
   const [status, setStatus] = useState('');
   const [restoreOpen, setRestoreOpen] = useState(false);
+  const [newEventOpen, setNewEventOpen] = useState(false);
+  const [eventName, setEventName] = useState('');
+  const [eventDay, setEventDay] = useState(today());
+  const [newEventConfirmed, setNewEventConfirmed] = useState(false);
+  const archiveCurrent =
+    !!snapshot &&
+    !!archive &&
+    verified &&
+    canonical(snapshot) === canonical(archive);
   return (
     <section className="data-panel" aria-labelledby="backup-heading">
       <h3 id="backup-heading">
@@ -165,6 +179,103 @@ export function DataPanel({
         <Icon name="upload" />
         保存した記録を開く
       </Button>
+      {snapshot && (
+        <Button
+          variant="secondary"
+          className="new-event-trigger"
+          onClick={() => setNewEventOpen(true)}
+        >
+          新しい開催回を準備
+        </Button>
+      )}
+      {newEventOpen && (
+        <Dialog
+          open={newEventOpen}
+          onClose={() => setNewEventOpen(false)}
+          title="新しい開催回を準備"
+          className="restore-dialog"
+        >
+          {errorMessage && (
+            <p className="inline-error" role="alert">
+              {errorMessage}
+            </p>
+          )}
+          <div className="restore">
+            <p>
+              現在の記録はこの画面から消えます。先に「記録を保存」し、保存したファイルを確認してください。
+            </p>
+            <p>
+              {archiveCurrent
+                ? '保存したファイルを確認済み'
+                : '記録の保存とファイルの確認が必要です。'}
+            </p>
+            {hasDraft && (
+              <p role="status">入力途中の注文を確認してください。</p>
+            )}
+            <form
+              className="new-event-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!archive || !archiveCurrent || hasDraft) return;
+                void perform(async () => {
+                  const next = newEvent(archive, eventName, eventDay, newId);
+                  await store.restore(next, archive, true);
+                  setNewEventOpen(false);
+                  setArchive(null);
+                  setVerified(false);
+                  setNewEventConfirmed(false);
+                  onRestored();
+                });
+              }}
+            >
+              <label>
+                開催回
+                <input
+                  value={eventName}
+                  required
+                  maxLength={80}
+                  placeholder="例：早稲田祭 2027"
+                  onChange={(event) => setEventName(event.target.value)}
+                />
+              </label>
+              <label>
+                1日目の日付
+                <input
+                  type="date"
+                  required
+                  value={eventDay}
+                  onChange={(event) => setEventDay(event.target.value)}
+                />
+              </label>
+              <p className="hint">
+                商品・価格と札の枚数を引き継ぎます。値下げは解除します。
+              </p>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={newEventConfirmed}
+                  onChange={(event) =>
+                    setNewEventConfirmed(event.target.checked)
+                  }
+                />
+                前年の記録を保存した
+              </label>
+              <Button
+                type="submit"
+                variant="danger"
+                disabled={
+                  !archiveCurrent ||
+                  hasDraft ||
+                  !newEventConfirmed ||
+                  !eventName.trim()
+                }
+              >
+                新しい開催回に切り替える
+              </Button>
+            </form>
+          </div>
+        </Dialog>
+      )}
       <Dialog
         open={restoreOpen}
         onClose={() => setRestoreOpen(false)}

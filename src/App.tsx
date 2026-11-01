@@ -445,6 +445,7 @@ export default function App() {
                   onSectionChange={setSettingsInitial}
                   onRestored={resetAfterRestore}
                   onVerified={setVerifiedBackup}
+                  hasDraft={count(draft.quantities) > 0}
                   {...shared}
                 />
               </div>

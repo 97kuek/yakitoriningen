@@ -14,6 +14,7 @@ export function Settings({
   onVerified,
   section,
   onSectionChange,
+  hasDraft,
   ...shared
 }: Shared & {
   snapshot: Snapshot;
@@ -22,6 +23,7 @@ export function Settings({
   onVerified: (snapshot: Snapshot) => void;
   section: SettingsSection;
   onSectionChange: (section: SettingsSection) => void;
+  hasDraft: boolean;
 }) {
   const active = snapshot.prices.find(
     (price) => price.id === snapshot.meta.activePriceId,
@@ -114,6 +116,7 @@ export function Settings({
             errorMessage={shared.errorMessage}
             onRestored={onRestored}
             onVerified={onVerified}
+            hasDraft={hasDraft}
           />
           <Disclosure title="日付・番号札">
             <div className="operation-settings">
