@@ -3,7 +3,9 @@ import { normalPrice } from './model';
 import type { Order } from './model';
 import { quote } from './pricing';
 import {
+  chartSlots,
   profit,
+  quantitiesByHalfHour,
   quantitiesByProduct,
   salesByHalfHour,
   summarizeSales,
@@ -77,7 +79,7 @@ it('経費未登録を0円と区別し、赤字も正しく計算する', () => 
   expect(profit(600, 0)).toBe(600);
   expect(profit(600, 1000)).toBe(-400);
 });
-it('30分区切りは日本時間の会計時刻で集計し、空の区間と返金を反映する', () => {
+it('30分区切りは営業時間10:00〜17:00を軸にし、日本時間の会計時刻で集計して返金を反映する', () => {
   const rows = [
     order({ paidAt: '2026-11-07T01:29:59Z' }),
     order({ paidAt: '2026-11-07T01:30:00Z' }),
@@ -85,16 +87,46 @@ it('30分区切りは日本時間の会計時刻で集計し、空の区間と�
     order({ status: 'cancelled', refunded: 600 }),
     order({ status: 'pending', received: null, paidAt: null }),
   ];
-  expect(salesByHalfHour(rows)).toEqual([
-    { minute: 600, sales: 600 },
+  const slots = salesByHalfHour(rows);
+  expect(slots).toHaveLength(14);
+  expect(slots[0]).toEqual({ minute: 600, sales: 600 });
+  expect(slots.slice(1, 4)).toEqual([
     { minute: 630, sales: 600 },
     { minute: 660, sales: 0 },
     { minute: 690, sales: 600 },
   ]);
+  expect(slots.at(-1)).toEqual({ minute: 990, sales: 0 });
   expect(salesByHalfHour([])).toEqual([]);
-  expect(
-    salesByHalfHour([order({ paidAt: '2026-11-07T15:00:00Z' })])[0].minute,
-  ).toBe(0);
+});
+it('営業時間外の会計があれば、その時間帯まで軸を広げる', () => {
+  expect(chartSlots([order({ paidAt: '2026-11-07T00:40:00Z' })])[0]).toBe(570);
+  expect(chartSlots([order({ paidAt: '2026-11-07T08:10:00Z' })]).at(-1)).toBe(
+    1020,
+  );
+  expect(chartSlots([order({ paidAt: '2026-11-07T15:00:00Z' })])[0]).toBe(0);
+});
+it('30分ごとの販売本数は商品別に数え、保留と返金を含めない', () => {
+  const slots = quantitiesByHalfHour([
+    order({ paidAt: '2026-11-07T01:05:00Z' }),
+    order({
+      paidAt: '2026-11-07T01:20:00Z',
+      quantities: { tsukune: 4 },
+      names: { tsukune: 'つくね' },
+    }),
+    order({
+      paidAt: '2026-11-07T01:10:00Z',
+      status: 'cancelled',
+      refunded: 600,
+    }),
+    order({ status: 'pending', received: null, paidAt: null }),
+  ]);
+  expect(slots).toHaveLength(14);
+  expect(slots[0]).toEqual({
+    minute: 600,
+    quantities: { momo: 3, kawa: 2, tsukune: 4 },
+    total: 9,
+  });
+  expect(slots[1]).toEqual({ minute: 630, quantities: {}, total: 0 });
 });
 it('商品別本数は保存された名前でまとめ、保留と返金を含めない', () => {
   expect(

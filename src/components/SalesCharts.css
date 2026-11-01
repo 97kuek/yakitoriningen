@@ -30,6 +30,9 @@
   margin: 0;
   min-width: 0;
 }
+.chart-grid .chart-wide {
+  grid-column: 1 / -1;
+}
 .chart-grid figcaption {
   font-size: var(--font-body);
   font-weight: 600;
@@ -74,9 +77,14 @@
   );
 }
 .bar-fill {
+  display: flex;
+  flex-direction: column;
   width: 65%;
   max-width: 56px;
-  background: var(--ink);
+}
+.bar-segment {
+  flex-basis: 0;
+  min-height: 0;
 }
 .bar-value {
   position: absolute;
