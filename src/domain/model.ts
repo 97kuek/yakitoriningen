@@ -111,6 +111,7 @@ export const priceSchema = z
       });
   });
 export type Price = z.infer<typeof priceSchema>;
+export type Catalog = { price: Price; stock: Quantities };
 export const normalPrice = (priceId: string): Price => ({
   id: priceId,
   label: PRICE_LABELS.normal,
@@ -222,6 +223,23 @@ export const commandSchema = z.discriminatedUnion('type', [
     })
     .strict(),
   z.object({ type: z.literal('price'), price: priceSchema }).strict(),
+  z
+    .object({
+      type: z.literal('catalog'),
+      price: priceSchema,
+      stock: stockSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('startDay'),
+      day: dateSchema,
+      price: priceSchema,
+      stock: stockSchema,
+      ticketCount: ticketNumberSchema,
+      expectedSequence: z.number().int().nonnegative(),
+    })
+    .strict(),
   z.object({ type: z.literal('expense'), amount: moneySchema }).strict(),
   z.object({ type: z.literal('stock'), quantities: stockSchema }).strict(),
   z.object({ type: z.literal('day'), day: dateSchema }).strict(),

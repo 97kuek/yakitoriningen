@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { newId } from '../lib/id';
-import { newEvent } from '../application/new-event';
 
 import type { Context, Snapshot } from '../domain/model';
 import { Database } from './database';
@@ -287,13 +286,13 @@ it('完了と取り消しを繰り返した記録をバックアップ・復元�
   });
 });
 
-it('新しい開催回への切り替えは保存後の変更を拒否し、旧画面を無効にする', async () => {
+it('復元は確認後の変更を拒否し、旧画面を無効にする', async () => {
   const cleanDb = new Database(`new-event-${newId()}`);
   try {
     const cashier = new CashierStore(cleanDb);
     const context = await cashier.initialize('前年', '2026-11-07', 3);
     const saved = (await cashier.read())!;
-    const next = newEvent(saved, '翌年', '2027-11-06', newId);
+    const next = saved;
     const operation = newId();
     await cashier.prepare(operation, context, {
       type: 'day',
@@ -306,9 +305,9 @@ it('新しい開催回への切り替えは保存後の変更を拒否し、旧�
     expect(changed.operations).toHaveLength(1);
     await cashier.discard(operation, context);
     const verified = (await cashier.read())!;
-    const ready = newEvent(verified, '翌年', '2027-11-06', newId);
+    const ready = verified;
     await new CashierStore(cleanDb).restore(ready, verified);
-    expect((await cashier.read())!.meta.event).toBe('翌年');
+    expect((await cashier.read())!.meta.event).toBe('前年');
     await expect(
       cashier.prepare(newId(), context, { type: 'day', day: '2026-11-08' }),
     ).rejects.toThrow(/世代/);

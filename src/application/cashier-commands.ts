@@ -3,6 +3,7 @@ import {
   commandSchema,
   metaSchema,
   normalPrice,
+  priceSchema,
   operationSchema,
 } from '../domain/model';
 import type {
@@ -12,7 +13,10 @@ import type {
   Operation,
   Order,
   Snapshot,
+  Catalog,
 } from '../domain/model';
+import { availableStock, validateStock } from '../domain/inventory';
+import { validateDaySetup } from '../domain/day';
 import { quote } from '../domain/pricing';
 import { getMenu } from '../domain/catalog';
 import { handoffUndoError } from '../domain/handoff';
@@ -80,8 +84,14 @@ export class CashierCommands {
     event: string,
     day: string,
     tickets: number,
+    settings?: Catalog,
   ): Promise<Context> {
-    const price = normalPrice(this.newId());
+    const price = priceSchema.parse(
+      settings?.price ?? normalPrice(this.newId()),
+    );
+    const catalog = settings
+      ? commandSchema.parse({ type: 'catalog', price, stock: settings.stock })
+      : null;
     const meta = metaSchema.parse({
       key: META_KEY,
       databaseId: this.newId(),
@@ -98,6 +108,20 @@ export class CashierCommands {
       await tx.meta.add(meta);
       await tx.prices.add(price);
       await tx.tickets.bulkAdd(freeTickets(tickets));
+      if (catalog) {
+        const operation = operationSchema.parse({
+          id: this.newId(),
+          context: contextOf(meta),
+          event: meta.event,
+          day: meta.day,
+          command: catalog,
+          status: 'done',
+          result: '設定',
+          createdAt: this.now(),
+        });
+        await tx.operations.add(operation);
+        await this.appendLog(tx, meta, operation.id, catalog.type, '設定');
+      }
     });
     return contextOf(meta);
   }
@@ -124,7 +148,7 @@ export class CashierCommands {
         id,
         context,
         event: meta.event,
-        day: meta.day,
+        day: command.type === 'startDay' ? command.day : meta.day,
         command,
         status: 'pending',
         result: null,
@@ -145,16 +169,44 @@ export class CashierCommands {
       if (op.status === 'done') return op.result!;
       if (op.status !== 'pending') throw new Error('この操作は破棄済みです。');
       const command = commandSchema.parse(op.command);
+      if (
+        op.day !== meta.day &&
+        (command.type === 'reserve' ||
+          (!('orderId' in command) &&
+            command.type !== 'startDay' &&
+            command.type !== 'day'))
+      )
+        throw new Error(
+          '営業日が変わりました。元の営業日に戻して再試行するか、この操作を取り消してください。',
+        );
       let result = '設定';
       if (command.type === 'reserve') {
         result = await this.reserve(tx, meta, op, command);
       } else if ('orderId' in command) {
         result = await this.changeOrder(tx, id, command);
-      } else if (command.type === 'price') {
+      } else if (command.type === 'startDay') {
+        validateDaySetup(
+          (await readSnapshot(tx))!,
+          command.day,
+          command.expectedSequence,
+          id,
+        );
+        if (await tx.prices.get(command.price.id))
+          throw new Error('価格の版が既に使われています。');
+        await tx.prices.add(command.price);
+        await this.resizeTickets(tx, command.ticketCount, meta.sequence + 1);
+        meta.activePriceId = command.price.id;
+        meta.ticketCount = command.ticketCount;
+        meta.day = command.day;
+      } else if (command.type === 'price' || command.type === 'catalog') {
+        if (command.type === 'catalog')
+          validateStock((await readSnapshot(tx))!, command.stock);
         if (await tx.prices.get(command.price.id))
           throw new Error('価格の版が既に使われています。');
         await tx.prices.add(command.price);
         meta.activePriceId = command.price.id;
+      } else if (command.type === 'stock') {
+        validateStock((await readSnapshot(tx))!, command.quantities);
       } else if (command.type === 'expense') {
         meta.expenseTotal = command.amount;
       } else if (command.type === 'day') {
@@ -226,6 +278,10 @@ export class CashierCommands {
     const price = await tx.prices.get(command.price.id);
     if (!price || canonical(price) !== canonical(command.price))
       throw new Error('価格設定が一致しません。');
+    const available = availableStock((await readSnapshot(tx))!);
+    for (const [id, value] of Object.entries(command.quantities))
+      if (available[id] !== undefined && value > available[id])
+        throw new Error('在庫が足りません。本数か在庫を確認してください。');
     const estimate = quote(command.quantities, price);
     if (estimate.count === 0)
       throw new Error('商品を1本以上入力してください。');

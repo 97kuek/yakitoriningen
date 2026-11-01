@@ -257,7 +257,11 @@ function validate(data: Snapshot): void {
         if (op.command.type === 'cancel')
           requireValid(order?.status === 'cancelled', '取消操作');
       }
-      if (op.command.type === 'price')
+      if (
+        op.command.type === 'price' ||
+        op.command.type === 'catalog' ||
+        op.command.type === 'startDay'
+      )
         requireValid(
           canonical(prices.get(op.command.price.id)) ===
             canonical(op.command.price),

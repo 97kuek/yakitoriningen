@@ -7,7 +7,7 @@ const store = new CashierStore();
 /** Composition root: only this module wires browser persistence into the UI. */
 export const cashier: Cashier = {
   read: () => store.read(),
-  initialize: (event, day, tickets) => store.initialize(event, day, tickets),
+  initialize: (...args) => store.initialize(...args),
   prepare: (id, context, command) => store.prepare(id, context, command),
   execute: (id, context) => store.execute(id, context),
   discard: (id, context) => store.discard(id, context),

@@ -6,6 +6,7 @@ import type {
   Operation,
   Order,
   Price,
+  Catalog,
   Snapshot,
   Ticket,
 } from '../domain/model';
@@ -42,7 +43,12 @@ export interface LedgerRepository {
 /** The application boundary consumed by the cashier screens. */
 export interface Cashier {
   read(): Promise<Snapshot | null>;
-  initialize(event: string, day: string, tickets: number): Promise<Context>;
+  initialize(
+    event: string,
+    day: string,
+    tickets: number,
+    settings?: Catalog,
+  ): Promise<Context>;
   prepare(id: string, context: Context, command: Command): Promise<Operation>;
   execute(id: string, context: Context): Promise<string>;
   discard(id: string, context: Context): Promise<void>;
