@@ -28,7 +28,7 @@ flowchart TD
 | 場所 | 責務 |
 |---|---|
 | `src/components/`、`src/App.tsx` | 表示、入力状態、画面切り替え。操作は`Cashier`ポートへ渡す |
-| `src/presentation/` | 金額・日時の表示形式 |
+| `src/presentation/` | 金額・日時の表示形式、編集フォームと業務データの変換 |
 | `src/application/` | 操作の準備・実行・照合、保存ポート、バックアップの整合性検証 |
 | `src/domain/` | 型・入力制約、価格計算、注文の状態遷移、札の取消条件、売上集計 |
 | `src/storage/` | IndexedDBのトランザクション、DB定義、保存・復元 |
