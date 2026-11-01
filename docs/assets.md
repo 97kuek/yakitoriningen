@@ -16,6 +16,18 @@ cwebp -q 90 -alpha_q 100 -m 6 -resize 480 192 docs/design-references/shop-logo-s
 
 待ち一覧向けのひよこ画像案は背景のにじみが残ったため不採用とし、営業画面は小さなアイコンと短い文にしました。
 
+## 書体
+
+日本語の文字は筆文字風の[Yuji Syuku](https://github.com/Kinutafontfactory/Yuji)（SIL Open Font License 1.1、`public/fonts/OFL-YujiSyuku.txt`）で表示します。営業中は通信しないため、Google Fontsなどから読み込まず、アプリに同梱してPWAで事前保存します。
+
+`public/fonts/yuji-syuku-ja.woff2`は、ひらがな・カタカナ・日本語の記号・JIS第1水準漢字と、ソースコードで使う文字だけに絞ったものです（約1.6MB、元は8.4MB）。数字・円記号・英字は含めていないため、金額・札番号・時刻は読みやすいゴシック体で表示されます。商品名にこの範囲にない漢字を入力した場合、その文字だけゴシック体になります。
+
+画面の文字に第1水準以外の漢字を増やしたときは、元のフォントを[Google Fontsのリポジトリ](https://github.com/google/fonts/tree/main/ofl/yujisyuku)から取得して作り直します。
+
+```sh
+uv run scripts/subset-display-font.py path/to/YujiSyuku-Regular.ttf
+```
+
 ## 提供画像
 
 `docs/design-references/yakitori-sign.jpg` と `docs/design-references/wasa-poster.jpg` はユーザーの提供画像です。生成画像の参照元として保持しています。

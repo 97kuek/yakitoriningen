@@ -1,3 +1,13 @@
+/*
+ * Japanese text uses a brush face; the subset has no digits, yen signs or
+ * ASCII, so amounts and ticket numbers fall back to the gothic faces below.
+ * Rebuild with scripts/subset-display-font.py.
+ */
+@font-face {
+  font-family: 'Yuji Syuku';
+  src: url('/fonts/yuji-syuku-ja.woff2') format('woff2');
+  font-display: swap;
+}
 html {
   scrollbar-gutter: stable;
 }
@@ -8,8 +18,13 @@ html {
 }
 :root {
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic',
-    Meiryo, sans-serif;
+    'Yuji Syuku',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Hiragino Kaku Gothic ProN',
+    'Yu Gothic',
+    Meiryo,
+    sans-serif;
   color: #29281f;
   background: var(--surface);
   font-size: var(--font-body);
