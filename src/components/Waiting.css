@@ -134,9 +134,6 @@
   height: var(--control-size);
 }
 
-.waiting .empty {
-  position: relative;
-}
 .waiting .empty img {
   mix-blend-mode: normal;
 }
@@ -145,6 +142,7 @@
   display: none;
 }
 .waiting .empty {
+  position: relative;
   flex: 1;
   margin: 0;
   justify-content: center;

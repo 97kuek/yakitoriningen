@@ -50,8 +50,7 @@ body {
   background-size: 24px 24px;
 }
 button,
-input,
-select {
+input {
   font: inherit;
 }
 button {
@@ -59,15 +58,12 @@ button {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  min-height: 44px;
   border: 1.5px solid transparent;
   border-radius: 8px;
-  padding: 10px 16px;
   cursor: pointer;
   font-weight: 600;
   line-height: 1.4;
   color: inherit;
-  touch-action: manipulation;
 }
 button:disabled {
   opacity: 0.4;
@@ -78,7 +74,6 @@ button:not(:disabled):hover {
 }
 button:focus-visible,
 input:focus-visible,
-select:focus-visible,
 a:focus-visible {
   outline: 3px solid var(--ink);
   outline-offset: 3px;
@@ -88,14 +83,11 @@ a:focus-visible {
   flex-shrink: 0;
   vertical-align: middle;
 }
-input:not([type='checkbox']),
-select {
+input:not([type='checkbox']) {
   min-width: 0;
   width: 100%;
-  min-height: 46px;
   border: 1.5px solid var(--control-border);
   border-radius: 7px;
-  padding: 10px 12px;
   color: var(--ink);
   background: var(--paper);
 }
@@ -172,9 +164,6 @@ small {
   width: 100%;
 }
 .icon-button {
-  width: 44px;
-  height: 44px;
-  padding: 10px;
   background: transparent;
   border-color: transparent;
 }
@@ -246,12 +235,6 @@ small {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-}
-.brand img {
-  width: 232px;
-  height: 58px;
-  object-fit: contain;
-  mix-blend-mode: multiply;
 }
 .tabs {
   display: flex;
@@ -357,7 +340,6 @@ main {
 }
 .checkout .section-heading {
   margin-bottom: 12px;
-  min-height: 35px;
 }
 .checkout .section-heading > .icon-button {
   min-height: 36px;
@@ -372,13 +354,9 @@ main {
   padding: 0 0 17px;
   border-bottom: 1px solid var(--line);
 }
-.price-strip > span {
-  white-space: nowrap;
-}
 .price-strip small {
   font-size: var(--font-small);
   color: var(--muted);
-  margin-left: 6px;
 }
 .price-label {
   display: inline-flex;
@@ -428,25 +406,12 @@ main {
   font-weight: 600;
   white-space: nowrap;
 }
-.product-mark {
-  display: flex;
-  color: var(--product-color);
-}
-.product-mark .icon {
-  width: 33px;
-  height: 33px;
-  stroke-width: 1.7;
-}
 .stepper {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .stepper > button {
-  height: 50px;
-  width: 50px;
-  min-height: 50px;
-  padding: 12px;
   background: var(--paper);
   border-color: var(--control-border);
   border-radius: 9px;
@@ -467,10 +432,7 @@ main {
 }
 .quantity-input input {
   padding: 0 !important;
-  width: 65px !important;
-  min-height: 50px !important;
   text-align: center;
-  font-size: var(--font-large);
   font-weight: 600;
   border: 0 !important;
   background: transparent !important;
@@ -490,7 +452,6 @@ main {
   align-items: center;
   border-top: 1px solid var(--line);
   padding-top: 20px;
-  margin-top: 10px;
   margin-bottom: 18px;
   gap: 14px;
 }
@@ -519,8 +480,6 @@ main {
   font-weight: 600;
 }
 .checkout-button {
-  height: 57px;
-  font-size: var(--font-body);
   border-radius: 8px;
 }
 .checkout-button > .icon {
@@ -572,34 +531,22 @@ main {
   line-height: 1.1;
   letter-spacing: -0.03em;
 }
-.payment-total.settled-total {
-  padding: 13px 0;
-}
-.settled-total strong {
-  font-size: var(--font-large);
-}
 .received-label {
   margin: 4px 0 12px;
 }
 .money-input {
   display: flex;
   align-items: center;
-  border: 2px solid var(--ink);
   border-radius: 8px;
-  padding: 0 15px;
   background: var(--paper);
 }
 .money-input > span {
-  font-size: var(--font-large);
   color: var(--muted);
 }
 .money-input input {
   background: transparent !important;
   border: 0 !important;
   text-align: right;
-  font-size: var(--font-large);
-  line-height: 1.2;
-  padding: 10px !important;
   appearance: textfield;
 }
 .money-input input::-webkit-inner-spin-button {
@@ -616,51 +563,7 @@ main {
   padding: 10px 6px;
   white-space: nowrap;
 }
-.payment-back {
-  display: flex;
-  margin: 12px auto 0;
-  font-size: var(--font-small);
-}
-.received-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: var(--font-body);
-  color: var(--muted);
-  padding-bottom: 14px;
-}
-.received-summary strong {
-  font-size: var(--font-large);
-  color: var(--ink);
-}
-.change-display {
-  background: var(--selected-surface);
-  border: 1.5px solid var(--control-border);
-  border-radius: 8px;
-  padding: 20px 17px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin: 10px 0 14px;
-}
-.change-display > span {
-  font-size: var(--font-body);
-  font-weight: 600;
-}
-.change-display strong {
-  font-size: var(--font-large);
-  line-height: 1.1;
-  letter-spacing: -0.035em;
-}
-.payment-instruction {
-  font-size: var(--font-small);
-  text-align: center;
-  color: var(--muted);
-  margin: 15px 0;
-}
 .waiting {
-  min-height: 510px;
   background: var(--paper);
 }
 .waiting .section-heading {
@@ -734,21 +637,13 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 350px;
   text-align: center;
   color: var(--muted);
-}
-.queue-mascot {
-  width: 195px;
-  height: 160px;
-  object-fit: contain;
-  margin-bottom: 15px;
 }
 .empty h3 {
   font-size: var(--font-body);
   font-weight: 600;
 }
-
 .startup-shell {
   display: grid;
   grid-template-columns: 1fr;
@@ -813,17 +708,10 @@ dd {
 .startup-details .price-label {
   margin-right: 8px;
 }
-.startup-details dd > .inline-small {
-  display: inline;
-}
 .startup .checkbox {
   font-size: var(--font-small);
   margin-top: 19px;
   margin-bottom: 17px;
-}
-.saved-details {
-  margin: 12px 0;
-  font-size: var(--font-small);
 }
 .startup-pending h3 {
   margin-bottom: 8px;
@@ -868,8 +756,6 @@ dd {
   font-size: var(--font-small);
 }
 .data-panel input[type='file'] {
-  padding: 10px;
-  font-size: var(--font-small);
   background: var(--surface);
 }
 .restore-preview {
@@ -928,16 +814,6 @@ td button {
   white-space: nowrap;
   font-size: var(--font-small);
 }
-.inline-label {
-  flex-direction: row;
-  align-items: center;
-  margin: 0;
-  font-size: var(--font-small);
-}
-.inline-label select {
-  width: auto;
-  font-size: var(--font-small);
-}
 dialog {
   max-width: 520px;
   width: calc(100% - 30px);
@@ -958,23 +834,6 @@ dialog > h2 {
 }
 .help-dialog {
   max-width: 560px;
-}
-.help-steps {
-  padding-left: 24px;
-  font-size: var(--font-body);
-}
-.help-steps li {
-  padding-left: 6px;
-  margin: 22px 0;
-}
-.help-steps li::marker {
-  font-weight: 600;
-  color: var(--red);
-}
-.help-steps p {
-  font-size: var(--font-small);
-  color: var(--muted);
-  margin: 5px 0;
 }
 .help-dialog h3 {
   margin-top: 28px;
@@ -1047,19 +906,12 @@ dialog > h2 {
   .product {
     padding: 16px 15px;
   }
-  .waiting {
-    min-height: 540px;
-  }
 }
 @media (max-width: 1100px) {
   .app-header {
     gap: 12px;
     padding-left: 20px;
     padding-right: 20px;
-  }
-  .brand img {
-    width: 203px;
-    height: 51px;
   }
   .tabs {
     gap: 5px;
@@ -1086,10 +938,6 @@ dialog > h2 {
     padding: 13px 7px;
     gap: 8px;
   }
-  .product-mark .icon {
-    width: 25px;
-    height: 25px;
-  }
   .product-name {
     gap: 7px;
   }
@@ -1099,35 +947,11 @@ dialog > h2 {
   .stepper {
     gap: 5px;
   }
-  .stepper > button {
-    width: 45px;
-    height: 48px;
-    min-height: 48px;
-  }
-  .quantity-input input {
-    width: 52px !important;
-    font-size: var(--font-large);
-  }
   .order-card {
     grid-template-columns: 73px 1fr;
   }
   .order-content {
     padding: 13px;
-  }
-  .order-quantities {
-    gap: 12px;
-  }
-  .order-buttons {
-    gap: 6px;
-  }
-  .order-buttons button {
-    font-size: var(--font-small);
-    padding: 9px 6px;
-    gap: 5px;
-  }
-  .order-buttons .icon {
-    width: 14px;
-    height: 14px;
   }
   .waiting h2 {
     font-size: var(--font-body);
@@ -1142,10 +966,6 @@ dialog > h2 {
     grid-template-columns: 1fr auto;
     padding: 5px 16px 0;
     gap: 6px 12px;
-  }
-  .brand img {
-    width: 195px;
-    height: 49px;
   }
   .header-status {
     justify-self: end;
@@ -1175,7 +995,6 @@ dialog > h2 {
     margin: 4px 0 10px;
   }
   .tabs button {
-    min-height: 42px;
     font-size: var(--font-small);
     padding: 8px 10px;
   }
@@ -1211,21 +1030,8 @@ dialog > h2 {
   .product-name strong {
     font-size: var(--font-large);
   }
-  .product-mark .icon {
-    width: 29px;
-    height: 29px;
-  }
   .stepper {
     gap: 6px;
-  }
-  .stepper > button {
-    width: 47px;
-    height: 49px;
-    min-height: 49px;
-  }
-  .quantity-input input {
-    width: 59px !important;
-    font-size: var(--font-large);
   }
   .checkout-total > strong {
     font-size: var(--font-large);
@@ -1234,10 +1040,6 @@ dialog > h2 {
     padding-top: 17px;
     margin-bottom: 16px;
   }
-  .checkout-button {
-    height: 53px;
-    font-size: var(--font-body);
-  }
   .price-strip {
     gap: 10px;
     font-size: var(--font-small);
@@ -1245,10 +1047,8 @@ dialog > h2 {
   }
   .price-strip small {
     font-size: var(--font-small);
-    margin-left: 4px;
   }
   .waiting {
-    min-height: 0;
     padding: 20px 15px;
   }
   .waiting h2 {
@@ -1263,34 +1063,11 @@ dialog > h2 {
   .order-card {
     grid-template-columns: 76px 1fr;
   }
-  .order-ticket > strong {
-    font-size: var(--font-large);
-  }
   .order-content {
     padding: 13px;
   }
-  .order-buttons button {
-    font-size: var(--font-small);
-    min-height: 43px;
-    padding: 8px 5px;
-    gap: 4px;
-  }
-  .order-quantities strong {
-    font-size: var(--font-large);
-  }
-  .order-quantities > span {
-    font-size: var(--font-small);
-  }
   .order-quantities {
     margin-bottom: 13px;
-    gap: 12px;
-  }
-  .empty {
-    min-height: 250px;
-  }
-  .queue-mascot {
-    width: 165px;
-    height: 130px;
   }
   .startup-shell {
     grid-template-columns: 1fr;
@@ -1337,12 +1114,6 @@ dialog > h2 {
   .payment-total strong {
     font-size: var(--font-large);
   }
-  .settled-total strong {
-    font-size: var(--font-large);
-  }
-  .change-display strong {
-    font-size: var(--font-large);
-  }
   .cash-buttons {
     gap: 5px;
   }
@@ -1353,7 +1124,6 @@ dialog > h2 {
   .payment-mode {
     padding: 23px;
   }
-
   .ticket-availability {
     font-size: var(--font-small) !important;
   }
@@ -1383,16 +1153,9 @@ button .icon {
 button[aria-expanded='true'] > .icon:last-child {
   transform: rotate(180deg);
 }
-.checkout {
-  min-height: 590px;
-}
-.payment-mode {
-  min-height: 590px;
-}
 .payment {
   display: flex;
   flex-direction: column;
-  min-height: 540px;
 }
 .payment form {
   display: flex;
@@ -1413,11 +1176,6 @@ button[aria-expanded='true'] > .icon:last-child {
 }
 button:active:not(:disabled) {
   filter: brightness(0.9);
-}
-.reset-button {
-  width: auto;
-  font-size: var(--font-small);
-  gap: 5px;
 }
 .history table {
   font-size: var(--font-body);
@@ -1475,21 +1233,11 @@ dialog {
 .restore-dialog .restore-preview {
   margin-top: 15px;
 }
-@media (max-width: 780px) {
-  .checkout,
-  .payment-mode {
-    min-height: 560px;
-  }
-  .payment {
-    min-height: 510px;
-  }
-}
 .amount-error {
   color: var(--red);
   font-size: var(--font-small);
   margin: 0 0 5px;
 }
-
 .checkout-feedback {
   display: flex;
   align-items: center;
@@ -1501,9 +1249,6 @@ dialog {
   color: var(--muted);
   margin-top: -6px;
 }
-.checkout-feedback.success {
-  color: var(--ink);
-}
 .checkout-feedback .icon {
   width: 17px;
   height: 17px;
@@ -1511,40 +1256,11 @@ dialog {
 .order-card {
   overflow: visible;
 }
-.order-ticket {
-  border-radius: 7px 0 0 7px;
-}
-.partial-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  min-width: 155px;
-  z-index: 3;
-  padding: 6px;
-  border: 1px solid var(--control-border);
-  border-radius: 8px;
-  background: var(--paper);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--ink) 10%, transparent);
-}
-.partial-menu button {
-  display: flex;
-  width: 100%;
-  border: 0;
-  font-size: var(--font-small);
-  justify-content: flex-start;
-}
-
 button {
   min-height: var(--control-size);
 }
-input:not([type='checkbox']),
-select {
+input:not([type='checkbox']) {
   min-height: var(--control-size);
-}
-.icon-button {
-  width: var(--control-size);
-  height: var(--control-size);
-  padding: 9px;
 }
 .tabs button {
   height: var(--control-size);
@@ -1658,7 +1374,6 @@ select {
   border: 1px solid var(--ink);
   color: var(--ink);
 }
-
 @media (max-width: 780px) {
   .checkout,
   .payment-mode {
@@ -1691,6 +1406,7 @@ select {
   font-size: var(--font-small);
 }
 button {
+  touch-action: manipulation;
   height: var(--control-size);
   padding: 8px 12px;
 }
@@ -1699,25 +1415,21 @@ button {
   height: var(--control-size);
   padding: 8px;
 }
-input:not([type='checkbox']),
-select {
+input:not([type='checkbox']) {
   height: var(--control-size);
   padding: 7px 10px;
 }
 .money-input {
   height: var(--control-size);
-  padding: 0 8px;
 }
 .money-input input {
   height: 36px;
-  min-height: 36px;
   font-size: var(--font-large);
-  padding: 2px 8px !important;
-  line-height: 1.1;
 }
 .money-input > span {
   font-size: var(--font-large);
 }
+
 /* Crop only transparent padding around the generated wordmark. */
 .brand {
   width: 232px;
@@ -1726,6 +1438,7 @@ select {
   overflow: hidden;
 }
 .brand img {
+  mix-blend-mode: multiply;
   position: absolute;
   top: 50%;
   left: 0;
@@ -1754,6 +1467,7 @@ select {
     height: auto;
   }
 }
+
 /* The amount field has one permanent frame; focusing its inner input adds no ring. */
 .money-input input:focus,
 .money-input input:focus-visible {
@@ -1761,14 +1475,17 @@ select {
   box-shadow: none;
 }
 .money-input {
+  padding: 0 8px;
   border: 1.5px solid var(--control-border);
 }
 .money-input input {
+  min-height: 36px;
+  padding: 2px 8px !important;
+  line-height: 1.1;
   flex: 1;
   min-width: 0;
   width: 0;
 }
-
 .settings-content {
   display: grid;
   max-width: 850px;
@@ -1781,26 +1498,10 @@ select {
   border-top: 1px solid var(--line);
   padding-top: 24px;
 }
-.setting-current {
-  color: var(--muted);
-  font-size: var(--font-body);
-  margin: 12px 0 20px;
-}
-.setting-form {
-  max-width: 570px;
-}
 .operation-settings {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 40px;
-}
-.expense-form {
-  max-width: 400px;
-}
-.settings-result {
-  min-height: 24px;
-  font-size: var(--font-body);
-  margin: 20px 0 0;
 }
 .settings-content .data-panel {
   border: 0;
@@ -1863,14 +1564,6 @@ select {
 .bundle-settings legend {
   font-size: var(--font-small);
 }
-.bundle-item-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-}
-.bundle-item-options label {
-  margin: 8px 0;
-}
 .selling-mode {
   display: flex;
   align-items: center;
@@ -1888,12 +1581,6 @@ select {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.setting-save {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
 .startup-menu-price {
   display: inline-block;
   margin: 0 12px 4px 0;
@@ -1906,7 +1593,6 @@ select {
 .history-filters {
   display: flex;
   align-items: center;
-  gap: 24px;
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
@@ -1938,13 +1624,6 @@ select {
 .history-pagination > div {
   display: flex;
   gap: 8px;
-}
-.refund-items {
-  font-size: var(--font-body);
-  margin: 0 0 16px;
-}
-.payment-edit {
-  align-self: center;
 }
 .empty img {
   width: 150px;
@@ -1983,11 +1662,7 @@ select {
     flex-direction: column;
     gap: 6px;
   }
-  .history-filters {
-    gap: 12px;
-  }
 }
-
 .products {
   max-height: 300px;
   overflow-y: auto;
@@ -2020,11 +1695,6 @@ select {
   padding-top: 12px;
   min-height: 68px;
 }
-.checkout .checkout-feedback {
-  height: 32px;
-  min-height: 32px;
-  margin-bottom: 4px;
-}
 .checkout-feedback .link-button {
   height: 32px;
   min-height: 32px;
@@ -2052,7 +1722,6 @@ select {
   max-width: 100%;
   overflow-wrap: anywhere;
 }
-
 @media (min-width: 1101px) {
   :root {
     --counter-height: clamp(440px, calc(100dvh - 154px), 680px);
@@ -2066,7 +1735,6 @@ select {
     min-height: calc(var(--counter-height) - 48px);
   }
 }
-
 @media (min-width: 1101px) and (max-height: 700px) {
   .checkout.panel {
     padding: 16px;
@@ -2091,27 +1759,12 @@ select {
   .payment .payment-total strong {
     font-size: var(--font-large);
   }
-  .payment .settled-total strong {
-    font-size: var(--font-large);
-  }
   .payment .receipt-items {
     max-height: 56px;
     padding: 4px 0 8px;
   }
   .payment .cash-buttons {
     margin: 8px 0 12px;
-  }
-  .payment .payment-back,
-  .payment .payment-edit {
-    margin-top: 4px;
-    margin-bottom: 0;
-  }
-  .payment .change-display {
-    padding: 12px;
-    margin: 8px 0;
-  }
-  .payment .payment-instruction {
-    margin: 8px 0;
   }
   .startup-shell {
     margin-top: 12px;
@@ -2300,7 +1953,6 @@ select {
     grid-template-columns: 1fr;
   }
 }
-
 .checkout .product-name {
   flex: 1;
   min-width: 0;
@@ -2321,7 +1973,6 @@ select {
 .checkout .stepper {
   flex-shrink: 0;
 }
-
 .operation-section .operation-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 64px;
