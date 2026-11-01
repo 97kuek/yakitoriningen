@@ -4,8 +4,9 @@ import { newEvent } from '../application/new-event';
 
 import type { Context, Snapshot } from '../domain/model';
 import { Database } from './database';
-import { CashierStore } from './commands';
-import { encodeBackup, ordersCsv, parseBackup, restoreBackup } from './backup';
+import { CashierStore } from './cashier-store';
+import { encodeBackup, parseBackup } from '../application/backup';
+import { ordersCsv } from '../presentation/orders-csv';
 let db: Database, store: CashierStore, ctx: Context, original: Snapshot;
 beforeEach(async () => {
   db = new Database(`backup-${newId()}`);
@@ -113,7 +114,7 @@ it('旧価格のoptional設定を追加せずに復元する', () => {
 });
 it('空のDBへの復元に成功し世代を変更する', async () => {
   const other = new Database(`other-${newId()}`);
-  await restoreBackup(other, original, null);
+  await new CashierStore(other).restore(original, null);
   const s = (await new CashierStore(other).read())!;
   expect(s.meta.generation).not.toBe(original.meta.generation);
   expect(s.orders[0].quote.total).toBe(600);
@@ -155,13 +156,15 @@ it.each([
 });
 it('プレビュー後に記録が増えた復元を拒否する', async () => {
   await store.prepare(newId(), ctx, { type: 'day', day: '2026-11-08' });
-  await expect(restoreBackup(db, original, original)).rejects.toThrow(/変更/);
+  await expect(
+    new CashierStore(db).restore(original, original),
+  ).rejects.toThrow(/変更/);
 });
 it('復元後の古い画面と古い保留操作の再実行を拒否する', async () => {
   const op = newId();
   await store.prepare(op, ctx, { type: 'day', day: '2026-11-08' });
   const before = (await store.read())!;
-  await restoreBackup(db, before, before);
+  await new CashierStore(db).restore(before, before);
   const current = (await store.read())!.meta;
   await expect(store.execute(op, ctx)).rejects.toThrow(/世代/);
   await expect(store.execute(op, current)).rejects.toThrow(/世代/);
@@ -174,7 +177,9 @@ it.each(['meta', 'prices', 'orders', 'tickets', 'operations', 'logs'] as const)(
       throw new Error('復元中の容量不足');
     };
     db[table].hook('creating', fail);
-    await expect(restoreBackup(db, original, before)).rejects.toThrow();
+    await expect(
+      new CashierStore(db).restore(original, before),
+    ).rejects.toThrow();
     expect(await store.read()).toEqual(before);
   },
 );
@@ -239,7 +244,7 @@ it('経費を保存したバックアップを戻せる', async () => {
   const snapshot = (await store.read())!;
   const incoming = parseBackup(encodeBackup(snapshot));
   expect(incoming.meta.expenseTotal).toBe(2500);
-  await restoreBackup(db, incoming, snapshot);
+  await new CashierStore(db).restore(incoming, snapshot);
   expect((await store.read())!.meta.expenseTotal).toBe(2500);
 });
 it('経費を持たない従来のファイルは未登録として読み込む', () => {
@@ -275,7 +280,7 @@ it('完了と取り消しを繰り返した記録をバックアップ・復元�
   }
   const snapshot = (await store.read())!;
   const incoming = parseBackup(encodeBackup(snapshot));
-  await restoreBackup(db, incoming, snapshot);
+  await new CashierStore(db).restore(incoming, snapshot);
   expect((await store.read())!.orders[0]).toMatchObject({
     delivered: false,
     returned: false,
@@ -294,13 +299,15 @@ it('新しい開催回への切り替えは保存後の変更を拒否し、旧�
       type: 'day',
       day: '2026-11-08',
     });
-    await expect(restoreBackup(cleanDb, next, saved)).rejects.toThrow(/変更/);
+    await expect(
+      new CashierStore(cleanDb).restore(next, saved),
+    ).rejects.toThrow(/変更/);
     const changed = (await cashier.read())!;
     expect(changed.operations).toHaveLength(1);
     await cashier.discard(operation, context);
     const verified = (await cashier.read())!;
     const ready = newEvent(verified, '翌年', '2027-11-06', newId);
-    await restoreBackup(cleanDb, ready, verified);
+    await new CashierStore(cleanDb).restore(ready, verified);
     expect((await cashier.read())!.meta.event).toBe('翌年');
     await expect(
       cashier.prepare(newId(), context, { type: 'day', day: '2026-11-08' }),

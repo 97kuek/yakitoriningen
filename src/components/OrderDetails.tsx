@@ -1,39 +1,11 @@
 import type { Order, Snapshot } from '../domain/model';
 import { orderItems, yen } from '../presentation/format';
+import {
+  orderDateTime,
+  orderState,
+  receiptNumber,
+} from '../presentation/order';
 import './OrderDetails.css';
-
-export function receiptNumber(order: Order, snapshot: Snapshot) {
-  const payment = snapshot.logs.find(
-    (log) => log.type === 'pay' && log.operationId === order.confirmOperationId,
-  );
-  return payment
-    ? `会計 No.${String(payment.sequence).padStart(4, '0')}`
-    : '会計未確定';
-}
-
-export function orderDateTime(order: Order) {
-  return new Intl.DateTimeFormat('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZone: 'Asia/Tokyo',
-  }).format(new Date(order.paidAt ?? order.createdAt));
-}
-
-export function orderState(order: Order) {
-  return order.status === 'pending'
-    ? '会計保留'
-    : order.status === 'cancelled'
-      ? order.refunded > 0
-        ? '全額返金済み'
-        : '取消済み'
-      : order.delivered
-        ? '受け渡し済み'
-        : '受け渡し待ち';
-}
 
 export function OrderDetails({
   order,
@@ -42,6 +14,7 @@ export function OrderDetails({
   order: Order;
   snapshot: Snapshot;
 }) {
+  const receipt = receiptNumber(order, snapshot);
   return (
     <section
       className="order-details"
@@ -50,7 +23,7 @@ export function OrderDetails({
     >
       <div className="order-details-heading">
         <strong data-testid="receipt-number">
-          {receiptNumber(order, snapshot)}
+          {receipt ? `会計 ${receipt}` : '会計未確定'}
         </strong>
         <span className="ticket-badge">札 {order.ticket}</span>
       </div>

@@ -10,8 +10,15 @@ import {
 import type { Snapshot } from '../domain/model';
 import { quote } from '../domain/pricing';
 import { getMenu } from '../domain/catalog';
+import { ownsTicket, releasesTicket } from '../domain/ticket';
 import { validateOrderHistory } from './order-history';
 import { canonical } from './serialization';
+
+/** Identifiers of the backup file format. Changing them breaks existing backups. */
+const BACKUP_FORMAT = 'yakitoriningen';
+const BACKUP_VERSION = 1;
+/** Largest backup file accepted, in bytes (characters for parsed text). */
+export const MAX_BACKUP_BYTES = 50_000_000;
 
 const dataSchema = z
   .object({
@@ -34,8 +41,8 @@ const countSchema = z
   .strict();
 const backupSchema = z
   .object({
-    format: z.literal('yakitoriningen'),
-    version: z.literal(1),
+    format: z.literal(BACKUP_FORMAT),
+    version: z.literal(BACKUP_VERSION),
     exportedAt: z.iso.datetime(),
     counts: countSchema,
     data: dataSchema,
@@ -134,15 +141,9 @@ function validate(data: Snapshot): void {
               order.paidAt === null)),
         '取消・返金',
       );
-    const requiresTicket =
-      !order.returned || (order.status !== 'cancelled' && !order.delivered);
     const ticket = tickets.get(order.ticket);
-    if (requiresTicket)
-      requireValid(
-        ticket?.orderId === order.id &&
-          ticket.assignmentId === order.assignmentId,
-        '使用中の札と注文',
-      );
+    if (!releasesTicket(order))
+      requireValid(ownsTicket(ticket, order), '使用中の札と注文');
     else requireValid(ticket?.orderId !== order.id, '回収・完了済み札の所有権');
     const related = data.operations.filter(
       (op) =>
@@ -273,8 +274,8 @@ export function encodeBackup(snapshot: Snapshot): string {
   validate(data);
   return JSON.stringify(
     {
-      format: 'yakitoriningen',
-      version: 1,
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
       exportedAt: new Date().toISOString(),
       counts: Object.fromEntries(
         collectionKeys.map((key) => [key, data[key].length]),
@@ -286,75 +287,16 @@ export function encodeBackup(snapshot: Snapshot): string {
   );
 }
 export function parseBackup(text: string): Snapshot {
-  if (text.length > 50_000_000)
-    throw new Error('ファイルが大きすぎます。50MB以下のJSONを選んでください。');
+  if (text.length > MAX_BACKUP_BYTES)
+    throw new Error(
+      `ファイルが大きすぎます。${MAX_BACKUP_BYTES / 1_000_000}MB以下のJSONを選んでください。`,
+    );
   const file = backupSchema.parse(JSON.parse(text));
   for (const key of collectionKeys)
     requireValid(file.counts[key] === file.data[key].length, `${key}の件数`);
   validate(file.data);
   return file.data;
 }
-export function ordersCsv(snapshot: Snapshot): string {
-  const columns = new Map<string, string>();
-  for (const price of snapshot.prices)
-    for (const item of getMenu(price)) columns.set(item.id, item.name);
-  for (const order of snapshot.orders)
-    for (const [id, name] of Object.entries(order.names))
-      if (!columns.has(id)) columns.set(id, name);
-  const productIds = [...columns.keys()];
-  const time = new Intl.DateTimeFormat('ja-JP', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-    timeZone: 'Asia/Tokyo',
-  });
-  const statuses = { pending: '保留', paid: '会計済み', cancelled: '取消済み' };
-  const escape = (value: string | number | null) =>
-    `"${String(value ?? '').replaceAll('"', '""')}"`;
-  return (
-    '\uFEFF' +
-    [
-      [
-        '注文ID',
-        '開催回',
-        '営業日',
-        '注文時刻',
-        '札番号',
-        '状態',
-        ...columns.values(),
-        '会計額',
-        '受領額',
-        '釣銭',
-        '返金額',
-        '売上',
-        '受渡済',
-        '札回収済',
-        '取消理由',
-      ],
-      ...snapshot.orders.map((o) => [
-        o.id,
-        o.event,
-        o.day,
-        time.format(new Date(o.createdAt)),
-        o.ticket,
-        statuses[o.status],
-        ...productIds.map((id) => o.quantities[id] ?? 0),
-        o.quote.total,
-        o.received,
-        o.change,
-        o.refunded,
-        o.received === null ? 0 : o.quote.total - o.refunded,
-        o.delivered ? '受け渡し済み' : '未受け渡し',
-        o.returned ? '回収済み' : '未回収',
-        o.cancelReason,
-      ]),
-    ]
-      .map((row) => row.map(escape).join(','))
-      .join('\r\n')
-  );
-}
-
 export function validateSnapshot(snapshot: Snapshot): Snapshot {
   const parsed = dataSchema.parse(snapshot);
   validate(parsed);

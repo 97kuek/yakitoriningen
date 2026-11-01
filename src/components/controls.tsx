@@ -10,6 +10,25 @@ import {
 } from 'react';
 import { Icon, type IconName } from './Icon';
 
+/**
+ * Ignore auto-repeated Enter/Space so holding a key cannot record an action twice.
+ * Pair with `event.detail > 1` checks in click handlers to ignore double clicks.
+ */
+export function preventKeyRepeat(event: KeyboardEvent<HTMLElement>) {
+  if (event.repeat && (event.key === 'Enter' || event.key === ' '))
+    event.preventDefault();
+}
+
+/** An error shown inside a dialog, where the page banner is hidden. */
+export function InlineError({ message }: { message: string }) {
+  if (!message) return null;
+  return (
+    <p className="inline-error" role="alert">
+      {message}
+    </p>
+  );
+}
+
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain';
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -86,38 +105,6 @@ export function FilePicker({
         <span>{name || '選択されていません'}</span>
       </span>
     </label>
-  );
-}
-
-export function Disclosure({
-  title,
-  children,
-  defaultOpen = false,
-  className = '',
-}: {
-  title: string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-  className?: string;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  const id = useId();
-  return (
-    <section className={`control-disclosure ${className}`}>
-      <Button
-        variant="plain"
-        className="control-disclosure-trigger"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen(!open)}
-      >
-        <span>{title}</span>
-        <Icon name="chevron" />
-      </Button>
-      <div id={id} className="control-disclosure-content" hidden={!open}>
-        {children}
-      </div>
-    </section>
   );
 }
 

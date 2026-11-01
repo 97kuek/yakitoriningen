@@ -17,16 +17,23 @@ export interface Records<T, K> {
   put(value: T): Promise<unknown>;
   delete(key: K): Promise<void>;
   bulkAdd(values: T[]): Promise<unknown>;
+  clear(): Promise<void>;
   count(): Promise<number>;
   toArray(): Promise<T[]>;
 }
 export interface LedgerTransaction {
   meta: Records<Meta, string>;
-  prices: Pick<Records<Price, string>, 'get' | 'add' | 'count' | 'toArray'>;
+  prices: Pick<
+    Records<Price, string>,
+    'get' | 'add' | 'bulkAdd' | 'clear' | 'count' | 'toArray'
+  >;
   orders: Records<Order, string>;
   tickets: Records<Ticket, number>;
   operations: Records<Operation, string>;
-  logs: Pick<Records<Log, number>, 'add' | 'count' | 'toArray'>;
+  logs: Pick<
+    Records<Log, number>,
+    'add' | 'bulkAdd' | 'clear' | 'count' | 'toArray'
+  >;
 }
 export interface LedgerRepository {
   read<T>(work: (tx: LedgerTransaction) => Promise<T>): Promise<T>;

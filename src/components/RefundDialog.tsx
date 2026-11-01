@@ -4,7 +4,8 @@ import type { Cashier } from '../application/ports';
 import type { Shared } from '../ui';
 import { newId } from '../lib/id';
 import { yen } from '../presentation/format';
-import { Button, Dialog } from './controls';
+import { MAX_CANCEL_REASON_LENGTH } from '../domain/constants';
+import { Button, Dialog, InlineError } from './controls';
 import { OrderDetails } from './OrderDetails';
 
 export function RefundDialog({
@@ -76,11 +77,7 @@ export function RefundDialog({
           札 {order.ticket}{' '}
           {order.returned ? 'は回収済みです。' : 'を回収しましたか？'}
         </p>
-        {errorMessage && (
-          <p className="inline-error" role="alert">
-            {errorMessage}
-          </p>
-        )}
+        <InlineError message={errorMessage} />
       </Dialog>
     );
   return (
@@ -107,11 +104,7 @@ export function RefundDialog({
         </>
       }
     >
-      {errorMessage && (
-        <p className="inline-error" role="alert">
-          {errorMessage}
-        </p>
-      )}
+      <InlineError message={errorMessage} />
       <form
         id={formId}
         onSubmit={(event) => {
@@ -143,7 +136,7 @@ export function RefundDialog({
               取消理由
               <input
                 required
-                maxLength={200}
+                maxLength={MAX_CANCEL_REASON_LENGTH}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
               />

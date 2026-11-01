@@ -1,4 +1,5 @@
 import {
+  META_KEY,
   commandSchema,
   metaSchema,
   normalPrice,
@@ -16,7 +17,10 @@ import { quote } from '../domain/pricing';
 import { getMenu } from '../domain/catalog';
 import { handoffUndoError } from '../domain/handoff';
 import { applyOrderAction } from '../domain/order';
-import type { LedgerRepository } from './ports';
+import { contextOf } from '../domain/snapshot';
+import { freeTickets, ownsTicket, releasesTicket } from '../domain/ticket';
+import { validateSnapshot } from './backup';
+import type { LedgerRepository, LedgerTransaction } from './ports';
 import { canonical } from './serialization';
 
 export function assertContext(
@@ -32,34 +36,46 @@ export function assertContext(
       '保存先または世代が変わりました。画面を再読み込みして記録を確認してください。',
     );
 }
+
+// Dexie can commit a transaction early when awaits are nested in several async
+// helpers, so these helpers await the tables directly instead of calling each other.
+async function isEmpty(tx: LedgerTransaction): Promise<boolean> {
+  for (const table of Object.values(tx)) if (await table.count()) return false;
+  return true;
+}
+
+async function readSnapshot(tx: LedgerTransaction): Promise<Snapshot | null> {
+  const storedMeta = await tx.meta.get(META_KEY);
+  if (!storedMeta) {
+    for (const table of Object.values(tx))
+      if (await table.count())
+        throw new Error(
+          '保存情報が不完全です。新規営業を始めず、バックアップを復元してください。',
+        );
+    return null;
+  }
+  return {
+    meta: metaSchema.parse(storedMeta),
+    prices: await tx.prices.toArray(),
+    orders: await tx.orders.toArray(),
+    tickets: await tx.tickets.toArray(),
+    operations: await tx.operations.toArray(),
+    logs: await tx.logs.toArray(),
+  };
+}
+
+/** Use cases of the cashier. Every write validates the database generation and runs atomically. */
 export class CashierCommands {
   constructor(
     private readonly repository: LedgerRepository,
     private readonly newId: () => string,
     private readonly now: () => string,
   ) {}
-  async read(): Promise<Snapshot | null> {
-    return this.repository.read(async (tx) => {
-      const storedMeta = await tx.meta.get('main');
-      const meta = storedMeta ? metaSchema.parse(storedMeta) : undefined;
-      if (!meta) {
-        for (const table of Object.values(tx))
-          if (await table.count())
-            throw new Error(
-              '保存情報が不完全です。新規営業を始めず、バックアップを復元してください。',
-            );
-        return null;
-      }
-      return {
-        meta,
-        prices: await tx.prices.toArray(),
-        orders: await tx.orders.toArray(),
-        tickets: await tx.tickets.toArray(),
-        operations: await tx.operations.toArray(),
-        logs: await tx.logs.toArray(),
-      };
-    });
+
+  read(): Promise<Snapshot | null> {
+    return this.repository.read(readSnapshot);
   }
+
   async initialize(
     event: string,
     day: string,
@@ -67,7 +83,7 @@ export class CashierCommands {
   ): Promise<Context> {
     const price = normalPrice(this.newId());
     const meta = metaSchema.parse({
-      key: 'main',
+      key: META_KEY,
       databaseId: this.newId(),
       generation: this.newId(),
       event,
@@ -77,21 +93,15 @@ export class CashierCommands {
       sequence: 0,
     });
     await this.repository.write(async (tx) => {
-      for (const table of Object.values(tx))
-        if (await table.count())
-          throw new Error('既存データがあります。初期化できません。');
+      if (!(await isEmpty(tx)))
+        throw new Error('既存データがあります。初期化できません。');
       await tx.meta.add(meta);
       await tx.prices.add(price);
-      await tx.tickets.bulkAdd(
-        Array.from({ length: tickets }, (_, i) => ({
-          number: i + 1,
-          orderId: null,
-          assignmentId: null,
-        })),
-      );
+      await tx.tickets.bulkAdd(freeTickets(tickets));
     });
-    return { databaseId: meta.databaseId, generation: meta.generation };
+    return contextOf(meta);
   }
+
   async prepare(
     id: string,
     context: Context,
@@ -99,7 +109,7 @@ export class CashierCommands {
   ): Promise<Operation> {
     const command = commandSchema.parse(input);
     return this.repository.write(async (tx) => {
-      const meta = await tx.meta.get('main');
+      const meta = await tx.meta.get(META_KEY);
       assertContext(meta, context);
       const prior = await tx.operations.get(id);
       if (prior) {
@@ -124,9 +134,10 @@ export class CashierCommands {
       return operation;
     });
   }
+
   async execute(id: string, context: Context): Promise<string> {
     return this.repository.write(async (tx) => {
-      const meta = await tx.meta.get('main');
+      const meta = await tx.meta.get(META_KEY);
       assertContext(meta, context);
       const op = await tx.operations.get(id);
       if (!op) throw new Error('照合する操作が見つかりません。');
@@ -136,111 +147,9 @@ export class CashierCommands {
       const command = commandSchema.parse(op.command);
       let result = '設定';
       if (command.type === 'reserve') {
-        const price = await tx.prices.get(command.price.id);
-        if (!price || canonical(price) !== canonical(command.price))
-          throw new Error('価格設定が一致しません。');
-        const estimate = quote(command.quantities, price);
-        if (estimate.count === 0)
-          throw new Error('商品を1本以上入力してください。');
-        if (
-          command.confirmOperationId === id ||
-          (await tx.operations.get(command.confirmOperationId))
-        )
-          throw new Error('確定操作IDが既に使用されています。');
-        const ticket = (await tx.tickets.toArray()).find(
-          (t) => t.orderId === null && t.number <= meta.ticketCount,
-        );
-        if (!ticket)
-          throw new Error(
-            '空き札がありません。現金を受け取らず、札の回収を待ってください。',
-          );
-        const order: Order = {
-          id: command.orderId,
-          assignmentId: command.assignmentId,
-          confirmOperationId: command.confirmOperationId,
-          event: op.event,
-          day: op.day,
-          ticket: ticket.number,
-          quantities: command.quantities,
-          names: Object.fromEntries(
-            getMenu(price).map((p) => [p.id, p.name]),
-          ) as Order['names'],
-          price,
-          quote: estimate,
-          status: 'pending',
-          received: null,
-          change: null,
-          delivered: false,
-          returned: false,
-          refunded: 0,
-          createdAt: op.createdAt,
-          paidAt: null,
-          cancelReason: null,
-        };
-        await tx.orders.add(order);
-        await tx.tickets.put({
-          ...ticket,
-          orderId: order.id,
-          assignmentId: order.assignmentId,
-        });
-        result = order.id;
+        result = await this.reserve(tx, meta, op, command);
       } else if ('orderId' in command) {
-        const current = await tx.orders.get(command.orderId);
-        if (!current) throw new Error('注文と札の割り当てが一致しません。');
-        const payment =
-          command.type === 'cancel' && current.status === 'pending'
-            ? await tx.operations.get(current.confirmOperationId)
-            : undefined;
-        const order = applyOrderAction(
-          current,
-          command,
-          id,
-          this.now(),
-          payment?.status === 'pending',
-        );
-        const ticket = await tx.tickets.get(order.ticket);
-        // A historical paid order can be cancelled after ticket reuse, without touching that ticket.
-        const owns =
-          ticket?.orderId === order.id &&
-          ticket.assignmentId === order.assignmentId;
-        if (command.type === 'undoHandoff') {
-          const error = handoffUndoError(
-            current,
-            command.completionId,
-            {
-              orders: await tx.orders.toArray(),
-              operations: await tx.operations.toArray(),
-              logs: await tx.logs.toArray(),
-            },
-            ticket,
-          );
-          if (error) throw new Error(error);
-          await tx.tickets.put({
-            number: order.ticket,
-            orderId: order.id,
-            assignmentId: order.assignmentId,
-          });
-        }
-        if (
-          command.type !== 'cancel' &&
-          command.type !== 'undoHandoff' &&
-          !owns
-        )
-          throw new Error(
-            '札の現在の所有者が異なります。古い操作は実行できません。',
-          );
-        if (
-          owns &&
-          order.returned &&
-          (order.delivered || order.status === 'cancelled')
-        )
-          await tx.tickets.put({
-            number: order.ticket,
-            orderId: null,
-            assignmentId: null,
-          });
-        await tx.orders.put(order);
-        result = order.id;
+        result = await this.changeOrder(tx, id, command);
       } else if (command.type === 'price') {
         if (await tx.prices.get(command.price.id))
           throw new Error('価格の版が既に使われています。');
@@ -251,36 +160,18 @@ export class CashierCommands {
       } else if (command.type === 'day') {
         meta.day = command.day;
       } else if (command.type === 'tickets') {
-        const all = await tx.tickets.toArray();
-        if (all.some((t) => t.number > command.count && t.orderId !== null))
-          throw new Error('使用中の札を番号範囲から外すことはできません。');
-        for (const t of all)
-          if (t.number > command.count) await tx.tickets.delete(t.number);
-        for (let number = 1; number <= command.count; number++)
-          if (!all.some((t) => t.number === number))
-            await tx.tickets.add({
-              number,
-              orderId: null,
-              assignmentId: null,
-            });
+        await this.resizeTickets(tx, command.count);
         meta.ticketCount = command.count;
       }
-      meta.sequence++;
-      await tx.logs.add({
-        sequence: meta.sequence,
-        operationId: id,
-        type: command.type,
-        target: result,
-        at: this.now(),
-      });
-      await tx.meta.put(meta);
+      await this.appendLog(tx, meta, id, command.type, result);
       await tx.operations.put({ ...op, status: 'done', result });
       return result;
     });
   }
+
   async discard(id: string, context: Context): Promise<void> {
     await this.repository.write(async (tx) => {
-      const meta = await tx.meta.get('main');
+      const meta = await tx.meta.get(META_KEY);
       assertContext(meta, context);
       const op = await tx.operations.get(id);
       if (!op || op.status !== 'pending')
@@ -292,16 +183,175 @@ export class CashierCommands {
           await tx.orders.put({ ...order, confirmOperationId: this.newId() });
         }
       }
-      meta.sequence++;
-      await tx.logs.add({
-        sequence: meta.sequence,
-        operationId: id,
-        type: 'dismiss',
-        target: '現金・現物を照合して破棄',
-        at: this.now(),
-      });
+      await this.appendLog(tx, meta, id, 'dismiss', '現金・現物を照合して破棄');
       await tx.operations.put({ ...op, status: 'dismissed' });
-      await tx.meta.put(meta);
     });
+  }
+
+  /**
+   * Replace the whole ledger with a validated snapshot and a new generation.
+   * `expected` is the ledger the operator previewed; any later change aborts the restore.
+   */
+  async restore(snapshot: Snapshot, expected: Snapshot | null): Promise<void> {
+    const incoming = validateSnapshot(snapshot);
+    await this.repository.write(async (tx) => {
+      const current = await readSnapshot(tx);
+      if (canonical(current) !== canonical(expected))
+        throw new Error(
+          '確認中に記録が変更されました。画面を開き直してください。',
+        );
+      for (const table of Object.values(tx)) await table.clear();
+      await tx.meta.add({ ...incoming.meta, generation: this.newId() });
+      await tx.prices.bulkAdd(incoming.prices);
+      // A staged payment from the old generation must not confirm a restored order.
+      await tx.orders.bulkAdd(
+        incoming.orders.map((order) =>
+          order.status === 'pending'
+            ? { ...order, confirmOperationId: this.newId() }
+            : order,
+        ),
+      );
+      await tx.tickets.bulkAdd(incoming.tickets);
+      await tx.operations.bulkAdd(incoming.operations);
+      await tx.logs.bulkAdd(incoming.logs);
+    });
+  }
+
+  private async reserve(
+    tx: LedgerTransaction,
+    meta: Meta,
+    op: Operation,
+    command: Extract<Command, { type: 'reserve' }>,
+  ): Promise<string> {
+    const price = await tx.prices.get(command.price.id);
+    if (!price || canonical(price) !== canonical(command.price))
+      throw new Error('価格設定が一致しません。');
+    const estimate = quote(command.quantities, price);
+    if (estimate.count === 0)
+      throw new Error('商品を1本以上入力してください。');
+    if (
+      command.confirmOperationId === op.id ||
+      (await tx.operations.get(command.confirmOperationId))
+    )
+      throw new Error('確定操作IDが既に使用されています。');
+    const ticket = (await tx.tickets.toArray()).find(
+      (t) => t.orderId === null && t.number <= meta.ticketCount,
+    );
+    if (!ticket)
+      throw new Error(
+        '空き札がありません。現金を受け取らず、札の回収を待ってください。',
+      );
+    const order: Order = {
+      id: command.orderId,
+      assignmentId: command.assignmentId,
+      confirmOperationId: command.confirmOperationId,
+      event: op.event,
+      day: op.day,
+      ticket: ticket.number,
+      quantities: command.quantities,
+      names: Object.fromEntries(getMenu(price).map((p) => [p.id, p.name])),
+      price,
+      quote: estimate,
+      status: 'pending',
+      received: null,
+      change: null,
+      delivered: false,
+      returned: false,
+      refunded: 0,
+      createdAt: op.createdAt,
+      paidAt: null,
+      cancelReason: null,
+    };
+    await tx.orders.add(order);
+    await tx.tickets.put({
+      ...ticket,
+      orderId: order.id,
+      assignmentId: order.assignmentId,
+    });
+    return order.id;
+  }
+
+  private async changeOrder(
+    tx: LedgerTransaction,
+    operationId: string,
+    command: Extract<Command, { orderId: string }>,
+  ): Promise<string> {
+    const current = await tx.orders.get(command.orderId);
+    if (!current) throw new Error('注文と札の割り当てが一致しません。');
+    if (command.type === 'reserve') throw new Error('注文は作成済みです。');
+    const payment =
+      command.type === 'cancel' && current.status === 'pending'
+        ? await tx.operations.get(current.confirmOperationId)
+        : undefined;
+    const order = applyOrderAction(
+      current,
+      command,
+      operationId,
+      this.now(),
+      payment?.status === 'pending',
+    );
+    const ticket = await tx.tickets.get(order.ticket);
+    // A historical paid order can be cancelled after ticket reuse, without touching that ticket.
+    const owns = ownsTicket(ticket, order);
+    if (command.type === 'undoHandoff') {
+      const error = handoffUndoError(
+        current,
+        command.completionId,
+        {
+          orders: await tx.orders.toArray(),
+          operations: await tx.operations.toArray(),
+          logs: await tx.logs.toArray(),
+        },
+        ticket,
+      );
+      if (error) throw new Error(error);
+      await tx.tickets.put({
+        number: order.ticket,
+        orderId: order.id,
+        assignmentId: order.assignmentId,
+      });
+    }
+    if (command.type !== 'cancel' && command.type !== 'undoHandoff' && !owns)
+      throw new Error(
+        '札の現在の所有者が異なります。古い操作は実行できません。',
+      );
+    if (owns && releasesTicket(order))
+      await tx.tickets.put({
+        number: order.ticket,
+        orderId: null,
+        assignmentId: null,
+      });
+    await tx.orders.put(order);
+    return order.id;
+  }
+
+  private async resizeTickets(tx: LedgerTransaction, count: number) {
+    const all = await tx.tickets.toArray();
+    if (all.some((t) => t.number > count && t.orderId !== null))
+      throw new Error('使用中の札を番号範囲から外すことはできません。');
+    for (const t of all)
+      if (t.number > count) await tx.tickets.delete(t.number);
+    const existing = new Set(all.map((t) => t.number));
+    for (const ticket of freeTickets(count))
+      if (!existing.has(ticket.number)) await tx.tickets.add(ticket);
+  }
+
+  /** Every committed change gets the next sequence number in the same transaction. */
+  private async appendLog(
+    tx: LedgerTransaction,
+    meta: Meta,
+    operationId: string,
+    type: string,
+    target: string,
+  ) {
+    meta.sequence++;
+    await tx.logs.add({
+      sequence: meta.sequence,
+      operationId,
+      type,
+      target,
+      at: this.now(),
+    });
+    await tx.meta.put(meta);
   }
 }

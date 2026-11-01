@@ -1,4 +1,7 @@
 import { Dialog } from './controls';
+
+const CONTACT_EMAIL = 'ueki.keitaro@gmail.com';
+const REPOSITORY_URL = 'https://github.com/97kuek/yakitoriningen';
 export function Help({
   open,
   onClose,
@@ -22,22 +25,18 @@ export function Help({
       <dl className="about-details">
         <dt>お問い合わせ</dt>
         <dd>
-          <a href="mailto:ueki.keitaro@gmail.com">ueki.keitaro@gmail.com</a>
+          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
         </dd>
         <dt>ソースコード</dt>
         <dd>
-          <a
-            href="https://github.com/97kuek/yakitoriningen"
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a href={REPOSITORY_URL} target="_blank" rel="noreferrer">
             GitHub
           </a>
         </dd>
         <dt>ライセンス</dt>
         <dd>
           <a
-            href="https://github.com/97kuek/yakitoriningen/blob/main/LICENSE"
+            href={`${REPOSITORY_URL}/blob/main/LICENSE`}
             target="_blank"
             rel="noreferrer"
           >

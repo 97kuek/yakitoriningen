@@ -1,15 +1,39 @@
-export const yen = (value: number) =>
-  new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(
-    value,
-  );
-export const today = () =>
-  new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(
-    new Date(),
-  );
+import type { Order } from '../domain/model';
+import { JAPAN_TIME_ZONE } from '../domain/time';
 
-export function orderItems(
-  order: Pick<import('../domain/model').Order, 'quantities' | 'names'>,
-) {
+const yenFormat = new Intl.NumberFormat('ja-JP', {
+  style: 'currency',
+  currency: 'JPY',
+});
+// Swedish formats dates as ISO yyyy-mm-dd, which <input type="date"> expects.
+const isoDateFormat = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: JAPAN_TIME_ZONE,
+});
+const timeFormat = new Intl.DateTimeFormat('ja-JP', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: JAPAN_TIME_ZONE,
+});
+const dayFormat = new Intl.DateTimeFormat('ja-JP', {
+  month: 'numeric',
+  day: 'numeric',
+  timeZone: JAPAN_TIME_ZONE,
+});
+
+export const yen = (value: number) => yenFormat.format(value);
+
+/** Today's date in Japan as yyyy-mm-dd. */
+export const today = () => isoDateFormat.format(new Date());
+
+export const timeText = (at: string) => timeFormat.format(new Date(at));
+
+/** `11/7` for a business day stored as yyyy-mm-dd. */
+export const dayText = (day: string) =>
+  dayFormat.format(new Date(`${day}T00:00:00+09:00`));
+
+type OrderLines = Pick<Order, 'quantities' | 'names'>;
+
+export function orderItems(order: OrderLines) {
   return Object.entries(order.quantities)
     .filter(([, quantity]) => quantity > 0)
     .map(([id, quantity]) => ({
@@ -18,22 +42,9 @@ export function orderItems(
       quantity,
     }));
 }
-export function orderText(
-  order: Pick<import('../domain/model').Order, 'quantities' | 'names'>,
-) {
+
+export function orderText(order: OrderLines) {
   return orderItems(order)
     .map((item) => `${item.name} ${item.quantity}本`)
     .join(' ／ ');
 }
-export const timeText = (at: string) =>
-  new Intl.DateTimeFormat('ja-JP', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Tokyo',
-  }).format(new Date(at));
-export const dayText = (day: string) =>
-  new Intl.DateTimeFormat('ja-JP', {
-    month: 'numeric',
-    day: 'numeric',
-    timeZone: 'Asia/Tokyo',
-  }).format(new Date(`${day}T00:00:00+09:00`));

@@ -1,14 +1,25 @@
 import { useState } from 'react';
 import type { Snapshot } from '../domain/model';
-import { quantitiesByProduct, salesByHalfHour } from '../domain/sales';
+import {
+  quantitiesByProduct,
+  SALES_SLOT_MINUTES,
+  salesByHalfHour,
+} from '../domain/sales';
+import { clockText } from '../domain/time';
 import { festivalDays } from '../presentation/festival';
 import { dayText, yen } from '../presentation/format';
 import { Select } from './controls';
 import './SalesCharts.css';
 
-const colors = ['var(--yellow)', 'var(--ink)', '#96968c', '#d5d5ca'];
-const clock = (minute: number) =>
-  `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+const colors = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+];
+// Slices beyond the palette are grouped as "other"; exact values stay in the legend.
+const NAMED_SLICES = colors.length - 1;
+const MIN_BAR_WIDTH_PX = 48;
 
 export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
   const [selectedDay, setDay] = useState(snapshot.meta.day);
@@ -19,20 +30,18 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
   const maximum = Math.max(1, ...slots.map((slot) => slot.sales));
   const products = quantitiesByProduct(orders);
   const total = products.reduce((sum, product) => sum + product.quantity, 0);
-  // Keep the chart readable with a large menu, with exact values in the legend.
-  const slices =
-    products.length <= 4
-      ? products
-      : [
-          ...products.slice(0, 3),
-          {
-            id: 'other',
-            name: 'その他',
-            quantity: products
-              .slice(3)
-              .reduce((sum, product) => sum + product.quantity, 0),
-          },
-        ];
+  const grouped = products.length > colors.length;
+  const others = products.slice(NAMED_SLICES);
+  const slices = grouped
+    ? [
+        ...products.slice(0, NAMED_SLICES),
+        {
+          id: 'other',
+          name: 'その他',
+          quantity: others.reduce((sum, product) => sum + product.quantity, 0),
+        },
+      ]
+    : products;
   let offset = 0;
   const gradient = slices
     .map((item, index) => {
@@ -57,7 +66,7 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
       </div>
       <div className="chart-grid">
         <figure>
-          <figcaption>30分ごとの売上</figcaption>
+          <figcaption>{SALES_SLOT_MINUTES}分ごとの売上</figcaption>
           {slots.length ? (
             <>
               <div className="bar-scale" aria-hidden="true">
@@ -66,12 +75,12 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
               <div
                 className="bar-scroll"
                 tabIndex={0}
-                aria-label="30分ごとの売上グラフ"
+                aria-label={`${SALES_SLOT_MINUTES}分ごとの売上グラフ`}
               >
                 <div
                   className="sales-bars"
                   style={{
-                    gridTemplateColumns: `repeat(${slots.length}, minmax(48px, 1fr))`,
+                    gridTemplateColumns: `repeat(${slots.length}, minmax(${MIN_BAR_WIDTH_PX}px, 1fr))`,
                   }}
                 >
                   {slots.map((slot) => (
@@ -79,7 +88,7 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
                       <div
                         className="bar-track"
                         tabIndex={0}
-                        aria-label={`${clock(slot.minute)}〜${clock(slot.minute + 30)} ${yen(slot.sales)}`}
+                        aria-label={`${clockText(slot.minute)}〜${clockText(slot.minute + SALES_SLOT_MINUTES)} ${yen(slot.sales)}`}
                       >
                         <div
                           className="bar-fill"
@@ -87,7 +96,7 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
                         />
                         <span className="bar-value">{yen(slot.sales)}</span>
                       </div>
-                      <span className="bar-time">{clock(slot.minute)}</span>
+                      <span className="bar-time">{clockText(slot.minute)}</span>
                     </div>
                   ))}
                 </div>
@@ -124,11 +133,10 @@ export function SalesCharts({ snapshot }: { snapshot: Snapshot }) {
                   </li>
                 ))}
               </ul>
-              {products.length > 4 && (
+              {grouped && (
                 <p className="other-products">
                   その他：
-                  {products
-                    .slice(3)
+                  {others
                     .map((item) => `${item.name} ${item.quantity}本`)
                     .join(' ／ ')}
                 </p>

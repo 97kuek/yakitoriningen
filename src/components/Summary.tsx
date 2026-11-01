@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '../domain/model';
+import { MAX_MONEY } from '../domain/constants';
 import { profit, summarizeSales } from '../domain/sales';
 import { festivalDays } from '../presentation/festival';
 import { dayText, yen } from '../presentation/format';
@@ -18,17 +19,13 @@ export function Summary({
   snapshot: Snapshot;
   onDirtyChange: (dirty: boolean) => void;
 }) {
-  const [expense, setExpense] = useState(
+  const savedExpense =
     snapshot.meta.expenseTotal == null
       ? ''
-      : String(snapshot.meta.expenseTotal),
-  );
+      : String(snapshot.meta.expenseTotal);
+  const [expense, setExpense] = useState(savedExpense);
   const [saved, setSaved] = useState('');
-  const dirty =
-    expense !==
-    (snapshot.meta.expenseTotal == null
-      ? ''
-      : String(snapshot.meta.expenseTotal));
+  const dirty = expense !== savedExpense;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   const total = summarizeSales(snapshot.orders);
   const net = profit(total.sales, snapshot.meta.expenseTotal);
@@ -97,7 +94,7 @@ export function Summary({
               aria-label="開催回全体の経費（円）"
               type="number"
               min="0"
-              max="100000000"
+              max={MAX_MONEY}
               required
               value={expense}
               onChange={(event) => {

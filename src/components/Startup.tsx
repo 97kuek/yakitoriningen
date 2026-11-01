@@ -1,14 +1,25 @@
 import { useState } from 'react';
 import { today, yen } from '../presentation/format';
-
 import type { Snapshot } from '../domain/model';
+import {
+  bundleApplies,
+  findActivePrice,
+  getMenu,
+  getUnitPrice,
+} from '../domain/catalog';
+import {
+  DEFAULT_TICKET_COUNT,
+  MAX_EVENT_NAME_LENGTH,
+  MAX_TICKETS,
+} from '../domain/constants';
+import { pendingOrders, unresolvedOperations } from '../domain/snapshot';
 import type { ActionHandler } from '../ui';
 import { commandNames } from '../ui';
 import type { Cashier } from '../application/ports';
 import { Button } from './controls';
-import { getMenu, getUnitPrice } from '../domain/catalog';
 import { DataPanel } from './DataPanel';
 import { Icon } from './Icon';
+import { eventNameExample } from '../presentation/festival';
 export function Startup({
   snapshot,
   store,
@@ -26,27 +37,11 @@ export function Startup({
 }) {
   const [event, setEvent] = useState('');
   const [day, setDay] = useState(today());
-  const [tickets, setTickets] = useState(20);
+  const [tickets, setTickets] = useState(DEFAULT_TICKET_COUNT);
   const [confirmed, setConfirmed] = useState(false);
-  const price = snapshot?.prices.find(
-    (p) => p.id === snapshot.meta.activePriceId,
-  );
-  const pendingOrders =
-    snapshot?.orders.filter((o) => o.status === 'pending') ?? [];
-  const pendingOperations =
-    snapshot?.operations.filter((operation) => {
-      if (operation.status !== 'pending') return false;
-      const command = operation.command;
-      return !(
-        command.type === 'pay' &&
-        pendingOrders.some(
-          (order) =>
-            order.confirmOperationId === operation.id &&
-            order.id === command.orderId &&
-            order.assignmentId === command.assignmentId,
-        )
-      );
-    }) ?? [];
+  const price = snapshot ? findActivePrice(snapshot) : undefined;
+  const reserved = snapshot ? pendingOrders(snapshot) : [];
+  const pendingOperations = snapshot ? unresolvedOperations(snapshot) : [];
   return (
     <div className="startup-shell">
       <aside className="startup-art">
@@ -72,26 +67,25 @@ export function Startup({
                     {item.name} {yen(getUnitPrice(item, price))}
                   </span>
                 ))}
-                {price.bundleEnabled &&
-                  (!price.discounted || price.bundleDuringDiscount) && (
-                    <small>
-                      対象商品 {price.bundleSize}本 {yen(price.bundlePrice)}
-                    </small>
-                  )}
+                {bundleApplies(price) && (
+                  <small>
+                    対象商品 {price.bundleSize}本 {yen(price.bundlePrice)}
+                  </small>
+                )}
               </dd>
             </dl>
-            {(pendingOrders.length > 0 || pendingOperations.length > 0) && (
+            {(reserved.length > 0 || pendingOperations.length > 0) && (
               <section
                 className="startup-pending notice"
                 aria-labelledby="startup-pending-heading"
               >
                 <h3 id="startup-pending-heading">確認が必要な会計</h3>
                 <p>現金と札を確認し、二度受け取らないでください。</p>
-                {pendingOrders.length > 0 && (
+                {reserved.length > 0 && (
                   <>
-                    <p>途中の会計 {pendingOrders.length}件</p>
+                    <p>途中の会計 {reserved.length}件</p>
                     <ul>
-                      {pendingOrders.map((order) => (
+                      {reserved.map((order) => (
                         <li key={order.id}>
                           札 {order.ticket} / {yen(order.quote.total)}
                         </li>
@@ -163,8 +157,8 @@ export function Startup({
                 <input
                   value={event}
                   required
-                  maxLength={80}
-                  placeholder="例：早稲田祭 2026"
+                  maxLength={MAX_EVENT_NAME_LENGTH}
+                  placeholder={eventNameExample()}
                   onChange={(e) => setEvent(e.target.value)}
                 />
               </label>
@@ -183,7 +177,7 @@ export function Startup({
                   <input
                     type="number"
                     min="1"
-                    max="100"
+                    max={MAX_TICKETS}
                     required
                     value={tickets}
                     onChange={(e) => setTickets(Number(e.target.value))}

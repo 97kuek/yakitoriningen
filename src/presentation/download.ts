@@ -1,3 +1,6 @@
+// Revoking right after click() can cancel the download in some browsers.
+const REVOKE_DELAY_MS = 1000;
+
 export function download(
   text: string,
   name: string,
@@ -8,5 +11,5 @@ export function download(
   link.href = url;
   link.download = name;
   link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
 }

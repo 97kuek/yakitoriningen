@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 
+// Changing the name lets an old and a new version run side by side.
+const LOCK_NAME = 'yakitoriningen-counter-v1';
+
 /** UI ownership only; command transactions remain the authority for data integrity. */
 export function useExclusiveTab() {
   const [state, setState] = useState<
@@ -16,7 +19,7 @@ export function useExclusiveTab() {
     }
     void navigator.locks
       .request(
-        'yakitoriningen-counter-v1',
+        LOCK_NAME,
         { mode: 'exclusive', ifAvailable: true },
         async (lock) => {
           if (closed) return;

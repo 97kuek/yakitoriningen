@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import type { Page } from '@playwright/test';
 import type { Price, Snapshot } from '../../src/domain/model';
 import { Database } from '../../src/storage/database';
-import { CashierStore } from '../../src/storage/commands';
+import { CashierStore } from '../../src/storage/cashier-store';
 import { newId } from '../../src/lib/id';
 
 export async function historyFixture(

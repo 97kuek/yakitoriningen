@@ -3,7 +3,7 @@ import { newId } from '../lib/id';
 
 import type { Command, Context, Price } from '../domain/model';
 import { Database } from './database';
-import { CashierStore } from './commands';
+import { CashierStore } from './cashier-store';
 let db: Database, store: CashierStore, ctx: Context, price: Price;
 const q = { momo: 3, kawa: 2, negima: 0 };
 async function run(command: Command, op = newId()) {

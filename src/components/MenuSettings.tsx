@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { createMenuDraft } from '../domain/catalog';
+import { createMenuDraft, priceLabel } from '../domain/catalog';
+import {
+  DEFAULT_DISCOUNT_PRICE,
+  DEFAULT_UNIT_PRICE,
+  MAX_BUNDLE_SIZE,
+  MAX_MONEY,
+  MAX_PRODUCT_NAME_LENGTH,
+  MAX_PRODUCTS,
+} from '../domain/constants';
 import { priceSchema } from '../domain/model';
 import type { Price } from '../domain/model';
 import { menuForm, menuPrice, type MenuForm } from '../presentation/menu-form';
@@ -36,7 +44,7 @@ export function MenuSettings({
   const [saved, setSaved] = useState('');
   const current = createMenuDraft(active);
   const dirty = menuContents(draft) !== savedContents;
-  const items = draft.items!;
+  const items = draft.items;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   function editDraft(next: MenuForm) {
     setSaved('');
@@ -49,7 +57,7 @@ export function MenuSettings({
         ...current,
         id: newId(),
         discounted,
-        label: discounted ? '値下げ' : '通常',
+        label: priceLabel(discounted),
         unit: current.items[0].price,
       });
       await saveCommand({ type: 'price', price });
@@ -97,7 +105,7 @@ export function MenuSettings({
               ...draft,
               id: newId(),
               discounted: current.discounted,
-              label: current.discounted ? '値下げ' : '通常',
+              label: priceLabel(current.discounted),
               mix: true,
             });
             await saveCommand({ type: 'price', price });
@@ -114,7 +122,7 @@ export function MenuSettings({
                 icon="plus"
                 label="商品を追加"
                 className="add-menu-item"
-                disabled={items.length >= 30}
+                disabled={items.length >= MAX_PRODUCTS}
                 onClick={() => {
                   editDraft({
                     ...draft,
@@ -123,8 +131,8 @@ export function MenuSettings({
                       {
                         id: newId(),
                         name: '',
-                        price: '150',
-                        discountPrice: '50',
+                        price: String(DEFAULT_UNIT_PRICE),
+                        discountPrice: String(DEFAULT_DISCOUNT_PRICE),
                       },
                     ],
                   });
@@ -179,7 +187,7 @@ export function MenuSettings({
                 <input
                   aria-label={`商品${index + 1}の名前`}
                   value={item.name}
-                  maxLength={40}
+                  maxLength={MAX_PRODUCT_NAME_LENGTH}
                   required
                   onChange={(event) =>
                     updateItem(item.id, { name: event.target.value })
@@ -192,7 +200,7 @@ export function MenuSettings({
                   aria-label={`${item.name || `商品${index + 1}`}の通常価格（円）`}
                   type="number"
                   min="0"
-                  max="100000000"
+                  max={MAX_MONEY}
                   required
                   value={item.price}
                   onChange={(event) =>
@@ -206,7 +214,7 @@ export function MenuSettings({
                   aria-label={`${item.name || `商品${index + 1}`}の値下げ価格（円）`}
                   type="number"
                   min="0"
-                  max="100000000"
+                  max={MAX_MONEY}
                   required
                   value={item.discountPrice}
                   onChange={(event) =>
@@ -239,7 +247,7 @@ export function MenuSettings({
                   aria-label="セットの本数"
                   type="number"
                   min="1"
-                  max="999"
+                  max={MAX_BUNDLE_SIZE}
                   required
                   value={draft.bundleSize}
                   onChange={(event) =>
@@ -256,7 +264,7 @@ export function MenuSettings({
                   aria-label="セットの価格（円）"
                   type="number"
                   min="0"
-                  max="100000000"
+                  max={MAX_MONEY}
                   required
                   value={draft.bundlePrice}
                   onChange={(event) =>

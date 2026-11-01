@@ -2,21 +2,28 @@ import { useRef, useState } from 'react';
 import './History.css';
 import { dayText, orderText, timeText, yen } from '../presentation/format';
 import { festivalDays, hourOptions } from '../presentation/festival';
-import { ordersCsv } from '../application/backup';
+import { ordersCsv } from '../presentation/orders-csv';
 import { download } from '../presentation/download';
+import { historyStateLabel, receiptNumber } from '../presentation/order';
 import {
+  filterHistory,
   historyPage,
+  TICKET_SEARCH_MAX_LENGTH,
   type HistoryState,
   type HistorySort,
+  type SortDirection,
 } from '../domain/history';
 import { Button, Dialog, IconButton, Select } from './controls';
 import { RefundDialog } from './RefundDialog';
-import { OrderDetails, receiptNumber } from './OrderDetails';
-
+import { OrderDetails } from './OrderDetails';
 import type { Order, Snapshot } from '../domain/model';
 import type { Shared } from '../ui';
 import { Icon } from './Icon';
 import type { Cashier } from '../application/ports';
+
+/** Scope value that shows every business day. */
+const ALL_DAYS = 'event';
+
 export function History({
   snapshot,
   perform,
@@ -38,7 +45,7 @@ export function History({
   const [page, setPage] = useState(0);
   const [hour, setHour] = useState('');
   const [sort, setSort] = useState<HistorySort>('time');
-  const [direction, setDirection] = useState<'asc' | 'desc'>('desc');
+  const [direction, setDirection] = useState<SortDirection>('desc');
   function sortBy(key: HistorySort) {
     setDirection(sort === key && direction === 'asc' ? 'desc' : 'asc');
     setSort(key);
@@ -65,8 +72,9 @@ export function History({
     );
   }
   const days = festivalDays(snapshot);
+  const allDays = scope === ALL_DAYS;
   const orders = snapshot.orders.filter(
-    (order) => scope === 'event' || order.day === scope,
+    (order) => allDays || order.day === scope,
   );
   const filters = {
     from: hour ? `${hour}:00` : '',
@@ -74,7 +82,16 @@ export function History({
     sort,
     direction,
   };
-  const history = historyPage(orders, ticketSearch, state, page, 50, filters);
+  const history = historyPage(
+    orders,
+    ticketSearch,
+    state,
+    page,
+    undefined,
+    filters,
+  );
+  const firstShown = history.page * history.size + 1;
+  const lastShown = Math.min((history.page + 1) * history.size, history.total);
   const details = snapshot.orders.find((order) => order.id === detailsId);
   return (
     <section className="panel history">
@@ -90,7 +107,7 @@ export function History({
             setPage(0);
           }}
           options={[
-            { value: 'event', label: 'すべて' },
+            { value: ALL_DAYS, label: 'すべて' },
             ...days.map((day) => ({
               value: day,
               label: dayText(day),
@@ -114,7 +131,7 @@ export function History({
           <input
             type="search"
             inputMode="numeric"
-            maxLength={3}
+            maxLength={TICKET_SEARCH_MAX_LENGTH}
             value={ticketSearch}
             placeholder="札番号"
             onChange={(event) => {
@@ -144,17 +161,12 @@ export function History({
           label="表示条件の注文をCSVで保存"
           disabled={busy || history.total === 0}
           onClick={() => {
-            const matching = historyPage(
-              orders,
-              ticketSearch,
-              state,
-              0,
-              Math.max(1, orders.length),
-              filters,
-            );
             download(
-              ordersCsv({ ...snapshot, orders: matching.orders }),
-              `焼き鳥人間_注文履歴_${scope === 'event' ? '全日' : scope}${hour ? `_${hour}時台` : ''}.csv`,
+              ordersCsv({
+                prices: snapshot.prices,
+                orders: filterHistory(orders, ticketSearch, state, filters),
+              }),
+              `焼き鳥人間_注文履歴_${allDays ? '全日' : scope}${hour ? `_${hour}時台` : ''}.csv`,
               'text/csv;charset=utf-8',
             );
           }}
@@ -166,7 +178,7 @@ export function History({
           <thead>
             <tr>
               <th>会計番号</th>
-              {sortHeading('time', scope === 'event' ? '日時' : '時刻')}
+              {sortHeading('time', allDays ? '日時' : '時刻')}
               {sortHeading('ticket', '札')}
               <th>内容</th>
               {sortHeading('amount', '会計額')}
@@ -180,10 +192,10 @@ export function History({
             {history.orders.map((o) => (
               <tr key={o.id}>
                 <td className="history-receipt-number">
-                  {receiptNumber(o, snapshot).replace('会計 ', '')}
+                  {receiptNumber(o, snapshot) ?? '会計未確定'}
                 </td>
                 <td className="history-time">
-                  {scope === 'event' && <span>{dayText(o.day)} </span>}
+                  {allDays && <span>{dayText(o.day)} </span>}
                   {timeText(o.createdAt)}
                 </td>
                 <td>{o.ticket}</td>
@@ -194,11 +206,7 @@ export function History({
                 </td>
                 <td>
                   <span className={`state-label${o.delivered ? ' done' : ''}`}>
-                    {o.status === 'cancelled'
-                      ? '取消'
-                      : o.status === 'paid' && o.delivered
-                        ? '完了'
-                        : '未完了'}
+                    {historyStateLabel(o)}
                   </span>
                 </td>
                 <td>
@@ -239,7 +247,7 @@ export function History({
       <div className="history-pagination">
         <span>
           {history.total
-            ? `${history.page * 50 + 1}〜${Math.min((history.page + 1) * 50, history.total)}件 / ${history.total}件`
+            ? `${firstShown}〜${lastShown}件 / ${history.total}件`
             : '0件'}
         </span>
         <div>

@@ -66,3 +66,10 @@ export function applyOrderAction(
       return { ...order, returned: true };
   }
 }
+
+/** Paid and still waiting to be handed over. */
+export function isAwaitingHandoff(
+  order: Pick<Order, 'status' | 'delivered'>,
+): boolean {
+  return order.status === 'paid' && !order.delivered;
+}

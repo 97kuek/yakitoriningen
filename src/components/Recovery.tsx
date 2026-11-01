@@ -1,24 +1,18 @@
 import { Button } from './controls';
-import { emptyQuantities } from '../domain/model';
 import { yen } from '../presentation/format';
-
 import type { Operation, Snapshot } from '../domain/model';
 import { getMenu } from '../domain/catalog';
-import { quote } from '../domain/pricing';
+import { tryQuote } from '../domain/pricing';
 import { canonical } from '../application/serialization';
 import type { Cashier } from '../application/ports';
-import { commandNames } from '../ui';
-import type { Shared } from '../ui';
-import type { Draft } from './Checkout';
+import { commandNames, emptyDraft } from '../ui';
+import type { Draft, Shared } from '../ui';
+
 function details(op: Operation, snapshot: Snapshot): string {
   const c = op.command;
   if (c.type === 'reserve') {
-    let total = '金額を確認してください';
-    try {
-      total = yen(quote(c.quantities, c.price).total);
-    } catch {
-      /* Invalid totals remain unresolved. */
-    }
+    const estimate = tryQuote(c.quantities, c.price);
+    const total = estimate ? yen(estimate.total) : '金額を確認してください';
     return `${getMenu(c.price)
       .map((p) => `${p.name} ${c.quantities[p.id] ?? 0}本`)
       .join(' ／ ')} ／ ${total}`;
@@ -77,7 +71,7 @@ export function Recovery({
                     canonical(draft.quantities) &&
                   canonical(op.command.price) === canonical(draft.price)
                 )
-                  setDraft({ quantities: emptyQuantities(), price: null });
+                  setDraft(emptyDraft());
               });
             }}
           >

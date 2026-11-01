@@ -1,4 +1,8 @@
 .sales-charts {
+  --chart-1: var(--yellow);
+  --chart-2: var(--ink);
+  --chart-3: #96968c;
+  --chart-4: #d5d5ca;
   margin-top: 28px;
   padding-top: 24px;
   border-top: 1px solid var(--line);

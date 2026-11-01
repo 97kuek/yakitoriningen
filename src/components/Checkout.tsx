@@ -1,24 +1,29 @@
-import { IconButton, Button } from './controls';
 import { useEffect, useRef, useState } from 'react';
-import { count, emptyQuantities } from '../domain/model';
+import { IconButton, Button, preventKeyRepeat } from './controls';
+import { count } from '../domain/model';
+import type { Operation, Order, Quantities, Snapshot } from '../domain/model';
+import {
+  bundleApplies,
+  findActivePrice,
+  getMenu,
+  getUnitPrice,
+} from '../domain/catalog';
+import { MAX_MONEY, MAX_QUANTITY } from '../domain/constants';
+import { tryQuote } from '../domain/pricing';
+import { pendingOrders } from '../domain/snapshot';
 import { newId } from '../lib/id';
-import { yen } from '../presentation/format';
-
-import type {
-  Operation,
-  Order,
-  Price,
-  Quantities,
-  Snapshot,
-} from '../domain/model';
-import { getMenu, getUnitPrice } from '../domain/catalog';
-import { quote } from '../domain/pricing';
-import type { Shared } from '../ui';
+import { orderItems, yen } from '../presentation/format';
+import { emptyDraft } from '../ui';
+import type { Draft, Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { Icon } from './Icon';
 import { Ticket } from './Ticket';
 
-type Draft = { quantities: Quantities; price: Price | null };
+/** Quick amounts for common notes and coins. */
+const CASH_SHORTCUTS = [500, 1000, 2000, 5000, 10000];
+/** Delay before the confirm button accepts a click, so a double click cannot confirm. */
+const CONFIRM_READY_DELAY_MS = 500;
+
 export function Checkout({
   snapshot,
   draft,
@@ -34,28 +39,17 @@ export function Checkout({
   resumeOrderIds: string[];
 }) {
   const [clearedDraft, setClearedDraft] = useState<Draft | null>(null);
-  const activePrice = snapshot.prices.find(
-    (p) => p.id === snapshot.meta.activePriceId,
-  )!;
+  const activePrice = findActivePrice(snapshot)!;
   const price = draft.price ?? activePrice;
   const products = getMenu(price);
-  let estimate: ReturnType<typeof quote> | null = null;
-  let latestEstimate: ReturnType<typeof quote> | null = null;
-  try {
-    estimate = quote(draft.quantities, price);
-  } catch {
-    /* Invalid totals cannot be submitted. */
-  }
-  try {
-    latestEstimate = quote(draft.quantities, activePrice);
-  } catch {
-    /* Keep the original draft available. */
-  }
-  const pending = snapshot.orders.filter((o) => o.status === 'pending');
+  // An invalid total cannot be submitted; the draft stays editable.
+  const estimate = tryQuote(draft.quantities, price);
+  const latestEstimate = tryQuote(draft.quantities, activePrice);
+  const pending = pendingOrders(snapshot);
   const unresolved = snapshot.operations.some((op) => op.status === 'pending');
   const hasTicket = snapshot.tickets.some((t) => !t.orderId);
   const changeQuantity = (id: keyof Quantities, value: number) => {
-    if (!Number.isInteger(value) || value < 0 || value > 999) return;
+    if (!Number.isInteger(value) || value < 0 || value > MAX_QUANTITY) return;
     setClearedDraft(null);
     const quantities = Object.fromEntries(
       products.map((product) => [
@@ -119,7 +113,7 @@ export function Checkout({
           disabled={!count(draft.quantities)}
           onClick={() => {
             setClearedDraft(draft);
-            setDraft({ quantities: emptyQuantities(), price: null });
+            setDraft(emptyDraft());
           }}
           label="注文をクリア"
           icon="reset"
@@ -129,15 +123,14 @@ export function Checkout({
         <span className="price-label">
           {price.discounted ? '値下げ価格' : '通常価格'}
         </span>
-        {price.bundleEnabled &&
-          (!price.discounted || price.bundleDuringDiscount) && (
-            <span>
-              {price.bundleSize}本 <b>{yen(price.bundlePrice)}</b>
-              <small>
-                {price.mix ? '対象商品の組合せ自由' : '同じ種類でセット'}
-              </small>
-            </span>
-          )}
+        {bundleApplies(price) && (
+          <span>
+            {price.bundleSize}本 <b>{yen(price.bundlePrice)}</b>
+            <small>
+              {price.mix ? '対象商品の組合せ自由' : '同じ種類でセット'}
+            </small>
+          </span>
+        )}
       </div>
       {draft.price && draft.price.id !== activePrice.id && (
         <div className="notice compact-notice">
@@ -181,7 +174,7 @@ export function Checkout({
                   aria-label={`${p.name}の本数`}
                   type="number"
                   min="0"
-                  max="999"
+                  max={MAX_QUANTITY}
                   value={draft.quantities[p.id] ?? 0}
                   onChange={(e) => changeQuantity(p.id, Number(e.target.value))}
                 />
@@ -190,7 +183,7 @@ export function Checkout({
                 variant="secondary"
                 type="button"
                 className="increase"
-                disabled={(draft.quantities[p.id] ?? 0) === 999}
+                disabled={(draft.quantities[p.id] ?? 0) === MAX_QUANTITY}
                 onClick={() =>
                   changeQuantity(p.id, (draft.quantities[p.id] ?? 0) + 1)
                 }
@@ -233,7 +226,7 @@ export function Checkout({
               price,
             });
             setClearedDraft(null);
-            setDraft({ quantities: emptyQuantities(), price: null });
+            setDraft(emptyDraft());
           })
         }
       >
@@ -263,7 +256,6 @@ function Payment({
   resumed: boolean;
   onEdit: () => void;
 }) {
-  const products = getMenu(order.price);
   const [received, setReceived] = useState('');
   const [confirmReady, setConfirmReady] = useState(true);
   const receivedInput = useRef<HTMLInputElement>(null);
@@ -278,7 +270,10 @@ function Payment({
       : Number(received);
   useEffect(() => {
     if (!staged || confirmReady) return;
-    const timer = window.setTimeout(() => setConfirmReady(true), 500);
+    const timer = window.setTimeout(
+      () => setConfirmReady(true),
+      CONFIRM_READY_DELAY_MS,
+    );
     return () => window.clearTimeout(timer);
   }, [staged, confirmReady]);
   useEffect(() => {
@@ -310,14 +305,12 @@ function Payment({
         </p>
       )}
       <div className="receipt-items">
-        {products
-          .filter((p) => order.quantities[p.id])
-          .map((p) => (
-            <span key={p.id}>
-              {p.name}
-              <b>{order.quantities[p.id]}本</b>
-            </span>
-          ))}
+        {orderItems(order).map((item) => (
+          <span key={item.id}>
+            {item.name}
+            <b>{item.quantity}本</b>
+          </span>
+        ))}
       </div>
       {!staged && (
         <div className="payment-total">
@@ -349,7 +342,7 @@ function Payment({
                 aria-label="お預かり金額"
                 type="number"
                 min={order.quote.total}
-                max="100000000"
+                max={MAX_MONEY}
                 required
                 value={received}
                 onChange={(e) => setReceived(e.target.value)}
@@ -370,7 +363,7 @@ function Payment({
             >
               ちょうど
             </Button>
-            {[500, 1000, 2000, 5000, 10000].map((value) => (
+            {CASH_SHORTCUTS.map((value) => (
               <Button
                 type="button"
                 key={value}
@@ -409,10 +402,7 @@ function Payment({
             ref={confirmButton}
             className="checkout-button wide"
             disabled={!confirmReady}
-            onKeyDown={(event) => {
-              if (event.repeat && (event.key === 'Enter' || event.key === ' '))
-                event.preventDefault();
-            }}
+            onKeyDown={preventKeyRepeat}
             onClick={(event) => {
               if (event.detail > 1) return;
               void perform(async () => {
@@ -488,4 +478,3 @@ function Payment({
     </section>
   );
 }
-export type { Draft };

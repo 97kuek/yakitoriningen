@@ -1,21 +1,27 @@
 import { useState } from 'react';
-import { count } from '../domain/model';
-import { yen } from '../presentation/format';
-
 import type { Snapshot } from '../domain/model';
+import { MAX_EVENT_NAME_LENGTH } from '../domain/constants';
+import { summarizeSales } from '../domain/sales';
+import { pendingOrders } from '../domain/snapshot';
 import type { ActionHandler } from '../ui';
 import type { Cashier } from '../application/ports';
-import { encodeBackup, parseBackup } from '../application/backup';
+import {
+  encodeBackup,
+  MAX_BACKUP_BYTES,
+  parseBackup,
+} from '../application/backup';
 import { newEvent } from '../application/new-event';
 import { newId } from '../lib/id';
-import { today } from '../presentation/format';
-import { Button, Dialog, FilePicker } from './controls';
-import { Icon } from './Icon';
 import { download } from '../presentation/download';
+import { today, yen } from '../presentation/format';
+import { Button, Dialog, FilePicker, InlineError } from './controls';
+import { Icon } from './Icon';
+import { eventNameExample } from '../presentation/festival';
+
 async function fileText(file: File | undefined) {
-  if (!file || file.size > 50_000_000)
+  if (!file || file.size > MAX_BACKUP_BYTES)
     throw new Error(
-      '保存したバックアップを選んでください。ファイルの上限は50MBです。',
+      `保存したバックアップを選んでください。ファイルの上限は${MAX_BACKUP_BYTES / 1_000_000}MBです。`,
     );
   return file.text();
 }
@@ -42,6 +48,7 @@ export function DataPanel({
   const [newEventOpen, setNewEventOpen] = useState(false);
   const [eventName, setEventName] = useState('');
   const [eventDay, setEventDay] = useState(today());
+  const incomingSales = incoming ? summarizeSales(incoming.orders) : null;
   return (
     <section className="data-panel" aria-labelledby="backup-heading">
       <h3 id="backup-heading">
@@ -112,11 +119,7 @@ export function DataPanel({
           title="新しい開催回を準備"
           className="restore-dialog"
         >
-          {errorMessage && (
-            <p className="inline-error" role="alert">
-              {errorMessage}
-            </p>
-          )}
+          <InlineError message={errorMessage} />
           <div className="restore">
             <p>
               新しい開催回に切り替えると、記録が削除されます。
@@ -145,8 +148,8 @@ export function DataPanel({
                 <input
                   value={eventName}
                   required
-                  maxLength={80}
-                  placeholder="例：早稲田祭 2027"
+                  maxLength={MAX_EVENT_NAME_LENGTH}
+                  placeholder={eventNameExample(1)}
                   onChange={(event) => setEventName(event.target.value)}
                 />
               </label>
@@ -176,11 +179,7 @@ export function DataPanel({
         title="バックアップから復元"
         className="restore-dialog"
       >
-        {errorMessage && (
-          <p className="inline-error" role="alert">
-            {errorMessage}
-          </p>
-        )}
+        <InlineError message={errorMessage} />
         <div className="restore">
           <p>
             バックアップを復元します。
@@ -220,32 +219,15 @@ export function DataPanel({
                   </tr>
                   <tr>
                     <th scope="row">売上</th>
-                    <td>
-                      {yen(
-                        incoming.orders
-                          .filter((o) => o.status === 'paid')
-                          .reduce((n, o) => n + o.quote.total, 0),
-                      )}
-                    </td>
+                    <td>{yen(incomingSales!.sales)}</td>
                   </tr>
                   <tr>
                     <th scope="row">販売本数</th>
-                    <td>
-                      {incoming.orders
-                        .filter((o) => o.status === 'paid')
-                        .reduce((n, o) => n + count(o.quantities), 0)}
-                      本
-                    </td>
+                    <td>{incomingSales!.count}本</td>
                   </tr>
                   <tr>
                     <th scope="row">保留の注文</th>
-                    <td>
-                      {
-                        incoming.orders.filter((o) => o.status === 'pending')
-                          .length
-                      }
-                      件
-                    </td>
+                    <td>{pendingOrders(incoming).length}件</td>
                   </tr>
                   <tr>
                     <th scope="row">確認待ちの記録</th>

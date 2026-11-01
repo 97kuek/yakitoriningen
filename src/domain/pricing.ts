@@ -1,6 +1,8 @@
 import { count, priceSchema, quantitySchema, quoteSchema } from './model';
 import type { Price, Quantities } from './model';
-import { getMenu, getUnitPrice } from './catalog';
+import { bundleApplies, getMenu, getUnitPrice } from './catalog';
+
+export type Quote = ReturnType<typeof quote>;
 
 export function quote(quantities: Quantities, price: Price) {
   const q = quantitySchema.parse(quantities);
@@ -15,7 +17,7 @@ export function quote(quantities: Quantities, price: Price) {
     0,
   );
   let bundles = 0;
-  if (p.bundleEnabled && (!p.discounted || p.bundleDuringDiscount)) {
+  if (bundleApplies(p)) {
     const eligible = menu.filter(
       (item) => !p.bundleItems || p.bundleItems.includes(item.id),
     );
@@ -45,4 +47,13 @@ export function quote(quantities: Quantities, price: Price) {
     bundles,
     singles,
   });
+}
+
+/** A quote, or null when the quantities cannot be priced (for display only). */
+export function tryQuote(quantities: Quantities, price: Price): Quote | null {
+  try {
+    return quote(quantities, price);
+  } catch {
+    return null;
+  }
 }

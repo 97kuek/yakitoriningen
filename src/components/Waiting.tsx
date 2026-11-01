@@ -1,14 +1,29 @@
 import { useRef, useState } from 'react';
-import { IconButton, Button, Dialog } from './controls';
-import { handoffUndoError, needsTicketReturn } from '../domain/handoff';
+import {
+  IconButton,
+  Button,
+  Dialog,
+  InlineError,
+  preventKeyRepeat,
+} from './controls';
+import { handoffUndoError } from '../domain/handoff';
+import { matchesTicket, TICKET_SEARCH_MAX_LENGTH } from '../domain/history';
+import { isAwaitingHandoff } from '../domain/order';
+import { needsTicketReturn } from '../domain/ticket';
 import { newId } from '../lib/id';
 import { orderItems, timeText, dayText } from '../presentation/format';
-
 import type { Order, Snapshot } from '../domain/model';
-import type { Shared } from '../ui';
+import type { Handoff, Shared } from '../ui';
 import { Icon } from './Icon';
 import { Ticket } from './Ticket';
 import './Waiting.css';
+
+/**
+ * Minimum gap between two handoffs. The next order moves under the pointer after
+ * a completion, so a quick second click must not complete it.
+ */
+const HANDOFF_REPEAT_GUARD_MS = 500;
+
 export function Waiting({
   snapshot,
   perform,
@@ -19,10 +34,8 @@ export function Waiting({
   onHandoffChange,
 }: Shared & {
   snapshot: Snapshot;
-  lastHandoff: { orderId: string; completionId: string } | null;
-  onHandoffChange: (
-    value: { orderId: string; completionId: string } | null,
-  ) => void;
+  lastHandoff: Handoff | null;
+  onHandoffChange: (value: Handoff | null) => void;
 }) {
   const [ticketSearch, setTicketSearch] = useState('');
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -32,7 +45,7 @@ export function Waiting({
   const lastCompletion = useRef(-Infinity);
   const returnOperationIds = useRef(new Map<string, string>());
   const waiting = snapshot.orders
-    .filter((o) => o.status === 'paid' && !o.delivered)
+    .filter(isAwaitingHandoff)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const unreturnedOrders = snapshot.orders.filter(needsTicketReturn);
   const returnRows = snapshot.orders.filter(
@@ -60,22 +73,15 @@ export function Waiting({
           ),
         )
       : null;
-  const visibleOrders = snapshot.orders
-    .filter(
-      (order) =>
-        order.status === 'paid' &&
-        !order.delivered &&
-        (!ticketSearch.trim() ||
-          (/^\d+$/.test(ticketSearch.trim()) &&
-            order.ticket === Number(ticketSearch))),
-    )
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const visibleOrders = waiting.filter((order) =>
+    matchesTicket(order, ticketSearch),
+  );
   function completeHandoff(order: Order) {
     if (
       busy ||
       completing.current ||
       order.delivered ||
-      performance.now() - lastCompletion.current < 500
+      performance.now() - lastCompletion.current < HANDOFF_REPEAT_GUARD_MS
     )
       return;
     completing.current = true;
@@ -133,7 +139,7 @@ export function Waiting({
           <input
             type="search"
             inputMode="numeric"
-            maxLength={3}
+            maxLength={TICKET_SEARCH_MAX_LENGTH}
             placeholder="例：1"
             value={ticketSearch}
             onChange={(event) => setTicketSearch(event.target.value)}
@@ -255,13 +261,7 @@ export function Waiting({
               type="button"
               className="icon-button complete-button"
               disabled={busy}
-              onKeyDown={(event) => {
-                if (
-                  event.repeat &&
-                  (event.key === 'Enter' || event.key === ' ')
-                )
-                  event.preventDefault();
-              }}
+              onKeyDown={preventKeyRepeat}
               onClick={(event) => {
                 if (event.detail > 1) return;
                 completeHandoff(order);
@@ -302,11 +302,7 @@ export function Waiting({
             </Button>
           }
         >
-          {errorMessage && (
-            <p className="inline-error" role="alert">
-              {errorMessage}
-            </p>
-          )}
+          <InlineError message={errorMessage} />
           <div className="ticket-recovery-list" data-testid="unreturned">
             {returnRows.map((order) => (
               <div key={order.id}>
@@ -323,13 +319,7 @@ export function Waiting({
                   type="button"
                   disabled={busy || order.returned}
                   aria-label={`札${order.ticket}を回収した`}
-                  onKeyDown={(event) => {
-                    if (
-                      event.repeat &&
-                      (event.key === 'Enter' || event.key === ' ')
-                    )
-                      event.preventDefault();
-                  }}
+                  onKeyDown={preventKeyRepeat}
                   onClick={(event) => {
                     if (event.detail <= 1) recoverTicket(order);
                   }}

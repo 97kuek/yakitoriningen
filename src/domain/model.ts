@@ -1,6 +1,26 @@
 import { z } from 'zod';
+import {
+  DEFAULT_BUNDLE_PRICE,
+  DEFAULT_BUNDLE_SIZE,
+  DEFAULT_UNIT_PRICE,
+  MAX_BUNDLE_SIZE,
+  MAX_CANCEL_REASON_LENGTH,
+  MAX_EVENT_NAME_LENGTH,
+  MAX_ID_LENGTH,
+  MAX_MONEY,
+  MAX_PRICE_LABEL_LENGTH,
+  MAX_PRODUCT_NAME_LENGTH,
+  MAX_PRODUCTS,
+  MAX_QUANTITY,
+  MAX_TICKETS,
+  PRICE_LABELS,
+} from './constants';
 
-export const products = [
+/** Key of the single metadata record. Part of the stored format. */
+export const META_KEY = 'main';
+
+/** Menu used by prices saved before per-product menus existed, and by a new event. */
+export const defaultProducts = [
   { id: 'momo', name: 'もも' },
   { id: 'kawa', name: 'かわ' },
   { id: 'negima', name: 'ねぎま' },
@@ -12,7 +32,7 @@ const forbiddenProductIds = [
 const productIdSchema = z
   .string()
   .min(1)
-  .max(100)
+  .max(MAX_ID_LENGTH)
   .refine(
     (value) => !forbiddenProductIds.includes(value),
     'この商品IDは使用できません',
@@ -29,21 +49,21 @@ function rejectUnsafeKeys(value: unknown, ctx: z.RefinementCtx) {
 export const quantitySchema = z.preprocess(
   rejectUnsafeKeys,
   z
-    .record(productIdSchema, z.number().int().min(0).max(999))
-    .refine((value) => Object.keys(value).length <= 30, '商品は30種類までです'),
+    .record(productIdSchema, z.number().int().min(0).max(MAX_QUANTITY))
+    .refine(
+      (value) => Object.keys(value).length <= MAX_PRODUCTS,
+      `商品は${MAX_PRODUCTS}種類までです`,
+    ),
 );
 export type Quantities = z.infer<typeof quantitySchema>;
-export const emptyQuantities = (): Quantities => ({
-  momo: 0,
-  kawa: 0,
-  negima: 0,
-});
-export const moneySchema = z.number().int().min(0).max(100_000_000);
-const id = z.string().min(1).max(100);
+export const moneySchema = z.number().int().min(0).max(MAX_MONEY);
+const id = z.string().min(1).max(MAX_ID_LENGTH);
+const ticketNumberSchema = z.number().int().min(1).max(MAX_TICKETS);
+const eventNameSchema = z.string().min(1).max(MAX_EVENT_NAME_LENGTH);
 export const menuItemSchema = z
   .object({
     id: productIdSchema,
-    name: z.string().trim().min(1).max(40),
+    name: z.string().trim().min(1).max(MAX_PRODUCT_NAME_LENGTH),
     price: moneySchema,
     discountPrice: moneySchema,
   })
@@ -52,20 +72,20 @@ export type MenuItem = z.infer<typeof menuItemSchema>;
 export const priceSchema = z
   .object({
     id,
-    label: z.string().trim().min(1).max(40),
+    label: z.string().trim().min(1).max(MAX_PRICE_LABEL_LENGTH),
     unit: moneySchema,
-    bundleSize: z.number().int().min(1).max(999),
+    bundleSize: z.number().int().min(1).max(MAX_BUNDLE_SIZE),
     bundlePrice: moneySchema,
     bundleEnabled: z.boolean(),
     mix: z.boolean(),
-    items: z.array(menuItemSchema).min(1).max(30).optional(),
-    bundleItems: z.array(productIdSchema).max(30).optional(),
+    items: z.array(menuItemSchema).min(1).max(MAX_PRODUCTS).optional(),
+    bundleItems: z.array(productIdSchema).max(MAX_PRODUCTS).optional(),
     discounted: z.boolean().optional(),
     bundleDuringDiscount: z.boolean().optional(),
   })
   .strict()
   .superRefine((price, ctx) => {
-    const ids = (price.items ?? products).map((p) => p.id);
+    const ids = (price.items ?? defaultProducts).map((p) => p.id);
     if (new Set(ids).size !== ids.length)
       ctx.addIssue({
         code: 'custom',
@@ -86,10 +106,10 @@ export const priceSchema = z
 export type Price = z.infer<typeof priceSchema>;
 export const normalPrice = (priceId: string): Price => ({
   id: priceId,
-  label: '通常',
-  unit: 150,
-  bundleSize: 5,
-  bundlePrice: 600,
+  label: PRICE_LABELS.normal,
+  unit: DEFAULT_UNIT_PRICE,
+  bundleSize: DEFAULT_BUNDLE_SIZE,
+  bundlePrice: DEFAULT_BUNDLE_PRICE,
   bundleEnabled: true,
   mix: true,
 });
@@ -106,11 +126,11 @@ export const dateSchema = z
   }, '営業日が正しくありません');
 export const metaSchema = contextSchema
   .extend({
-    key: z.literal('main'),
-    event: z.string().trim().min(1).max(80),
+    key: z.literal(META_KEY),
+    event: z.string().trim().min(1).max(MAX_EVENT_NAME_LENGTH),
     day: dateSchema,
     activePriceId: id,
-    ticketCount: z.number().int().min(1).max(100),
+    ticketCount: ticketNumberSchema,
     sequence: z.number().int().nonnegative(),
     expenseTotal: moneySchema.nullable().default(null),
   })
@@ -129,17 +149,17 @@ export const orderSchema = z
     id,
     assignmentId: id,
     confirmOperationId: id,
-    event: z.string().min(1).max(80),
+    event: eventNameSchema,
     day: dateSchema,
-    ticket: z.number().int().min(1).max(100),
+    ticket: ticketNumberSchema,
     quantities: quantitySchema,
     names: z.preprocess(
       rejectUnsafeKeys,
       z
-        .record(productIdSchema, z.string().min(1).max(40))
+        .record(productIdSchema, z.string().min(1).max(MAX_PRODUCT_NAME_LENGTH))
         .refine(
-          (value) => Object.keys(value).length <= 30,
-          '商品は30種類までです',
+          (value) => Object.keys(value).length <= MAX_PRODUCTS,
+          `商品は${MAX_PRODUCTS}種類までです`,
         ),
     ),
     price: priceSchema,
@@ -158,7 +178,7 @@ export const orderSchema = z
 export type Order = z.infer<typeof orderSchema>;
 export const ticketSchema = z
   .object({
-    number: z.number().int().min(1).max(100),
+    number: ticketNumberSchema,
     orderId: id.nullable(),
     assignmentId: id.nullable(),
   })
@@ -189,25 +209,20 @@ export const commandSchema = z.discriminatedUnion('type', [
     .object({
       type: z.literal('cancel'),
       ...target,
-      reason: z.string().trim().min(1).max(200),
+      reason: z.string().trim().min(1).max(MAX_CANCEL_REASON_LENGTH),
     })
     .strict(),
   z.object({ type: z.literal('price'), price: priceSchema }).strict(),
   z.object({ type: z.literal('expense'), amount: moneySchema }).strict(),
   z.object({ type: z.literal('day'), day: dateSchema }).strict(),
-  z
-    .object({
-      type: z.literal('tickets'),
-      count: z.number().int().min(1).max(100),
-    })
-    .strict(),
+  z.object({ type: z.literal('tickets'), count: ticketNumberSchema }).strict(),
 ]);
 export type Command = z.infer<typeof commandSchema>;
 export const operationSchema = z
   .object({
     id,
     context: contextSchema,
-    event: z.string().min(1).max(80),
+    event: eventNameSchema,
     day: dateSchema,
     command: commandSchema,
     status: z.enum(['pending', 'done', 'dismissed']),

@@ -1,9 +1,12 @@
-import type { Command, Context } from './domain/model';
+import type { Command, Context, Price, Quantities } from './domain/model';
+
 export type ActionHandler = (work: () => Promise<unknown>) => Promise<void>;
 export type CommandSaver = (
   command: Command,
   operationId?: string,
 ) => Promise<string>;
+
+/** Props every screen receives from App. */
 export type Shared = {
   perform: ActionHandler;
   saveCommand: CommandSaver;
@@ -11,7 +14,16 @@ export type Shared = {
   busy: boolean;
   errorMessage: string;
 };
-export const commandNames = {
+
+/** The order being entered. The price is fixed when the first skewer is added. */
+export type Draft = { quantities: Quantities; price: Price | null };
+export const emptyDraft = (): Draft => ({ quantities: {}, price: null });
+
+/** The latest handoff, kept so it can be undone. */
+export type Handoff = { orderId: string; completionId: string };
+
+/** Operator-facing names of stored command types. */
+export const commandNames: Record<Command['type'], string> = {
   reserve: '札の確保',
   pay: '会計確定',
   deliver: '受け渡し',

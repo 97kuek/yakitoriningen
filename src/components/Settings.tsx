@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { dateSchema, type Snapshot } from '../domain/model';
+import { findActivePrice } from '../domain/catalog';
+import { MAX_TICKETS } from '../domain/constants';
 import type { Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { DataPanel } from './DataPanel';
@@ -19,18 +21,15 @@ export function Settings({
   hasDraft: boolean;
   onDirtyChange: (dirty: boolean) => void;
 }) {
-  const active = snapshot.prices.find(
-    (price) => price.id === snapshot.meta.activePriceId,
-  )!;
+  const active = findActivePrice(snapshot)!;
   const [day, setDay] = useState(snapshot.meta.day);
   const [tickets, setTickets] = useState(String(snapshot.meta.ticketCount));
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [saved, setSaved] = useState('');
   const [menuDirty, setMenuDirty] = useState(false);
-  const dirty =
-    menuDirty ||
-    day !== snapshot.meta.day ||
-    tickets !== String(snapshot.meta.ticketCount);
+  const operationDirty =
+    day !== snapshot.meta.day || tickets !== String(snapshot.meta.ticketCount);
+  const dirty = menuDirty || operationDirty;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   return (
     <section className="panel settings">
@@ -88,7 +87,7 @@ export function Settings({
                   <input
                     type="number"
                     min="1"
-                    max="100"
+                    max={MAX_TICKETS}
                     required
                     value={tickets}
                     onChange={(event) => setTickets(event.target.value)}
@@ -96,8 +95,7 @@ export function Settings({
                 </label>
               </div>
               <div className="operation-save">
-                {(day !== snapshot.meta.day ||
-                  tickets !== String(snapshot.meta.ticketCount)) && (
+                {operationDirty && (
                   <Button
                     variant="primary"
                     type="submit"

@@ -1,5 +1,15 @@
-import { metaSchema, priceSchema, type Snapshot } from '../domain/model';
-import { createMenuDraft } from '../domain/catalog';
+import {
+  META_KEY,
+  metaSchema,
+  priceSchema,
+  type Snapshot,
+} from '../domain/model';
+import {
+  createMenuDraft,
+  findActivePrice,
+  isLegacyDiscountPrice,
+} from '../domain/catalog';
+import { freeTickets } from '../domain/ticket';
 
 /** Prepare a clean ledger; the caller atomically replaces the unchanged previous ledger. */
 export function newEvent(
@@ -14,16 +24,9 @@ export function newEvent(
     previous.tickets.some((ticket) => ticket.orderId !== null)
   )
     throw new Error('未完了の会計や未回収の札を先に確認してください。');
-  const active = previous.prices.find(
-    (price) => price.id === previous.meta.activePriceId,
-  );
+  const active = findActivePrice(previous);
   if (!active) throw new Error('商品・価格を確認できません。');
-  if (
-    !active.items &&
-    active.label === '値下げ' &&
-    active.unit === 50 &&
-    !active.bundleEnabled
-  )
+  if (isLegacyDiscountPrice(active))
     throw new Error(
       '先に「商品・価格」で通常価格へ戻し、価格を確認してから記録を保存してください。',
     );
@@ -33,7 +36,7 @@ export function newEvent(
     discounted: false,
   });
   const meta = metaSchema.parse({
-    key: 'main',
+    key: META_KEY,
     databaseId: newId(),
     generation: newId(),
     event,
@@ -47,11 +50,7 @@ export function newEvent(
     meta,
     prices: [price],
     orders: [],
-    tickets: Array.from({ length: meta.ticketCount }, (_, index) => ({
-      number: index + 1,
-      orderId: null,
-      assignmentId: null,
-    })),
+    tickets: freeTickets(meta.ticketCount),
     operations: [],
     logs: [],
   };
