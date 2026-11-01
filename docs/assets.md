@@ -92,3 +92,12 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 編集プロンプト：
 
 > Edit this exact 1536x1024 animation sprite sheet. Remove ALL off-white background to genuine transparent alpha, including the spaces surrounding every chick and tray and inside negative spaces. Preserve the exact six-cell 3-column by 2-row arrangement, poses, frame positions, scale, color and linework of every chick and tray. Do not add any objects, text, glow, shadow, halo or new background. This is for cutting into GIF frames; all clear space must be fully transparent, no paper texture or opaque background rectangle. Keep all outlines crisp and solid.
+
+## ロゴと履歴の空状態（2026-11-01）
+
+- `public/assets/flight-mark.webp`：人力飛行機をこぐひよこと焼き鳥の透過イラスト。ロゴの文字は画像に含めず、画面と同じBIZ UDPMinchoで「焼き鳥人間」を表示する。
+- `public/assets/history-empty.webp`：虫眼鏡と帳簿を持ったひよこ。注文履歴に該当する注文がない場合に中央表示する。
+
+どちらも組み込みのimage_genで生成し、透過を保ってWebPへ縮小変換した。旧ロゴは参照資料として残すがヘッダーでは使用しない。新しい画像もPWAの事前キャッシュに含める。
+
+生成指定：平面的な黄・生成り・茶色の線画、文字・背景・影なし。人力飛行機は細長い主翼・自転車型のペダル・プロペラを描き、履歴用は鉢巻姿のひよこと空の帳簿を描く。
