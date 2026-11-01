@@ -66,7 +66,7 @@ Lucide Reactを使用。ISC License。[公式サイトとライセンス](https:
 
 ## 透過とループの修正（2026-11-01）
 
-組み込みimage_genで背景を透過に編集し、ffmpegで上段3コマをGIFへ符号化した。`empty-orders.gif`は無限ループ、`empty-orders-still.png`は同じGIFの先頭フレーム。画面には停止・再生操作を用意し、動きを減らす設定では静止画を使う。
+組み込みimage_genで背景を透過に編集し、ffmpegで上段3コマをGIFへ符号化した。`empty-orders.gif`は無限ループ、`empty-orders-still.png`は同じGIFの先頭フレーム。画面には停止・再生ボタンを置かずループ再生する。端末の動きを減らす設定では静止画を使う。
 
 編集プロンプト：
 
