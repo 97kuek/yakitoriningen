@@ -83,9 +83,6 @@ export function DaySetup({
         >
           <InlineError message={errorMessage} />
           <div className="restore">
-            <p>
-              前の営業日の記録は残ります。商品・価格を引き継ぎ、当日の在庫を登録できます。
-            </p>
             {hasDraft && (
               <p role="status">入力途中の注文や設定を先に保存してください。</p>
             )}
