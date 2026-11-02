@@ -5,6 +5,7 @@ test('アプリ内でREADMEと同じ使い方と画面画像を読める', async
   await loadFixture(page, await ledgerFixture());
   await page.getByRole('button', { name: 'このアプリについて' }).click();
   const help = page.getByRole('dialog');
+  expect((await help.boundingBox())!.width).toBeGreaterThan(800);
   await expect(
     help.getByRole('heading', { name: '会計担当者向け', exact: true }),
   ).toBeVisible();

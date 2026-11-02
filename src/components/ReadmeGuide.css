@@ -1,5 +1,5 @@
-.control-dialog.help-dialog {
-  max-width: 920px;
+dialog.control-dialog.help-dialog {
+  width: min(920px, calc(100vw - 32px));
 }
 .readme-guide {
   margin: 24px 0;
