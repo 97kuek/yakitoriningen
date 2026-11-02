@@ -25,8 +25,8 @@ import type { Cashier } from '../application/ports';
 import { Icon } from './Icon';
 import { TicketPicker } from './TicketPicker';
 
-/** Quick amounts for common notes and coins. */
-const CASH_SHORTCUTS = [500, 1000, 2000, 5000, 10000];
+/** Amounts added for common notes and coins. */
+const CASH_INCREMENTS = [100, 500, 1000, 5000, 10000];
 /** Delay before the confirm button accepts a click, so a double click cannot confirm. */
 const CONFIRM_READY_DELAY_MS = 500;
 
@@ -340,6 +340,21 @@ function Payment({
     staged && operation.command.type === 'pay'
       ? operation.command.received
       : Number(received);
+  const validAmount =
+    Number.isSafeInteger(amount) && amount >= 0 && amount <= MAX_MONEY;
+  const addReceivedCash = (value: number) => {
+    if (receivedInput.current?.validity.badInput) return;
+    setReceived((current) => {
+      const next = Number(current) + value;
+      if (
+        !Number.isSafeInteger(next) ||
+        Number(current) < 0 ||
+        next > MAX_MONEY
+      )
+        return current;
+      return String(next);
+    });
+  };
   useEffect(() => {
     if (!staged || confirmReady) return;
     const timer = window.setTimeout(
@@ -398,6 +413,7 @@ function Payment({
           id={`payment-${order.id}`}
           onSubmit={(e) => {
             e.preventDefault();
+            if (!received || !validAmount || amount < order.quote.total) return;
             setConfirmReady(false);
             void perform(() =>
               store.prepare(order.confirmOperationId, context, {
@@ -426,11 +442,6 @@ function Payment({
               />
             </div>
           </label>
-          {received !== '' && amount < order.quote.total && (
-            <p className="amount-error" role="status">
-              {yen(order.quote.total - amount)} 足りません。
-            </p>
-          )}
           <div className="cash-buttons">
             <Button
               type="button"
@@ -438,17 +449,22 @@ function Payment({
             >
               ちょうど
             </Button>
-            {CASH_SHORTCUTS.map((value) => (
+            {CASH_INCREMENTS.map((value) => (
               <Button
                 type="button"
                 key={value}
-                disabled={value < order.quote.total}
-                onClick={() => setReceived(String(value))}
+                disabled={!validAmount || amount + value > MAX_MONEY}
+                onClick={() => addReceivedCash(value)}
               >
-                {yen(value)}
+                ＋{value.toLocaleString('ja-JP')}
               </Button>
             ))}
           </div>
+          {received !== '' && amount < order.quote.total && (
+            <p className="amount-error" role="status">
+              {yen(order.quote.total - amount)} 足りません。
+            </p>
+          )}
         </form>
       ) : (
         <div className="cash-calculation" aria-label="お釣りの計算">
@@ -494,7 +510,7 @@ function Payment({
             ref={primaryButton}
             form={`payment-${order.id}`}
             className="checkout-button wide"
-            disabled={!received || amount < order.quote.total}
+            disabled={!received || !validAmount || amount < order.quote.total}
           >
             お釣りを確認
             <Icon name="arrow" />
