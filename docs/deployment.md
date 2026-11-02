@@ -1,3 +1,9 @@
+---
+title: "デプロイ"
+status: current
+updated: "2026-11-02"
+---
+
 # 公開と更新
 
 公開URL：[焼き鳥人間](https://yakitoriningen.pages.dev)

@@ -1,27 +1,20 @@
-# 全体アーキテクチャ
+---
+title: "全体アーキテクチャ"
+status: current
+updated: "2026-11-02"
+---
 
-更新日：2026-11-02
+# 全体アーキテクチャ
 
 PC1台で使うオフライン対応のWebアプリです。React・TypeScript・Viteで画面を作り、業務処理も保存もブラウザ内で実行します。サーバー側のAPI・DB・認証はありません。
 
 ## 構成
 
-```mermaid
-flowchart TD
-    host["静的配信：アプリ・画像・PWA"] --> browser
-    subgraph browser[使用するPCのブラウザ]
-        ui["画面：ホーム・会計・札回収・注文履歴・集計・設定"] --> application["application：操作の準備・実行・照合"]
-        application --> domain["domain：価格・注文・札・集計のルール"]
-        application --> ports["永続化ポート"]
-        adapter["storage：Dexieアダプター"] -. 実装 .-> ports
-        adapter --> db[(IndexedDB)]
-        db --> committed["コミット済みの状態を購読"]
-        committed --> ui
-        db --> backup["JSONバックアップ／CSV出力"]
-    end
-```
+![アイコン付き全体構成図](images/architecture.svg)
 
-配信は初回準備とアプリ更新に使用します。Cloudflare Pagesで`dist/`を配信し、サーバー側の実行処理やDBは追加しません。公開・更新は[配信手順](deployment.md)を参照してください。営業中に注文や経費を配信元へ送信する処理はありません。
+SVGは拡大して読めます。[PNG版](images/architecture.png)も用意しています。サービス・概念名はアイコンの下、矢印には処理名を記載します。注文データの経路はPC内に閉じています。
+
+配信は初回準備とアプリ更新に使用します。Cloudflare Pagesで`dist/`を配信し、サーバー側の実行処理やDBは追加しません。公開・更新は[デプロイ手順](deployment.md)を参照してください。営業中に注文や経費を配信元へ送信する処理はありません。
 
 ## 責務と依存
 
@@ -80,7 +73,7 @@ DDDとクリーンアーキテクチャの考え方に沿い、依存を内側�
 - JSONは全ストアの同じ時点から当日分を抽出する。復元は内容・整合性とプレビュー後にDBが変わっていないことを確認し、対象日と保持する別日の記録を統合し、新しい世代と一括で反映する。
 - 更新は入力中・保存中・保留の操作と未保存の設定を解消してから行う。保存データは残し、更新のためのバックアップ再選択は求めない。
 
-strict指定や永続ストレージの要求は、ブラウザデータの削除・停電・PC故障への無条件の保証ではありません。本番利用前の実機確認とバックアップ運用は[検証範囲](acceptance.md)・[運用手順](operations.md)にまとめています。
+strict指定や永続ストレージの要求は、ブラウザデータの削除・停電・PC故障への無条件の保証ではありません。本番利用前の実機確認とバックアップ運用は[要件と受入条件](requirements.md)・[フロントエンドの利用手順](frontend.md#利用手順と復旧)にまとめています。
 
 ## 営業日と集計データ
 
@@ -97,3 +90,30 @@ BackupHistory（保存確認）とDraftCache（注文下書き）は営業記録
 ホームを営業準備・再開・集計の入口とします。ロゴと中央のホーム操作は同じ遷移を使い、会計・設定・集計の未保存入力を保護します。営業後の集計は必要になるまで遅延読込します。
 
 営業終了のJSON・CSVは一度読み取った同じSnapshotから当日分を生成します。設定のJSON保存、履歴の絞り込みCSVとは用途を分け、終了直前にDB識別子・世代・日付・連番と未解決作業を再確認します。保存確認は利用者の申告であり、物理ファイルの確認をブラウザが自動検出するものではありません。
+
+## クラス・型の関係
+
+![クラス図](images/classes.png)
+
+[PlantUMLソース](diagrams/classes.puml)から生成しています。実在するクラス・ポートと、TypeScriptの型を区別し、型を架空のEntityクラスに置き換えません。bootstrapのcashierオブジェクトがCashierを実装し、CashierStoreへの委譲と変更購読を提供します。
+
+図の更新は、ソース修正後に次を実行します（Homebrewのplantumlを使用）。
+
+```sh
+plantuml -charset UTF-8 -tpng -o ../images docs/diagrams/classes.puml
+rsvg-convert -o docs/images/architecture.png docs/images/architecture.svg
+```
+
+全体図はimages/architecture.svgが編集元、PNGは表示用です。ブランドアイコンは[theSVG](https://github.com/glincker/thesvg)のGitHub・Cloudflare・Reactを使用し、ブラウザ・保存・ファイル・検証などの概念にはLucideを使用します。各ブランドの商標は権利者に帰属します。
+
+## 文書の分担
+
+| 文書 | 内容 |
+|---|---|
+| [要件定義](requirements.md) | 対象業務・制約・機能・受入条件 |
+| [フロントエンド](frontend.md) | 画面・操作・入力保持・復旧手順・素材 |
+| [バックエンド](backend.md) | ブラウザ内の業務処理・保存・互換性・性能 |
+| 本書 | 全体構成・依存関係・データ経路・クラス図 |
+| [デプロイ](deployment.md) | CI・認証情報・公開・更新・URL移行 |
+
+READMEは利用者向けの短い案内、CONTRIBUTING.mdは開発・Git・検証手順、AGENTS.mdは作業時の指示です。重複する仕様や過去の実装計画はdocsに残さず、変更履歴はGitで確認します。

@@ -6,8 +6,6 @@
 - [全体の構成](docs/architecture.md)
 - [画面と入力状態](docs/frontend.md)
 - [業務処理と保存の契約](docs/backend.md)
-- [実際の操作](docs/operations.md)
-- [検証範囲](docs/acceptance.md)
 
 営業中の注文・現金・番号札を扱うため、見た目の変更でも保存結果や入力中の注文を壊さないことを優先します。
 

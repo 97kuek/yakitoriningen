@@ -1,0 +1,66 @@
+@startuml
+skinparam backgroundColor #FFFEF8
+skinparam defaultFontName "Hiragino Sans"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #504F45
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #88877B
+skinparam packageBackgroundColor #FFF9D9
+skinparam packageBorderColor #CBC8B9
+hide empty members
+left to right direction
+title 焼き鳥人間 — 実装のクラス・ポート
+class "cashier\nbootstrap.ts" as CashierObject <<object>> {
+  +read / initialize / prepare
+  +execute / discard / restore
+  +watch(observer)
+}
+interface Cashier {
+  +read(): Promise<Snapshot | null>
+  +initialize / prepare / execute
+  +discard / restore / watch
+}
+class CashierStore <<storage>> {
+  +db: Database
+}
+class CashierCommands <<application>> {
+  -repository: LedgerRepository
+  +read / initialize / prepare
+  +execute / discard / restore
+}
+interface LedgerRepository <<port>> {
+  +read(work)
+  +write(work)
+}
+class DexieLedgerRepository <<storage>> {
+  -db: Database
+  +read(work)
+  +write(work)
+}
+class Database <<storage>> {
+  +meta / prices / orders
+  +tickets / operations / logs
+}
+class Dexie <<library>>
+CashierObject ..|> Cashier : 公開ポートを実装
+CashierObject -right-> CashierStore : 操作を委譲・変更を購読
+CashierStore -right-|> CashierCommands : 業務手順を継承
+CashierCommands -right-> LedgerRepository : 原子的な読み書きを依頼
+DexieLedgerRepository ..|> LedgerRepository : 保存ポートを実装
+CashierStore -down-> DexieLedgerRepository : constructorで生成
+DexieLedgerRepository -right-> Database : 同じtransactionで保存
+Database -right-|> Dexie : DBスキーマを定義
+note bottom of CashierCommands
+  時刻・ID生成をconstructorから注入。
+  domainの関数が価格・状態遷移を計算する。
+  Snapshot・CommandはTypeScriptの型。
+end note
+note bottom of LedgerRepository
+  workへLedgerTransactionを渡す。
+  meta・orders・ticketsなどを一括操作。
+end note
+@enduml
