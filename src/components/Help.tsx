@@ -1,4 +1,5 @@
 import { Dialog } from './controls';
+import { ReadmeGuide } from './ReadmeGuide';
 
 const CONTACT_EMAIL = 'ueki.keitaro@gmail.com';
 const REPOSITORY_URL = 'https://github.com/97kuek/yakitoriningen';
@@ -22,6 +23,7 @@ export function Help({
       <p>
         記録はこのPCのブラウザに保存します。他の端末との自動同期はありません。
       </p>
+      <ReadmeGuide />
       <dl className="about-details">
         <dt>お問い合わせ</dt>
         <dd>

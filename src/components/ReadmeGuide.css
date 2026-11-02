@@ -1,0 +1,24 @@
+.help-dialog {
+  max-width: 920px;
+}
+.readme-guide {
+  margin: 24px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 24px;
+}
+.readme-guide img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 16px 0 24px;
+}
+.readme-guide h4 {
+  margin-top: 24px;
+  font-size: var(--font-body);
+}
+.readme-guide p {
+  line-height: 1.8;
+}
