@@ -85,6 +85,18 @@ function validate(data: Snapshot): void {
   );
   for (let n = 1; n <= data.meta.ticketCount; n++)
     requireValid(tickets.has(n), '札の欠落');
+  const orderActions = new Map<string, Snapshot['operations']>();
+  for (const operation of data.operations) {
+    if (operation.status !== 'done' || !('orderId' in operation.command))
+      continue;
+    const orderId = operation.command.orderId;
+    const related = orderActions.get(orderId);
+    if (related) related.push(operation);
+    else orderActions.set(orderId, [operation]);
+  }
+  const logSequences = new Map(
+    data.logs.map((log) => [log.operationId, log.sequence]),
+  );
   for (const order of data.orders) {
     requireValid(order.event === data.meta.event, '開催回が一致しません');
     requireValid(
@@ -145,12 +157,7 @@ function validate(data: Snapshot): void {
     if (!releasesTicket(order))
       requireValid(ownsTicket(ticket, order), '使用中の札と注文');
     else requireValid(ticket?.orderId !== order.id, '回収・完了済み札の所有権');
-    const related = data.operations.filter(
-      (op) =>
-        op.status === 'done' &&
-        'orderId' in op.command &&
-        op.command.orderId === order.id,
-    );
+    const related = orderActions.get(order.id) ?? [];
     const reservations = related.filter((op) => op.command.type === 'reserve');
     requireValid(reservations.length === 1, '注文の作成操作がありません');
     const reservation = reservations[0];
@@ -188,7 +195,7 @@ function validate(data: Snapshot): void {
         '会計確定の操作ID',
       );
     try {
-      validateOrderHistory(order, related, data);
+      validateOrderHistory(order, related, data, logSequences);
     } catch {
       requireValid(false, '注文と受け渡し・取消の記録');
     }

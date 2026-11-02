@@ -9,13 +9,13 @@ export function validateOrderHistory(
   order: Order,
   actions: Operation[],
   snapshot: Snapshot,
-): void {
-  const sequences = new Map(
+  sequences: ReadonlyMap<string, number> = new Map(
     snapshot.logs.map((log) => [log.operationId, log.sequence]),
-  );
+  ),
+): void {
   let replay: Order = {
     ...order,
-    ticket: reservedTicket(order, actions, snapshot.logs),
+    ticket: reservedTicket(order, actions, snapshot.logs, sequences),
     status: 'pending',
     received: null,
     change: null,

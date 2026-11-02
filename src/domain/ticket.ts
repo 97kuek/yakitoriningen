@@ -5,6 +5,7 @@ export function reservedTicket(
   order: Order,
   operations: Operation[],
   logs: Log[],
+  logSequences?: ReadonlyMap<string, number>,
 ): number {
   const related = operations.filter(
     (operation) =>
@@ -17,7 +18,8 @@ export function reservedTicket(
   )?.command;
   if (reservation?.type === 'reserve' && reservation.ticket !== undefined)
     return reservation.ticket;
-  const sequences = new Map(logs.map((log) => [log.operationId, log.sequence]));
+  const sequences =
+    logSequences ?? new Map(logs.map((log) => [log.operationId, log.sequence]));
   const firstMove = related
     .filter((operation) => operation.command.type === 'selectTicket')
     .sort(
