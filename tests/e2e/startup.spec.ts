@@ -2,6 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import {
   addSkewers,
+  confirmPayment,
   ledgerFixture,
   loadFixture,
   openFixture,
@@ -157,7 +158,7 @@ test('通信なしで再起動しても途中の会計を札と金額で示し�
   await expect(page.locator('.startup [aria-expanded]')).toHaveCount(0);
   await startCounter(page);
   await expect(page.getByRole('heading', { name: 'お会計' })).toBeVisible();
-  await page.getByRole('button', { name: '会計を確定' }).click();
+  await confirmPayment(page);
   await expect(page.getByTestId('waiting-order')).toContainText(/もも\s*1本/);
 });
 

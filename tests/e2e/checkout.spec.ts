@@ -3,6 +3,7 @@ import {
   addSkewers,
   freeTicketCount,
   completeButton,
+  confirmPayment,
   ledgerFixture,
   openFixture,
   openScreen,
@@ -87,6 +88,10 @@ test('キーボードだけで会計でき、お預かり金額は二重枠を�
     page.getByRole('heading', { name: '札回収待ち', exact: false }),
   ).toBeVisible();
   await confirm.press('Enter');
+  await page
+    .getByRole('dialog', { name: '渡す札を確認' })
+    .getByRole('button', { name: 'この札で確定' })
+    .press('Enter');
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   await addSkewers(page, 'もも');
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
@@ -124,7 +129,7 @@ test('お釣り確認と確定は同じ位置にあり、二度押しでは確�
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await expect(page.getByTestId('change')).toHaveText('￥350');
   await expect(page.getByTestId('waiting-order')).toHaveCount(0);
-  await confirm.click();
+  await confirmPayment(page);
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   expect(nativeDialogs).toBe(0);
 });
@@ -296,6 +301,10 @@ test('Enterで会計の各段階を進め、長押しで段階を飛ばさない
   ).toBeVisible();
   await page.keyboard.up('Enter');
   await page.keyboard.press('Enter');
+  await page
+    .getByRole('dialog', { name: '渡す札を確認' })
+    .getByRole('button', { name: 'この札で確定' })
+    .press('Enter');
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   await expect(
     page.getByRole('button', { name: '会計へ', exact: true }),

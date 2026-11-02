@@ -160,8 +160,8 @@ export function Waiting({
               {completedOrder && lastHandoff && (
                 <Button
                   variant="plain"
-                  aria-label="札回収を取り消す"
-                  title="直前の札回収を取り消す"
+                  aria-label="直前の回収を取り消す"
+                  title="直前の回収を取り消す"
                   disabled={busy}
                   aria-describedby={undoError ? 'undo-reason' : undefined}
                   onClick={() => {
@@ -180,7 +180,7 @@ export function Waiting({
                     });
                   }}
                 >
-                  回収を戻す
+                  直前の回収を取り消す
                 </Button>
               )}
               {undoError && (

@@ -184,12 +184,21 @@ export async function addSkewers(page: Page, product: string, count = 1) {
     await page.getByRole('button', { name: `${product}を1本増やす` }).click();
 }
 
+/** Opens the ticket check and commits the payment with its selected ticket. */
+export async function confirmPayment(page: Page) {
+  await page.getByRole('button', { name: '会計を確定', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '渡す札を確認', exact: true })
+    .getByRole('button', { name: 'この札で確定', exact: true })
+    .click();
+}
+
 /** Takes cash for the current draft and confirms the payment. */
 export async function pay(page: Page, received = '1000') {
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
   await page.getByLabel('お預かり金額').fill(received);
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
-  await page.getByRole('button', { name: '会計を確定', exact: true }).click();
+  await confirmPayment(page);
 }
 
 export const completeButton = (page: Page) =>

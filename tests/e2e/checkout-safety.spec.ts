@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   addSkewers,
+  confirmPayment,
   completeButton,
   ledgerFixture,
   loadFixture,
@@ -32,38 +33,33 @@ test('入力中は再読み込みを確認し、再開すると注文を復元�
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
 });
 
-test('札は確定画面でだけ変更でき、同じ番号の再選択後もEnterで確定できる', async ({
+test('同じ札の再選択でも確認画面にとどまり、Enterで確定できる', async ({
   page,
 }) => {
   await openFixture(page, await ledgerFixture());
-  await expect(page.getByRole('button', { name: '渡す札を選ぶ' })).toHaveCount(
-    0,
-  );
   await addSkewers(page, 'もも', 2);
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
-  await expect(page.getByRole('button', { name: '渡す札を選ぶ' })).toHaveCount(
-    0,
-  );
   await page.getByLabel('お預かり金額').fill('500');
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
-  const picker = page.getByRole('dialog', { name: '渡す札を選ぶ' });
+  await page.getByRole('button', { name: '会計を確定', exact: true }).click();
+  const picker = page.getByRole('dialog', {
+    name: '渡す札を確認',
+    exact: true,
+  });
   for (let i = 0; i < 2; i++) {
-    await page
-      .getByRole('button', { name: '渡す札を選ぶ', exact: true })
-      .click();
     await picker
-      .getByRole('button', { name: '札12を選ぶ', exact: true })
+      .getByRole('button', { name: '札1を選ぶ', exact: true })
       .click();
-    await expect(picker).not.toBeVisible();
+    await expect(picker).toBeVisible();
     await expect(
-      page.getByRole('button', { name: '会計を確定', exact: true }),
+      picker.getByRole('button', { name: 'この札で確定', exact: true }),
     ).toBeFocused();
-    await expect(page.getByTestId('change')).toHaveText('￥200');
+    await expect(page.getByTestId('waiting-order')).toHaveCount(0);
   }
   await page.keyboard.press('Enter');
   await expect(
     page.getByTestId('waiting-order').locator('.ticket-chip'),
-  ).toContainText('12');
+  ).toHaveText('札 1');
 });
 
 test('未回収の札があれば営業を終了できない', async ({ page }) => {
@@ -168,7 +164,7 @@ test('札の確保直後に再起動しても、一時保存から同じ注文�
   await startCounter(page);
   await page.getByLabel('お預かり金額').fill('500');
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
-  await page.getByRole('button', { name: '会計を確定', exact: true }).click();
+  await confirmPayment(page);
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   await expect(page.getByLabel('ももの本数', { exact: true })).toHaveValue('0');
 });

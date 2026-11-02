@@ -282,6 +282,7 @@ export function Dialog({
   footer,
   className = '',
   focusAfterClose,
+  initialFocus,
 }: {
   open: boolean;
   onClose: () => void;
@@ -290,6 +291,7 @@ export function Dialog({
   footer?: ReactNode;
   className?: string;
   focusAfterClose?: { readonly current: HTMLElement | null };
+  initialFocus?: { readonly current: HTMLElement | null };
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -304,6 +306,7 @@ export function Dialog({
           ? document.activeElement
           : null;
       dialog.showModal();
+      initialFocus?.current?.focus({ preventScroll: true });
     } else if (!open && dialog.open) {
       dialog.close();
       const target = focusAfterClose?.current ?? returnFocusRef.current;

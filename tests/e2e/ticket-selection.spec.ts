@@ -5,38 +5,35 @@ import {
   ledgerFixture,
   openFixture,
   openScreen,
-  pay,
 } from './helpers';
 
-test('渡す札を空き番号から選んで会計し、使用中の札を選べず回収後は再利用できる', async ({
-  page,
-}) => {
-  await openFixture(page, await ledgerFixture());
+test('使用中の札を選べず、回収後は札確認で再利用できる', async ({ page }) => {
+  await openFixture(page, await ledgerFixture({ orders: 1, waiting: 1 }));
   await addSkewers(page, 'もも', 2);
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
   await page.getByLabel('お預かり金額').fill('500');
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
-  await page.getByRole('button', { name: '渡す札を選ぶ', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: '渡す札を選ぶ' });
-  await dialog.getByRole('button', { name: '札12を選ぶ', exact: true }).click();
   await page.getByRole('button', { name: '会計を確定', exact: true }).click();
+  const dialog = page.getByRole('dialog', {
+    name: '渡す札を確認',
+    exact: true,
+  });
   await expect(
-    page.getByTestId('waiting-order').locator('.ticket-chip'),
-  ).toContainText('12');
-  await addSkewers(page, 'もも');
-  await page.getByRole('button', { name: '会計へ', exact: true }).click();
-  await page.getByLabel('お預かり金額').fill('500');
-  await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
-  await page.getByRole('button', { name: '渡す札を選ぶ', exact: true }).click();
-  await expect(
-    dialog.getByRole('button', { name: '札12を選ぶ', exact: true }),
+    dialog.getByRole('button', { name: '札1を選ぶ', exact: true }),
   ).toBeDisabled();
   await dialog.getByRole('button', { name: '閉じる', exact: true }).click();
   await completeButton(page).click();
-  await page.getByRole('button', { name: '渡す札を選ぶ', exact: true }).click();
+  await page.getByRole('button', { name: '会計を確定', exact: true }).click();
   await expect(
-    dialog.getByRole('button', { name: '札12を選ぶ', exact: true }),
+    dialog.getByRole('button', { name: '札1を選ぶ', exact: true }),
   ).toBeEnabled();
+  await dialog.getByRole('button', { name: '札1を選ぶ', exact: true }).click();
+  await dialog
+    .getByRole('button', { name: 'この札で確定', exact: true })
+    .click();
+  await expect(
+    page.getByTestId('waiting-order').locator('.ticket-chip'),
+  ).toHaveText('札 1');
 });
 
 test('商品名と在庫の字頭を揃えて離し、平均時間を大きくし件数バッジを表示しない', async ({

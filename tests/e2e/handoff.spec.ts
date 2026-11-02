@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   addSkewers,
+  confirmPayment,
   freeTicketCount,
   completeButton,
   ledgerFixture,
@@ -25,7 +26,7 @@ async function sell(page: Page) {
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
   await page.getByRole('button', { name: 'ちょうど', exact: true }).click();
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
-  await page.getByRole('button', { name: '会計を確定', exact: true }).click();
+  await confirmPayment(page);
 }
 
 // The app ignores a second handoff within this window (see Waiting.tsx).
@@ -46,7 +47,7 @@ test('同じ位置を150ms間隔で二度押しても一件だけ完了し、次
   await completeButton(page).first().click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   await page
-    .getByRole('button', { name: '札回収を取り消す', exact: true })
+    .getByRole('button', { name: '直前の回収を取り消す', exact: true })
     .click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(2);
 });
@@ -98,7 +99,7 @@ test('受け渡しは1回で記録して入力中の注文と位置を保ち、�
 
   const undo = page
     .locator('.waiting-undo-slot')
-    .getByRole('button', { name: '札回収を取り消す', exact: true });
+    .getByRole('button', { name: '直前の回収を取り消す', exact: true });
   await undo.click();
   await expect(page.getByTestId('waiting-order')).toHaveCount(1);
   await expect(page.getByLabel('ねぎまの本数')).toHaveValue('1');

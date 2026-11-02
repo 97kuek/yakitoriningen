@@ -1,12 +1,10 @@
-.ticket-picker-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  white-space: nowrap;
-  background: var(--yellow);
-  border-color: var(--ink);
-  font-variant-numeric: tabular-nums;
+.ticket-picker-choice {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.ticket-picker-choice .ticket-chip {
+  font-size: var(--font-large);
 }
 .ticket-picker-grid {
   display: grid;

@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addSkewers, ledgerFixture, openFixture, openScreen } from './helpers';
+import {
+  addSkewers,
+  confirmPayment,
+  ledgerFixture,
+  openFixture,
+  openScreen,
+} from './helpers';
 
 /** Every visible text uses one of the three font sizes. */
 async function expectThreeSizes(page: Page) {
@@ -46,7 +52,7 @@ test('営業開始・会計・売上・設定・返金の文字サイズは3種�
   await page.getByRole('button', { name: 'ちょうど', exact: true }).click();
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await expectThreeSizes(page);
-  await page.getByRole('button', { name: '会計を確定', exact: true }).click();
+  await confirmPayment(page);
   await openScreen(page, '注文履歴');
   await expectThreeSizes(page);
   await page.getByRole('button', { name: '全額返金', exact: true }).click();
@@ -165,7 +171,9 @@ test('合計の横にセット内訳を置き、お釣りを筆算順に揃え�
 
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
   await expect(page.locator('.receipt-items')).toHaveCSS('font-size', '16px');
-  await expect(page.locator('.payment .ticket-chip')).toHaveText('札 1');
+  await expect(
+    page.locator('.payment .section-heading .ticket-chip'),
+  ).toHaveCount(0);
   await page.getByRole('button', { name: '￥2,000', exact: true }).click();
   await page.getByRole('button', { name: 'お釣りを確認' }).click();
   const calculation = page.locator('.cash-calculation > div');
@@ -187,7 +195,7 @@ test('合計の横にセット内訳を置き、お釣りを筆算順に揃え�
       nodes.map((node) => node.getBoundingClientRect().right),
     );
   expect(Math.max(...edges) - Math.min(...edges)).toBeLessThanOrEqual(1);
-  await page.getByRole('button', { name: '会計を確定' }).click();
+  await confirmPayment(page);
   await expect(page.locator('.waiting .ticket-chip')).toHaveText('札 1');
   await expect(page.getByTestId('checkout-feedback')).toBeEmpty();
 

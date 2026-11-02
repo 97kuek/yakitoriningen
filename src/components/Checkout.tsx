@@ -23,7 +23,6 @@ import { emptyDraft } from '../ui';
 import type { Draft, Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { Icon } from './Icon';
-import { Ticket } from './Ticket';
 import { TicketPicker } from './TicketPicker';
 
 /** Quick amounts for common notes and coins. */
@@ -316,6 +315,7 @@ function Payment({
   onEdit,
   busy,
   tickets,
+  errorMessage,
 }: Shared & {
   order: Order;
   operation?: Operation;
@@ -325,6 +325,7 @@ function Payment({
   tickets: Snapshot['tickets'];
 }) {
   const [received, setReceived] = useState('');
+  const [ticketOpen, setTicketOpen] = useState(false);
   const [confirmReady, setConfirmReady] = useState(true);
   const paymentRoot = useRef<HTMLElement>(null);
   const primaryButton = useRef<HTMLButtonElement>(null);
@@ -372,31 +373,6 @@ function Payment({
           <Icon name="cash" />
           お会計
         </h2>
-        {staged ? (
-          <TicketPicker
-            tickets={tickets.map((ticket) =>
-              ticket.number === order.ticket
-                ? { ...ticket, orderId: null, assignmentId: null }
-                : ticket,
-            )}
-            value={order.ticket}
-            focusAfterClose={confirmButton}
-            onChange={(ticket) =>
-              ticket === order.ticket
-                ? undefined
-                : perform(() =>
-                    saveCommand({
-                      type: 'selectTicket',
-                      ...target,
-                      from: order.ticket,
-                      ticket,
-                    }),
-                  )
-            }
-          />
-        ) : (
-          <Ticket number={order.ticket} />
-        )}
       </div>
       {resumed && (
         <p className="notice">
@@ -504,9 +480,7 @@ function Payment({
             onKeyDown={preventKeyRepeat}
             onClick={(event) => {
               if (event.detail > 1) return;
-              void perform(async () => {
-                await store.execute(order.confirmOperationId, context);
-              });
+              setTicketOpen(true);
             }}
           >
             <Icon name="check" />
@@ -577,6 +551,32 @@ function Payment({
           )}
         </div>
       </div>
+      {staged && ticketOpen && (
+        <TicketPicker
+          tickets={tickets.map((ticket) =>
+            ticket.number === order.ticket
+              ? { ...ticket, orderId: null, assignmentId: null }
+              : ticket,
+          )}
+          value={order.ticket}
+          busy={busy}
+          errorMessage={errorMessage}
+          focusAfterClose={confirmButton}
+          onClose={() => setTicketOpen(false)}
+          onConfirm={(ticket) =>
+            perform(async () => {
+              if (ticket !== order.ticket)
+                await saveCommand({
+                  type: 'selectTicket',
+                  ...target,
+                  from: order.ticket,
+                  ticket,
+                });
+              await store.execute(order.confirmOperationId, context);
+            })
+          }
+        />
+      )}
     </section>
   );
 }
