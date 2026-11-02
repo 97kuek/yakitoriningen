@@ -175,9 +175,9 @@ test('営業日を変更すると履歴とCSVの対象日が変わり、前日�
   await openFixture(page, await ledgerFixture({ orders: 1 }));
   await openScreen(page, '設定');
   await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
-  const preparation = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  const preparation = page.getByRole('dialog', { name: '新しい営業を作る' });
   await preparation.getByLabel('営業日').fill('2026-11-08');
   await preparation.getByRole('button', { name: 'この営業日を準備' }).click();
   await startCounter(page);
@@ -191,7 +191,7 @@ test('営業日を変更すると履歴とCSVの対象日が変わり、前日�
   ).toBeDisabled();
   await openScreen(page, '設定');
   await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
   await preparation.getByRole('button', { name: 'この日の営業に戻る' }).click();
   await startCounter(page);

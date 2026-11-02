@@ -67,6 +67,7 @@ export const moneySchema = z.number().int().min(0).max(MAX_MONEY);
 const id = z.string().min(1).max(MAX_ID_LENGTH);
 const ticketNumberSchema = z.number().int().min(1).max(MAX_TICKETS);
 const eventNameSchema = z.string().min(1).max(MAX_EVENT_NAME_LENGTH);
+const dayNameSchema = eventNameSchema.trim().min(1);
 export const menuItemSchema = z
   .object({
     id: productIdSchema,
@@ -242,6 +243,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z
     .object({
       type: z.literal('startDay'),
+      name: dayNameSchema.optional(),
       day: dateSchema,
       price: priceSchema,
       stock: stockSchema,
@@ -250,6 +252,7 @@ export const commandSchema = z.discriminatedUnion('type', [
     })
     .strict(),
   z.object({ type: z.literal('expense'), amount: moneySchema }).strict(),
+  z.object({ type: z.literal('renameDay'), name: dayNameSchema }).strict(),
   z.object({ type: z.literal('stock'), quantities: stockSchema }).strict(),
   z
     .object({

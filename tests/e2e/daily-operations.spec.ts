@@ -20,9 +20,9 @@ test('営業日の準備と再開を同じ入口で行い、他の日を残し�
   await openScreen(page, '設定');
   await expect(page.getByLabel('営業日', { exact: true })).toHaveCount(0);
   await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
-  const preparation = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  const preparation = page.getByRole('dialog', { name: '新しい営業を作る' });
   await preparation.getByRole('button', { name: 'この日の営業に戻る' }).click();
   await startCounter(page);
   await openScreen(page, '注文履歴');
@@ -42,7 +42,7 @@ test('営業日の準備と再開を同じ入口で行い、他の日を残し�
   await startCounter(page);
   await openScreen(page, '設定');
   await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
   await expect(
     preparation.getByRole('combobox', { name: '保存済みの営業日' }),

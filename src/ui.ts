@@ -41,6 +41,7 @@ export const commandNames: Record<Command['type'], string> = {
   resumeDay: '営業日の再開',
   catalog: '商品・価格・在庫の変更',
   startDay: '営業日の準備',
+  renameDay: '営業名の変更',
   day: '営業日変更',
   tickets: '札の範囲変更',
 };

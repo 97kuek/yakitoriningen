@@ -10,6 +10,7 @@ import { yen } from '../presentation/format';
 import { Button, Dialog, FilePicker, InlineError } from './controls';
 import { Icon } from './Icon';
 import { DaySetup } from './DaySetup';
+import { dayName } from '../domain/day';
 
 async function fileText(file: File | undefined) {
   if (!file || file.size > MAX_BACKUP_BYTES)
@@ -26,6 +27,7 @@ export function DataPanel({
   errorMessage,
   hasDraft = false,
   exportBackup,
+  showDaySetup = true,
 }: {
   store: Cashier;
   snapshot: Snapshot | null;
@@ -34,6 +36,7 @@ export function DataPanel({
   errorMessage: string;
   hasDraft?: boolean;
   exportBackup: BackupExporter;
+  showDaySetup?: boolean;
 }) {
   const [incoming, setIncoming] = useState<Snapshot | null>(null);
   const [expected, setExpected] = useState<Snapshot | null>(null);
@@ -77,7 +80,7 @@ export function DataPanel({
           <Icon name="upload" />
           バックアップから復元
         </Button>
-        {snapshot && (
+        {snapshot && showDaySetup && (
           <DaySetup
             store={store}
             perform={perform}
@@ -126,7 +129,7 @@ export function DataPanel({
                 <tbody>
                   <tr>
                     <th scope="row">営業名</th>
-                    <td>{incoming.meta.event}</td>
+                    <td>{dayName(incoming)}</td>
                   </tr>
                   <tr>
                     <th scope="row">日付</th>

@@ -35,6 +35,7 @@ function details(op: Operation, snapshot: Snapshot): string {
     return `${name} ${c.change > 0 ? '追加' : '廃棄'} ${Math.abs(c.change)}本`;
   }
   if (c.type === 'expense') return `当日の経費 ${yen(c.amount)}`;
+  if (c.type === 'renameDay') return `営業名 ${c.name}`;
   if (c.type === 'day') return `営業日 ${c.day}`;
   return `番号札 1〜${c.count}`;
 }

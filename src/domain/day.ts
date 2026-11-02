@@ -1,5 +1,33 @@
 import type { Snapshot } from './model';
 
+/** Display name is day-scoped; the original event identity and orders stay immutable. */
+export function dayName(
+  snapshot: Pick<Snapshot, 'meta' | 'operations' | 'logs'>,
+  day = snapshot.meta.day,
+): string {
+  const sequences = new Map(
+    snapshot.logs.map((log) => [log.operationId, log.sequence]),
+  );
+  let name = snapshot.meta.event;
+  let latest = -1;
+  for (const operation of snapshot.operations) {
+    const command = operation.command;
+    if (
+      operation.day !== day ||
+      operation.status !== 'done' ||
+      (command.type !== 'renameDay' && command.type !== 'startDay') ||
+      !command.name
+    )
+      continue;
+    const sequence = sequences.get(operation.id);
+    if (sequence !== undefined && sequence > latest) {
+      latest = sequence;
+      name = command.name;
+    }
+  }
+  return name;
+}
+
 /** Starting a new day preserves the ledger and requires the previous work to be settled. */
 export function validateDaySetup(
   snapshot: Snapshot,

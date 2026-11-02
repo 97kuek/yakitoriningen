@@ -5,6 +5,7 @@ import {
 } from '../domain/constants';
 import type { Snapshot } from '../domain/model';
 import { clockText } from '../domain/time';
+import { dayName } from '../domain/day';
 
 /** Business days with orders, plus the current day, in order. */
 export function festivalDays(
@@ -18,9 +19,11 @@ export function festivalDays(
   ].sort();
 }
 
-export function festivalTitle(snapshot: Pick<Snapshot, 'meta'>): string {
+export function festivalTitle(
+  snapshot: Pick<Snapshot, 'meta' | 'operations' | 'logs'>,
+): string {
   const [year, month, day] = snapshot.meta.day.split('-');
-  return `${year}年度 早稲田祭　${Number(month)}月${Number(day)}日`;
+  return `${dayName(snapshot)}　${year}年${Number(month)}月${Number(day)}日`;
 }
 
 /** A history time filter: an empty value means every time. */

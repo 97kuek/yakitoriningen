@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import './DaySetup.css';
 import type { Snapshot } from '../domain/model';
-import { MAX_TICKETS } from '../domain/constants';
+import { MAX_EVENT_NAME_LENGTH, MAX_TICKETS } from '../domain/constants';
 import { findActivePrice } from '../domain/catalog';
 import {
   validateDaySetup,
   validateDayChange,
   businessDays,
   daySettings,
+  dayName,
 } from '../domain/day';
 import { contextOf } from '../domain/snapshot';
 import {
@@ -30,7 +31,7 @@ export function DaySetup({
   errorMessage,
   onRestart,
   hasDraft,
-  label = '別の日の営業を準備',
+  label = '新しい営業を作る',
   initialDay,
   primary = false,
 }: {
@@ -49,6 +50,7 @@ export function DaySetup({
   const [dayMenu, setDayMenu] = useState<MenuForm | null>(null);
   const [dayTickets, setDayTickets] = useState('');
   const [resumeDay, setResumeDay] = useState('');
+  const [name, setName] = useState('');
   return (
     <>
       <Button
@@ -59,6 +61,7 @@ export function DaySetup({
             const current = await store.read();
             if (!current) throw new Error('営業の記録がありません。');
             setDayBase(current);
+            setName(dayName(current));
             setResumeDay(
               businessDays(current)
                 .filter((day) => day !== current.meta.day)
@@ -79,7 +82,7 @@ export function DaySetup({
         <Dialog
           open={dayOpen}
           onClose={() => setDayOpen(false)}
-          title="別の日の営業を準備"
+          title="新しい営業を作る"
           className="restore-dialog day-setup-dialog"
         >
           <InlineError message={errorMessage} />
@@ -96,7 +99,10 @@ export function DaySetup({
                     onChange={setResumeDay}
                     options={businessDays(dayBase)
                       .filter((day) => day !== dayBase.meta.day)
-                      .map((day) => ({ value: day, label: day }))}
+                      .map((day) => ({
+                        value: day,
+                        label: `${day} ${dayName(dayBase, day)}`,
+                      }))}
                   />
                   <Button
                     disabled={hasDraft}
@@ -137,6 +143,7 @@ export function DaySetup({
                   const context = contextOf(dayBase.meta);
                   await store.prepare(operationId, context, {
                     type: 'startDay',
+                    name,
                     day: nextDay,
                     price: menuPrice({
                       ...dayMenu,
@@ -156,6 +163,15 @@ export function DaySetup({
                 });
               }}
             >
+              <label className="day-name-field">
+                営業名
+                <input
+                  required
+                  maxLength={MAX_EVENT_NAME_LENGTH}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </label>
               <label>
                 営業日
                 <input

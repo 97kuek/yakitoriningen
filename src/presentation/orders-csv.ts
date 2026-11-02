@@ -1,6 +1,7 @@
 import { getMenu } from '../domain/catalog';
 import type { Order, Snapshot } from '../domain/model';
 import { JAPAN_TIME_ZONE } from '../domain/time';
+import { dayName } from '../domain/day';
 
 // Excel needs a byte order mark to read UTF-8 CSV as Japanese text.
 const UTF8_BOM = '﻿';
@@ -24,7 +25,8 @@ const escape = (value: string | number | null) =>
 
 /** Spreadsheet export of orders. It is for totals only and cannot restore data. */
 export function ordersCsv(
-  snapshot: Pick<Snapshot, 'prices' | 'orders'>,
+  snapshot: Pick<Snapshot, 'prices' | 'orders'> &
+    Partial<Pick<Snapshot, 'meta' | 'operations' | 'logs'>>,
 ): string {
   const columns = new Map<string, string>();
   for (const price of snapshot.prices)
@@ -35,7 +37,7 @@ export function ordersCsv(
   const productIds = [...columns.keys()];
   const header = [
     '注文ID',
-    '開催回',
+    '営業名',
     '営業日',
     '注文時刻',
     '札番号',
@@ -50,9 +52,23 @@ export function ordersCsv(
     '札回収済',
     '取消理由',
   ];
+  const names = new Map<string, string>();
+  if (snapshot.meta && snapshot.operations && snapshot.logs)
+    for (const day of new Set(snapshot.orders.map((order) => order.day)))
+      names.set(
+        day,
+        dayName(
+          {
+            meta: snapshot.meta,
+            operations: snapshot.operations,
+            logs: snapshot.logs,
+          },
+          day,
+        ),
+      );
   const rows = snapshot.orders.map((o) => [
     o.id,
-    o.event,
+    names.get(o.day) ?? o.event,
     o.day,
     timeFormat.format(new Date(o.createdAt)),
     o.ticket,

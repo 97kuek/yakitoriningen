@@ -59,10 +59,10 @@ test('ホームからの営業準備でも未保存の価格を破棄しない',
     .getByRole('button', { name: '未保存のまま移動', exact: true })
     .click();
   await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
   const setup = page.getByRole('dialog', {
-    name: '別の日の営業を準備',
+    name: '新しい営業を作る',
     exact: true,
   });
   await expect(

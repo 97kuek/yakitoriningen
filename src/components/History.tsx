@@ -142,7 +142,7 @@ export function History({
           onClick={() => {
             download(
               ordersCsv({
-                prices: snapshot.prices,
+                ...snapshot,
                 orders: filterHistory(orders, ticketSearch, state, filters),
               }),
               `${snapshot.meta.day}-yakitori.csv`,

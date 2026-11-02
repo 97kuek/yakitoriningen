@@ -265,7 +265,7 @@ test('札枚数は編集時だけ保存を表示し、日付の直接編集と�
     .getByRole('button', { name: 'バックアップから復元', exact: true })
     .boundingBox())!;
   const next = (await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .boundingBox())!;
   expect(restore.y).toBe(next.y);
   expect(restore.width).toBe(next.width);
@@ -303,11 +303,11 @@ test('在庫を日別に登録し、残数と未保存の入力を保持する',
   await openScreen(page, '設定');
   await page.getByLabel('ももの在庫', { exact: true }).fill('1001');
   const prepare = page.getByRole('button', {
-    name: '別の日の営業を準備',
+    name: '新しい営業を作る',
     exact: true,
   });
   await prepare.click();
-  const dialog = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  const dialog = page.getByRole('dialog', { name: '新しい営業を作る' });
   await expect(
     dialog.getByRole('button', { name: 'この営業日を準備' }),
   ).toBeDisabled();

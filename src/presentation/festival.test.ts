@@ -4,7 +4,8 @@ import type { Snapshot } from '../domain/model';
 
 it('準備日や訂正履歴を開催日数として数えず年度と日付を示す', () => {
   const snapshot = {
-    meta: { day: '2026-11-07' },
+    meta: { day: '2026-11-07', event: '早稲田祭' },
+    logs: [],
     orders: [],
     operations: [
       {
@@ -14,7 +15,7 @@ it('準備日や訂正履歴を開催日数として数えず年度と日付を�
       },
     ],
   } as unknown as Snapshot;
-  expect(festivalTitle(snapshot)).toBe('2026年度 早稲田祭　11月7日');
+  expect(festivalTitle(snapshot)).toBe('早稲田祭　2026年11月7日');
   expect(festivalDays(snapshot)).toEqual(['2026-11-07']);
 });
 

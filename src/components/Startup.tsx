@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import { dayName } from '../domain/day';
+import { contextOf } from '../domain/snapshot';
 import { today, yen } from '../presentation/format';
 import { normalPrice, type Snapshot } from '../domain/model';
 import { menuForm, menuPrice, menuStock } from '../presentation/menu-form';
@@ -13,7 +15,13 @@ import { pendingOrders, unresolvedOperations } from '../domain/snapshot';
 import type { ActionHandler, BackupExporter } from '../ui';
 import { commandNames } from '../ui';
 import type { Cashier } from '../application/ports';
-import { Button, Dialog, DigitsInput, InlineError } from './controls';
+import {
+  Button,
+  Dialog,
+  DigitsInput,
+  IconButton,
+  InlineError,
+} from './controls';
 import { DataPanel } from './DataPanel';
 import { DaySetup } from './DaySetup';
 import { Icon } from './Icon';
@@ -45,6 +53,10 @@ export function Startup({
   const [menu, setMenu] = useState(() => menuForm(normalPrice(newId())));
   const [tickets, setTickets] = useState(String(DEFAULT_TICKET_COUNT));
   const [dateOpen, setDateOpen] = useState(false);
+  const [nameOpen, setNameOpen] = useState(false);
+  const [name, setName] = useState('');
+  const nameFormId = useId();
+  const nameOperation = useRef(newId());
   const differentDay = snapshot?.meta.day !== today();
   const reserved = snapshot ? pendingOrders(snapshot) : [];
   const pendingOperations = snapshot ? unresolvedOperations(snapshot) : [];
@@ -63,9 +75,65 @@ export function Startup({
           <>
             <h2>保存されている記録から再開</h2>
             <div className="startup-record">
-              <p className="startup-event">{snapshot.meta.event}</p>
+              <div className="startup-name">
+                <p className="startup-event">{dayName(snapshot)}</p>
+                <IconButton
+                  icon="edit"
+                  label="営業名を変更"
+                  onClick={() => {
+                    setName(dayName(snapshot));
+                    nameOperation.current = newId();
+                    setNameOpen(true);
+                  }}
+                />
+              </div>
               <time dateTime={snapshot.meta.day}>{snapshot.meta.day}</time>
             </div>
+            <Dialog
+              open={nameOpen}
+              onClose={() => setNameOpen(false)}
+              title="営業名を変更"
+              footer={
+                <Button
+                  type="submit"
+                  form={nameFormId}
+                  variant="primary"
+                  disabled={!name.trim()}
+                >
+                  保存
+                </Button>
+              }
+            >
+              <InlineError message={errorMessage} />
+              <form
+                id={nameFormId}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void perform(async () => {
+                    const context = contextOf(snapshot.meta);
+                    await store.prepare(nameOperation.current, context, {
+                      type: 'renameDay',
+                      name,
+                    });
+                    await store.execute(nameOperation.current, context);
+                    setNameOpen(false);
+                  });
+                }}
+              >
+                <label>
+                  営業名
+                  <input
+                    required
+                    maxLength={MAX_EVENT_NAME_LENGTH}
+                    value={name}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      nameOperation.current = newId();
+                    }}
+                  />
+                </label>
+              </form>
+            </Dialog>
             {(reserved.length > 0 || pendingOperations.length > 0) && (
               <section
                 className="startup-pending notice"
@@ -111,18 +179,6 @@ export function Startup({
                 <p>会計を始めたら、画面の案内に沿って確認してください。</p>
               </section>
             )}
-            {differentDay && (
-              <DaySetup
-                store={store}
-                perform={perform}
-                errorMessage={errorMessage}
-                onRestart={onRestart}
-                hasDraft={hasDraft}
-                label="本日の営業を準備"
-                initialDay={today()}
-                primary
-              />
-            )}
             <Button
               variant={differentDay ? 'secondary' : 'primary'}
               type="button"
@@ -132,6 +188,16 @@ export function Startup({
               会計を始める
               <Icon name="arrow" />
             </Button>
+            <DaySetup
+              store={store}
+              perform={perform}
+              errorMessage={errorMessage}
+              onRestart={onRestart}
+              hasDraft={hasDraft}
+              label="新しい営業を作る"
+              initialDay={differentDay ? today() : undefined}
+              primary={differentDay}
+            />
             <Dialog
               open={dateOpen}
               onClose={() => setDateOpen(false)}
@@ -242,6 +308,7 @@ export function Startup({
           onRestart={onRestart}
           exportBackup={exportBackup}
           hasDraft={hasDraft}
+          showDaySetup={false}
         />
       </section>
     </div>

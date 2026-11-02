@@ -725,6 +725,23 @@ dd {
   gap: 8px;
   margin: 22px 0;
 }
+.startup-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.startup-name .startup-event {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.startup-name .control-button {
+  flex: 0 0 auto;
+}
+.startup > .day-setup-trigger {
+  width: 100%;
+  margin-top: 12px;
+}
 .startup-record .startup-event {
   margin: 0;
   font-size: var(--font-large);

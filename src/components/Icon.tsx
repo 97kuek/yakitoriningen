@@ -1,5 +1,6 @@
 import {
   House,
+  Pencil,
   ArrowRight,
   Banknote,
   ChartNoAxesColumn,
@@ -27,6 +28,7 @@ import {
 } from 'lucide-react';
 const icons = {
   home: House,
+  edit: Pencil,
   plus: Plus,
   minus: Minus,
   cash: Banknote,

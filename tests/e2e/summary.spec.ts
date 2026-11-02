@@ -25,7 +25,7 @@ test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認
   third.paidAt = '2026-11-08T01:35:00Z';
   await openFixture(page, fixture);
   await expect(page.locator('.session-bar')).toContainText(
-    '2026年度 早稲田祭　11月8日',
+    '試験用の開催回　2026年11月8日',
   );
   await openScreen(page, '集計');
 
@@ -105,9 +105,9 @@ test('記録のない営業日を訂正したらグラフも新しい日付を�
   await openFixture(page, await ledgerFixture());
   await openScreen(page, '設定');
   await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
-  const preparation = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  const preparation = page.getByRole('dialog', { name: '新しい営業を作る' });
   await preparation.getByLabel('営業日').fill('2026-11-08');
   await preparation.getByRole('button', { name: 'この営業日を準備' }).click();
   await startCounter(page);

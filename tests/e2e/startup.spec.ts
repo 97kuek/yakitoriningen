@@ -252,11 +252,11 @@ test('別の日の準備は前日の注文を残し、価格と札枚数を引�
     await ledgerFixture({ orders: 1, price: { unit: 200, discounted: true } }),
   );
   const prepare = page.getByRole('button', {
-    name: '別の日の営業を準備',
+    name: '新しい営業を作る',
     exact: true,
   });
   await prepare.click();
-  const dialog = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  const dialog = page.getByRole('dialog', { name: '新しい営業を作る' });
   await expect(dialog.getByLabel('前年のバックアップを保存した')).toHaveCount(
     0,
   );
@@ -359,9 +359,9 @@ test('別の日の準備で商品・セット・札・任意在庫を一括保�
     await ledgerFixture({ orders: 1, price: { mix: false } }),
   );
   await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', { name: '別の日の営業を準備' });
+  const dialog = page.getByRole('dialog', { name: '新しい営業を作る' });
   await dialog.getByLabel('営業日').fill('2027-11-06');
   await dialog.getByLabel('番号札の枚数').fill('25');
   await dialog.getByLabel('商品1の名前').fill('つくね');

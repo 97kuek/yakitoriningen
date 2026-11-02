@@ -40,10 +40,10 @@ test('保存済み営業日の選択欄は日付を省略せず読め、再開�
   );
   await openScreen(page, '設定');
   await page
-    .getByRole('button', { name: '別の日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
   const dialog = page.getByRole('dialog', {
-    name: '別の日の営業を準備',
+    name: '新しい営業を作る',
     exact: true,
   });
   const select = dialog.getByRole('combobox', { name: '保存済みの営業日' });
@@ -59,7 +59,10 @@ test('保存済み営業日の選択欄は日付を省略せず読め、再開�
   expect(resumeBox.x).toBeGreaterThanOrEqual(selectBox.x + selectBox.width + 8);
   await select.click();
   await expect(
-    dialog.getByRole('option', { name: '2026-11-07', exact: true }),
+    dialog.getByRole('option', {
+      name: '2026-11-07 試験用の開催回',
+      exact: true,
+    }),
   ).toBeVisible();
   await select.press('Escape');
   await dialog.getByRole('button', { name: 'この日の営業に戻る' }).click();

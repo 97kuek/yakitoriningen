@@ -129,7 +129,7 @@ test('翌朝は本日の営業準備を主操作にし、前日の記録は日�
   await page.clock.install({ time: new Date('2026-11-08T01:00:00Z') });
   await loadFixture(page, await ledgerFixture());
   await expect(
-    page.getByRole('button', { name: '本日の営業を準備', exact: true }),
+    page.getByRole('button', { name: '新しい営業を作る', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: '会計を始める', exact: true }).click();
   const confirmation = page.getByRole('dialog', { name: '営業日を確認' });
@@ -138,11 +138,11 @@ test('翌朝は本日の営業準備を主操作にし、前日の記録は日�
     .getByRole('button', { name: '閉じる', exact: true })
     .click();
   await page
-    .getByRole('button', { name: '本日の営業を準備', exact: true })
+    .getByRole('button', { name: '新しい営業を作る', exact: true })
     .click();
   await expect(
     page
-      .getByRole('dialog', { name: '別の日の営業を準備' })
+      .getByRole('dialog', { name: '新しい営業を作る' })
       .getByLabel('営業日', { exact: true }),
   ).toHaveValue('2026-11-08');
 });

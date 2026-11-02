@@ -106,6 +106,7 @@ export class CashierCommands {
     const opening = settings
       ? commandSchema.parse({
           type: 'startDay',
+          name: event,
           day,
           price,
           stock: settings.stock,
