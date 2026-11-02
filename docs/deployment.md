@@ -13,7 +13,7 @@ Cloudflare Pagesで`dist/`のアプリ・画像・PWAだけを配信します。
 1. Node.js 22で`npm ci`、型確認、単体テスト、整形確認、ビルドを実行する。
 2. Chromiumを導入し、専用ポート4273でE2Eテストを実行する。
 3. 全検証が成功した`dist/`をartifactとして保存する。
-4. `main`へのpushでのみ、同じartifactを取得し、再ビルドせずCloudflare Pagesへ公開する。
+4. `main`へのpush、または`main`上の手動実行で、同じartifactを取得し再ビルドせずCloudflare Pagesへ公開する。
 
 PRでは公開しません。forkからのPRにもCloudflareの認証情報を渡しません。検証失敗時は公開jobを実行せず、公開認証情報がない場合も公開jobを失敗にします。成功時は実行結果のSummaryに公開したcommitとURLを記録します。
 
