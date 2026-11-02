@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './DataPanel.css';
 import type { Snapshot } from '../domain/model';
 import { summarizeSales } from '../domain/sales';
 import { pendingOrders } from '../domain/snapshot';
@@ -49,28 +50,22 @@ export function DataPanel({
         <Icon name="download" />
         バックアップ
       </h3>
-      {snapshot && (
-        <>
-          <div className="actions">
-            <div className="data-action">
-              <Button
-                variant="secondary"
-                type="button"
-                className="secondary"
-                onClick={() => perform(exportBackup)}
-              >
-                <Icon name="download" />
-                バックアップを保存
-              </Button>
-            </div>
-          </div>
-        </>
-      )}
-      <div className="data-secondary-actions">
+      <div
+        className={`backup-actions${snapshot ? '' : ' backup-actions-single'}`}
+      >
+        {snapshot && (
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() => perform(exportBackup)}
+          >
+            <Icon name="download" />
+            バックアップを保存
+          </Button>
+        )}
         <Button
           variant="secondary"
           type="button"
-          className="secondary restore-trigger"
           onClick={() => {
             setIncoming(null);
             setRestoreConfirmed(false);
@@ -80,16 +75,16 @@ export function DataPanel({
           <Icon name="upload" />
           バックアップから復元
         </Button>
-        {snapshot && showDaySetup && (
-          <DaySetup
-            store={store}
-            perform={perform}
-            errorMessage={errorMessage}
-            onRestart={onRestart}
-            hasDraft={hasDraft}
-          />
-        )}
       </div>
+      {snapshot && showDaySetup && (
+        <DaySetup
+          store={store}
+          perform={perform}
+          errorMessage={errorMessage}
+          onRestart={onRestart}
+          hasDraft={hasDraft}
+        />
+      )}
 
       <Dialog
         open={restoreOpen}

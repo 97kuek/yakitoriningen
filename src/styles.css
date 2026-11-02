@@ -801,19 +801,6 @@ dd {
   font-size: var(--font-small);
   color: var(--muted);
 }
-.data-panel .actions {
-  margin: 15px 0;
-  align-items: flex-start;
-}
-.data-action {
-  flex: 1;
-}
-.data-action > button {
-  width: 100%;
-}
-.data-action > .hint {
-  margin-bottom: 0;
-}
 .data-panel label {
   font-size: var(--font-small);
 }
@@ -1159,14 +1146,6 @@ dialog > h2 {
   .history > .section-heading {
     flex-wrap: wrap;
   }
-  .data-panel .actions {
-    align-items: stretch;
-  }
-  .data-panel .data-action > button {
-    font-size: var(--font-small);
-    padding: 9px 8px;
-    white-space: nowrap;
-  }
   .data-panel input[type='file'] {
     max-width: 100%;
   }
@@ -1272,9 +1251,6 @@ dialog {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-}
-.restore-trigger {
-  margin-top: 18px;
 }
 .day-setup-trigger {
   margin: 18px 0 0 8px;
@@ -1926,16 +1902,6 @@ input:not([type='checkbox']) {
 .history .state-label {
   white-space: nowrap;
 }
-.data-secondary-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
-}
-.data-secondary-actions > .control-button {
-  margin: 0;
-  width: 100%;
-}
 .operation-save {
   height: 40px;
   margin-top: 12px;
@@ -1992,11 +1958,6 @@ input:not([type='checkbox']) {
 }
 .help-dialog p {
   font-size: var(--font-body);
-}
-@media (max-width: 600px) {
-  .data-secondary-actions {
-    grid-template-columns: 1fr;
-  }
 }
 .checkout .product-name {
   flex: 1;
