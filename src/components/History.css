@@ -15,7 +15,7 @@
   flex-basis: 164px;
   width: 164px;
 }
-.history-filters input[type='search'] {
+.history-filters > label input {
   width: 104px;
 }
 .history .history-filters > .history-state {
@@ -37,6 +37,14 @@
 }
 .history tbody tr:hover {
   background: var(--selected-surface);
+}
+.history tbody tr {
+  cursor: pointer;
+}
+.history .history-details-trigger {
+  justify-content: flex-start;
+  padding: 0;
+  font-weight: inherit;
 }
 .history .history-order-actions {
   gap: 12px;

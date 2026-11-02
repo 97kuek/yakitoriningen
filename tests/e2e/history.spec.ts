@@ -59,6 +59,11 @@ test('検索欄を横一列に揃え、30分の時間帯・状態・札番号・
   await page.getByRole('option', { name: '10:00–10:30', exact: true }).click();
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page).first()).toContainText('10:00');
+  const filteredDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '表示条件の注文をCSVで保存' }).click();
+  expect((await filteredDownload).suggestedFilename()).toBe(
+    '2026-11-07-yakitori.csv',
+  );
   await choose(slot, '10:30–11:00', 0);
   await choose(slot, 'すべての時間', 3);
 
@@ -109,7 +114,7 @@ test('50件ずつページを分け、CSVは表示条件に合う全ページ分
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: '表示条件の注文をCSVで保存' }).click();
   const file = await downloading;
-  expect(file.suggestedFilename()).toContain('2026-11-07.csv');
+  expect(file.suggestedFilename()).toBe('2026-11-07-yakitori.csv');
   const csv = await readFile((await file.path())!, 'utf8');
   expect(csv.split('\r\n')).toHaveLength(52);
   expect(csv).not.toContain('2026-11-08');

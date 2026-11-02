@@ -20,7 +20,7 @@ import { newId } from '../lib/id';
 import type { ActionHandler } from '../ui';
 import type { Cashier } from '../application/ports';
 import { MenuFields } from './MenuFields';
-import { Button, Dialog, InlineError, Select } from './controls';
+import { Button, Dialog, DigitsInput, InlineError, Select } from './controls';
 
 /** One entry for preparing a new business day or reopening a saved day. */
 export function DaySetup({
@@ -166,13 +166,12 @@ export function DaySetup({
               </label>
               <label>
                 番号札の枚数
-                <input
-                  type="number"
-                  min="1"
+                <DigitsInput
+                  min={1}
                   max={MAX_TICKETS}
                   required
                   value={dayTickets}
-                  onChange={(event) => setDayTickets(event.target.value)}
+                  onValueChange={setDayTickets}
                 />
               </label>
               {dayMenu && (

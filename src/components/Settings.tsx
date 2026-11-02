@@ -6,7 +6,7 @@ import type { Shared, BackupExporter } from '../ui';
 import type { Cashier } from '../application/ports';
 import { DataPanel } from './DataPanel';
 import { MenuSettings } from './MenuSettings';
-import { Button } from './controls';
+import { Button, DigitsInput } from './controls';
 import { StorageStatus } from './StorageStatus';
 export function Settings({
   snapshot,
@@ -76,13 +76,12 @@ export function Settings({
               <div className="operation-settings">
                 <label>
                   番号札の枚数
-                  <input
-                    type="number"
-                    min="1"
+                  <DigitsInput
+                    min={1}
                     max={MAX_TICKETS}
                     required
                     value={tickets}
-                    onChange={(event) => setTickets(event.target.value)}
+                    onValueChange={setTickets}
                   />
                 </label>
               </div>

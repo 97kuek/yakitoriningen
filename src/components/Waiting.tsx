@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconButton,
   Button,
@@ -42,7 +42,10 @@ export function Waiting({
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
-  const waitMinutes = waitTime(snapshot, Math.max(now, Date.now()));
+  const waitMinutes = useMemo(
+    () => waitTime(snapshot, Math.max(now, Date.now())),
+    [snapshot, now],
+  );
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [undoNotice, setUndoNotice] = useState('');
   const [heldRecoveryIds, setHeldRecoveryIds] = useState<string[]>([]);
@@ -137,60 +140,6 @@ export function Waiting({
             {waitMinutes === null ? '記録なし' : `約${waitMinutes}分`}
           </strong>
         </span>
-        <div
-          className="waiting-tools"
-          hidden={!unreturnedOrders.length && !lastHandoff}
-        >
-          <div className="waiting-actions">
-            <div className="waiting-recovery-slot">
-              {unreturnedOrders.length > 0 && (
-                <Button
-                  variant="plain"
-                  className="waiting-recovery-button"
-                  title={`札の回収待ち ${unreturnedOrders.length}`}
-                  aria-label={`札の回収待ち ${unreturnedOrders.length}`}
-                  onClick={() => setRecoveryOpen(true)}
-                >
-                  <Icon name="ticket" />
-                  <span>{unreturnedOrders.length}</span>
-                </Button>
-              )}
-            </div>
-            <span className="waiting-undo-slot" title={undoError ?? ''}>
-              {completedOrder && lastHandoff && (
-                <Button
-                  variant="plain"
-                  aria-label="直前の回収を取り消す"
-                  title="直前の回収を取り消す"
-                  disabled={busy}
-                  aria-describedby={undoError ? 'undo-reason' : undefined}
-                  onClick={() => {
-                    if (undoError) {
-                      setUndoNotice(undoError);
-                      return;
-                    }
-                    void perform(async () => {
-                      await saveCommand({
-                        type: 'undoHandoff',
-                        orderId: completedOrder.id,
-                        assignmentId: completedOrder.assignmentId,
-                        completionId: lastHandoff.completionId,
-                      });
-                      onHandoffChange(null);
-                    });
-                  }}
-                >
-                  直前の回収を取り消す
-                </Button>
-              )}
-              {undoError && (
-                <span id="undo-reason" className="sr-only">
-                  {undoError}
-                </span>
-              )}
-            </span>
-          </div>
-        </div>
       </div>
       {waiting.length > 0 && (
         <div
@@ -266,6 +215,57 @@ export function Waiting({
             />
           </article>
         ))}
+      </div>
+      <div className="waiting-tools">
+        <div className="waiting-actions">
+          <div className="waiting-recovery-slot">
+            {unreturnedOrders.length > 0 && (
+              <Button
+                variant="plain"
+                className="waiting-recovery-button"
+                title={`札の回収待ち ${unreturnedOrders.length}`}
+                aria-label={`札の回収待ち ${unreturnedOrders.length}`}
+                onClick={() => setRecoveryOpen(true)}
+              >
+                <Icon name="ticket" />
+                <span>{unreturnedOrders.length}</span>
+              </Button>
+            )}
+          </div>
+          <span className="waiting-undo-slot" title={undoError ?? ''}>
+            {completedOrder && lastHandoff && (
+              <Button
+                variant="plain"
+                aria-label="直前の回収を取り消す"
+                title="直前の回収を取り消す"
+                disabled={busy}
+                aria-describedby={undoError ? 'undo-reason' : undefined}
+                onClick={() => {
+                  if (undoError) {
+                    setUndoNotice(undoError);
+                    return;
+                  }
+                  void perform(async () => {
+                    await saveCommand({
+                      type: 'undoHandoff',
+                      orderId: completedOrder.id,
+                      assignmentId: completedOrder.assignmentId,
+                      completionId: lastHandoff.completionId,
+                    });
+                    onHandoffChange(null);
+                  });
+                }}
+              >
+                回収取消
+              </Button>
+            )}
+            {undoError && (
+              <span id="undo-reason" className="sr-only">
+                {undoError}
+              </span>
+            )}
+          </span>
+        </div>
       </div>
       {undoNotice && (
         <Dialog open title="元に戻せません" onClose={() => setUndoNotice('')}>

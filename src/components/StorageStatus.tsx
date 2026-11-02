@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import './StorageStatus.css';
 
 const units = ['B', 'KB', 'MB', 'GB', 'TB'];
 function bytes(value: number) {
@@ -25,9 +26,16 @@ export function StorageStatus() {
     };
   }, []);
   if (estimate?.usage === undefined || estimate.quota === undefined)
-    return <p className="storage-capacity">容量の目安を取得できません。</p>;
+    return (
+      <p className="storage-capacity storage-capacity-details">
+        容量の目安を取得できません。
+      </p>
+    );
   return (
-    <dl className="storage-capacity" aria-label="保存容量の目安">
+    <dl
+      className="storage-capacity storage-capacity-details"
+      aria-label="保存容量の目安"
+    >
       <div>
         <dt>使用中</dt>
         <dd>{bytes(estimate.usage)}</dd>

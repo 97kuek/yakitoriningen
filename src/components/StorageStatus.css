@@ -1,0 +1,20 @@
+.storage-capacity.storage-capacity-details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+  font-size: var(--font-body);
+}
+
+.storage-capacity.storage-capacity-details > div {
+  display: grid;
+  grid-template-columns: 9em minmax(0, 1fr);
+  align-items: baseline;
+  gap: 16px;
+}
+
+.storage-capacity.storage-capacity-details dt,
+.storage-capacity.storage-capacity-details dd {
+  font-size: var(--font-body);
+  line-height: 1.5;
+}

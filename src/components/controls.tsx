@@ -5,6 +5,7 @@ import {
   useState,
   type ButtonHTMLAttributes,
   type KeyboardEvent,
+  type InputHTMLAttributes,
   type ReactNode,
   type Ref,
 } from 'react';
@@ -26,6 +27,87 @@ export function InlineError({ message }: { message: string }) {
     <p className="inline-error" role="alert">
       {message}
     </p>
+  );
+}
+
+export interface DigitsInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  | 'type'
+  | 'inputMode'
+  | 'pattern'
+  | 'value'
+  | 'defaultValue'
+  | 'onChange'
+  | 'min'
+  | 'max'
+> {
+  value: string;
+  onValueChange: (value: string) => void;
+  min?: number;
+  max?: number;
+}
+
+/** Integer text input: keep empty edits, normalize Japanese digits, validate on submit. */
+export function DigitsInput({
+  value,
+  onValueChange,
+  min,
+  max,
+  onKeyDown,
+  onPaste,
+  ...props
+}: DigitsInputProps) {
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const number = Number(value);
+    const message = !value
+      ? ''
+      : min !== undefined && number < min
+        ? `${min}以上で入力してください。`
+        : max !== undefined && number > max
+          ? `${max}以下で入力してください。`
+          : '';
+    input.current?.setCustomValidity(message);
+  }, [value, min, max]);
+  return (
+    <input
+      {...props}
+      ref={input}
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={value}
+      onChange={(event) => {
+        const next = event.target.value.normalize('NFKC');
+        if (
+          /^[0-9]*$/.test(next) &&
+          (props.maxLength === undefined || next.length <= props.maxLength)
+        )
+          onValueChange(next);
+      }}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (
+          !event.defaultPrevented &&
+          !event.nativeEvent.isComposing &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.altKey &&
+          event.key.length === 1 &&
+          !/^[0-9]$/.test(event.key.normalize('NFKC'))
+        )
+          event.preventDefault();
+      }}
+      onPaste={(event) => {
+        onPaste?.(event);
+        if (
+          !/^[0-9]*$/.test(
+            event.clipboardData.getData('text').normalize('NFKC'),
+          )
+        )
+          event.preventDefault();
+      }}
+    />
   );
 }
 
@@ -68,7 +150,7 @@ export function IconButton({
       variant={variant}
       className={`icon-button control-icon-button ${className}`}
       aria-label={label}
-      title={label}
+      title={props.title ?? label}
     >
       <Icon name={icon} />
     </Button>
@@ -319,7 +401,8 @@ export function Dialog({
     return () => {
       if (!dialog?.open) return;
       dialog.close();
-      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+      const target = focusAfterClose?.current ?? returnFocusRef.current;
+      if (target?.isConnected) target.focus({ preventScroll: true });
     };
   }, []);
 

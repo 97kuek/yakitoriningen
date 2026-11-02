@@ -6,15 +6,11 @@
 .waiting .waiting-tools {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   flex-shrink: 0;
-}
-
-.waiting .waiting-tools label {
-  min-width: 0;
-  max-width: 180px;
-  flex: 1;
+  min-height: var(--control-size);
+  margin: 8px 0 0;
 }
 
 .waiting .waiting-actions {
@@ -63,16 +59,6 @@
 .ticket-recovery-list > div > span {
   flex: 1;
   color: var(--muted);
-}
-
-.waiting .waiting-tools input {
-  width: 100%;
-}
-
-.waiting .waiting-tools .link-button {
-  padding: 4px 0;
-  white-space: nowrap;
-  font-size: var(--font-small);
 }
 
 .waiting .waiting-totals {
@@ -165,19 +151,14 @@
   font-size: var(--font-body);
   color: var(--muted);
   white-space: nowrap;
+  width: 7em;
+  flex-shrink: 0;
 }
 .waiting .wait-estimate strong {
   font-size: var(--font-large);
   font-weight: 600;
   color: var(--ink);
 }
-.waiting .waiting-tools[hidden] {
-  display: none;
-}
-.waiting .waiting-tools {
-  justify-content: flex-end;
-}
-
 .waiting-mascot {
   animation: waiting-breathe 4s ease-in-out infinite;
 }
@@ -202,10 +183,6 @@
 .waiting > .section-heading h2 {
   margin-right: auto;
 }
-.waiting .waiting-tools {
-  margin: 0;
-}
-
 .waiting-recovery-slot:empty {
   display: none;
 }

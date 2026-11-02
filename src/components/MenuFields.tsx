@@ -10,7 +10,7 @@ import {
 } from '../domain/constants';
 import type { MenuForm } from '../presentation/menu-form';
 import { newId } from '../lib/id';
-import { IconButton } from './controls';
+import { DigitsInput, IconButton } from './controls';
 import './MenuSettings.css';
 
 /** Shared fields for editing the live menu or preparing the next event. */
@@ -116,115 +116,118 @@ export function MenuFields({
             </div>
             <label>
               <span className="mobile-field-label">通常価格</span>
-              <input
+              <DigitsInput
                 aria-label={`${item.name || `商品${index + 1}`}の通常価格（円）`}
-                type="number"
-                min="0"
+                min={0}
                 max={MAX_MONEY}
                 required
                 value={item.price}
-                onChange={(event) =>
-                  updateItem(item.id, { price: event.target.value })
-                }
+                onValueChange={(value) => updateItem(item.id, { price: value })}
               />
             </label>
             <label>
               <span className="mobile-field-label">値下げ価格</span>
-              <input
+              <DigitsInput
                 aria-label={`${item.name || `商品${index + 1}`}の値下げ価格（円）`}
-                type="number"
-                min="0"
+                min={0}
                 max={MAX_MONEY}
                 required
                 value={item.discountPrice}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   updateItem(item.id, {
-                    discountPrice: event.target.value,
+                    discountPrice: value,
                   })
                 }
               />
             </label>
             <div className="menu-stock-field">
               <span className="mobile-field-label">在庫（任意）</span>
-              <input
+              <DigitsInput
                 aria-label={`${item.name || `商品${index + 1}`}の在庫`}
-                type="number"
-                min="0"
+                min={0}
                 max={MAX_STOCK}
                 placeholder="未登録"
                 value={item.stock ?? ''}
-                onChange={(event) =>
-                  updateItem(item.id, { stock: event.target.value })
-                }
+                onValueChange={(value) => updateItem(item.id, { stock: value })}
               />
             </div>
           </div>
         ))}
       </div>
-      <section className="bundle-section">
-        <h3>セット価格</h3>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={draft.bundleEnabled}
-            onChange={(event) =>
-              editDraft({ ...draft, bundleEnabled: event.target.checked })
-            }
-          />
-          セット価格を使う
-        </label>
-        <fieldset className="bundle-settings" disabled={!draft.bundleEnabled}>
-          <div className="form-row">
-            <label>
-              セットの本数
-              <input
-                aria-label="セットの本数"
-                type="number"
-                min="1"
-                max={MAX_BUNDLE_SIZE}
-                required
-                value={draft.bundleSize}
-                onChange={(event) =>
-                  editDraft({
-                    ...draft,
-                    bundleSize: event.target.value,
-                  })
-                }
-              />
-            </label>
-            <label>
-              セットの価格
-              <input
-                aria-label="セットの価格（円）"
-                type="number"
-                min="0"
-                max={MAX_MONEY}
-                required
-                value={draft.bundlePrice}
-                onChange={(event) =>
-                  editDraft({
-                    ...draft,
-                    bundlePrice: event.target.value,
-                  })
-                }
-              />
-            </label>
-          </div>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={draft.bundleDuringDiscount ?? false}
-              onChange={(event) =>
+      <BundleFields draft={draft} onChange={editDraft} />
+    </>
+  );
+}
+
+function BundleFields({
+  draft,
+  onChange: editDraft,
+}: {
+  draft: MenuForm;
+  onChange: (next: MenuForm) => void;
+}) {
+  return (
+    <section className="bundle-section">
+      <h3>セット価格</h3>
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={draft.bundleEnabled}
+          onChange={(event) =>
+            editDraft({ ...draft, bundleEnabled: event.target.checked })
+          }
+        />
+        セット価格を使う
+      </label>
+      <fieldset className="bundle-settings" disabled={!draft.bundleEnabled}>
+        <div className="form-row">
+          <label>
+            セットの本数
+            <DigitsInput
+              aria-label="セットの本数"
+              min={1}
+              max={MAX_BUNDLE_SIZE}
+              required
+              value={draft.bundleSize}
+              onValueChange={(value) =>
                 editDraft({
                   ...draft,
-                  bundleDuringDiscount: event.target.checked,
+                  bundleSize: value,
                 })
               }
             />
-            値下げ中もセットを使う
           </label>
-        </fieldset>
-      </section>
-    </>
+          <label>
+            セットの価格
+            <DigitsInput
+              aria-label="セットの価格（円）"
+              min={0}
+              max={MAX_MONEY}
+              required
+              value={draft.bundlePrice}
+              onValueChange={(value) =>
+                editDraft({
+                  ...draft,
+                  bundlePrice: value,
+                })
+              }
+            />
+          </label>
+        </div>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={draft.bundleDuringDiscount ?? false}
+            onChange={(event) =>
+              editDraft({
+                ...draft,
+                bundleDuringDiscount: event.target.checked,
+              })
+            }
+          />
+          値下げ中もセットを使う
+        </label>
+      </fieldset>
+    </section>
   );
 }

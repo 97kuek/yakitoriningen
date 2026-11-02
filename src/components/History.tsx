@@ -3,7 +3,6 @@ import './History.css';
 import { orderText, timeText, yen } from '../presentation/format';
 import { timeSlotOptions } from '../presentation/festival';
 import { TIME_SLOT_MINUTES } from '../domain/constants';
-import { clockText } from '../domain/time';
 import { ordersCsv } from '../presentation/orders-csv';
 import { download } from '../presentation/download';
 import { historyStateLabel, receiptNumber } from '../presentation/order';
@@ -15,7 +14,7 @@ import {
   type HistorySort,
   type SortDirection,
 } from '../domain/history';
-import { Button, Dialog, IconButton, Select } from './controls';
+import { Button, Dialog, DigitsInput, IconButton, Select } from './controls';
 import { RefundDialog } from './RefundDialog';
 import { OrderDetails } from './OrderDetails';
 import type { Order, Snapshot } from '../domain/model';
@@ -79,10 +78,6 @@ export function History({
     sort,
     direction,
   };
-  const slotName =
-    slotStart === undefined
-      ? ''
-      : `_${clockText(slotStart).replace(':', '')}-${clockText(slotStart + TIME_SLOT_MINUTES).replace(':', '')}`;
   const history = historyPage(
     orders,
     ticketSearch,
@@ -113,14 +108,12 @@ export function History({
 
         <label>
           <span className="sr-only">札番号で検索</span>
-          <input
-            type="search"
-            inputMode="numeric"
+          <DigitsInput
             maxLength={TICKET_SEARCH_MAX_LENGTH}
             value={ticketSearch}
             placeholder="札番号"
-            onChange={(event) => {
-              setTicketSearch(event.target.value);
+            onValueChange={(value) => {
+              setTicketSearch(value);
               setPage(0);
             }}
           />
@@ -144,6 +137,7 @@ export function History({
           className="history-export"
           icon="download"
           label="表示条件の注文をCSVで保存"
+          title="注文履歴（.csv）を保存"
           disabled={busy || history.total === 0}
           onClick={() => {
             download(
@@ -151,7 +145,7 @@ export function History({
                 prices: snapshot.prices,
                 orders: filterHistory(orders, ticketSearch, state, filters),
               }),
-              `焼き鳥人間_注文履歴_${snapshot.meta.day}${slotName}.csv`,
+              `${snapshot.meta.day}-yakitori.csv`,
               'text/csv;charset=utf-8',
             );
           }}
@@ -169,15 +163,37 @@ export function History({
               {sortHeading('amount', '会計額')}
               <th>状態</th>
               <th>
-                <span className="sr-only">詳細・返金</span>
+                <span className="sr-only">返金</span>
               </th>
             </tr>
           </thead>
           <tbody>
             {history.orders.map((o) => (
-              <tr key={o.id}>
+              <tr
+                key={o.id}
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest('button, a, input'))
+                    return;
+                  detailsTrigger.current =
+                    event.currentTarget.querySelector<HTMLButtonElement>(
+                      '.history-details-trigger',
+                    );
+                  setDetailsId(o.id);
+                }}
+              >
                 <td className="history-receipt-number">
-                  {receiptNumber(o, snapshot) ?? '会計未確定'}
+                  <Button
+                    variant="plain"
+                    className="history-details-trigger"
+                    aria-label="注文の詳細"
+                    title="注文の詳細"
+                    onClick={(event) => {
+                      detailsTrigger.current = event.currentTarget;
+                      setDetailsId(o.id);
+                    }}
+                  >
+                    {receiptNumber(o, snapshot) ?? '会計未確定'}
+                  </Button>
                 </td>
                 <td className="history-time">{timeText(o.createdAt)}</td>
                 <td>{o.ticket}</td>
@@ -193,23 +209,13 @@ export function History({
                 </td>
                 <td>
                   <div className="history-order-actions">
-                    <Button
-                      variant="plain"
-                      aria-label="注文の詳細"
-                      onClick={(event) => {
-                        detailsTrigger.current = event.currentTarget;
-                        setDetailsId(o.id);
-                      }}
-                    >
-                      詳細
-                    </Button>
                     {o.status === 'paid' && (
                       <Button
                         variant="secondary"
                         type="button"
                         className="secondary danger-text"
-                        onClick={() => {
-                          detailsTrigger.current = null;
+                        onClick={(event) => {
+                          detailsTrigger.current = event.currentTarget;
                           setCancel(o);
                         }}
                       >
@@ -260,6 +266,7 @@ export function History({
           open
           title="注文の詳細"
           onClose={() => setDetailsId(null)}
+          focusAfterClose={detailsTrigger}
           footer={
             <>
               <Button onClick={() => setDetailsId(null)}>閉じる</Button>
