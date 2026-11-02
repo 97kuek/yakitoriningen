@@ -1,0 +1,17 @@
+.day-resume {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.day-resume > .control-select {
+  flex: 1 1 180px;
+  min-width: 170px;
+}
+.day-resume > .control-button {
+  flex: 0 0 auto;
+  margin: 0;
+}

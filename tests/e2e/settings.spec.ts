@@ -198,7 +198,7 @@ test('未保存の商品編集は画面の往復・ダイアログ・再読み�
   await expect(leave).toBeVisible();
   await leave.getByRole('button', { name: '編集に戻る' }).click();
   await expect(price).toHaveValue('177');
-  await page.getByRole('link', { name: '焼き鳥人間・会計へ戻る' }).click();
+  await page.getByRole('link', { name: '焼き鳥人間・ホームへ戻る' }).click();
   await leave.getByRole('button', { name: '未保存のまま移動' }).click();
   await openScreen(page, '設定');
   await expect(page.getByLabel('営業日', { exact: true })).toHaveCount(0);

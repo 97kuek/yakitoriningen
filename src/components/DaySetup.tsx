@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './DaySetup.css';
 import type { Snapshot } from '../domain/model';
 import { MAX_TICKETS } from '../domain/constants';
 import { findActivePrice } from '../domain/catalog';

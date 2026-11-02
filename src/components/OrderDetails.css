@@ -70,19 +70,6 @@
   font-size: var(--font-small);
 }
 
-.history .history-order-actions {
-  display: grid;
-  grid-template-columns: 56px 100px;
-  justify-content: start;
-  align-items: center;
-  gap: 12px;
-  white-space: nowrap;
-}
-
-.history .history-order-actions button {
-  padding: 7px 10px;
-}
-
 @media (max-width: 480px) {
   .order-details .order-details-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));

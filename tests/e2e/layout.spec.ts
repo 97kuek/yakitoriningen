@@ -5,6 +5,7 @@ import {
   ledgerFixture,
   openFixture,
   openScreen,
+  startCounter,
 } from './helpers';
 
 /** Every visible text uses one of the three font sizes. */
@@ -129,7 +130,8 @@ test('会計画面は空の通知行を作らず価格を揃え、ロゴで入�
     'text-align',
     'center',
   );
-  await page.getByRole('link', { name: '焼き鳥人間・会計へ戻る' }).click();
+  await page.getByRole('link', { name: '焼き鳥人間・ホームへ戻る' }).click();
+  await startCounter(page);
   await expect(page.getByLabel('ももの本数', { exact: true })).toHaveValue('2');
 
   await page.getByRole('button', { name: 'このアプリについて' }).click();

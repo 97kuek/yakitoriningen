@@ -192,9 +192,11 @@ export async function openScreen(
     .getByRole('navigation', { name: '画面の切り替え' })
     .getByRole('button', { name, exact: true });
   if (!(await target.isVisible())) {
-    await page
-      .getByRole('button', { name: 'ホームへ戻る', exact: true })
-      .click();
+    const home = page.getByRole('button', {
+      name: 'ホームへ戻る',
+      exact: true,
+    });
+    if (await home.isVisible()) await home.click();
     await startCounter(page);
   }
   await target.click();

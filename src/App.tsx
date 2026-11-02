@@ -41,6 +41,7 @@ import { Waiting } from './components/Waiting';
 
 type Screen = 'home' | 'checkout' | 'history' | 'summary' | 'settings';
 const screens: { key: Screen; label: string; icon: IconName }[] = [
+  { key: 'home', label: 'ホーム', icon: 'home' },
   { key: 'checkout', label: '会計', icon: 'cash' },
   { key: 'history', label: '注文履歴', icon: 'details' },
   { key: 'settings', label: '設定', icon: 'settings' },
@@ -228,10 +229,10 @@ export default function App() {
         <a
           href="#main"
           className="brand"
-          aria-label="焼き鳥人間・会計へ戻る"
+          aria-label="焼き鳥人間・ホームへ戻る"
           onClick={(event) => {
             event.preventDefault();
-            if (!locked) navigate(started ? 'checkout' : 'home');
+            if (!locked) navigate('home');
           }}
         >
           <h1 className="sr-only">焼き鳥人間</h1>
@@ -243,36 +244,32 @@ export default function App() {
             height="230"
           />
         </a>
-        {started && snapshot && screen !== 'home' && screen !== 'summary' && (
+        {screen !== 'home' && (
           <nav className="tabs" aria-label="画面の切り替え">
-            {screens.map((item) => (
-              <Button
-                variant="secondary"
-                key={item.key}
-                disabled={locked}
-                className={screen === item.key ? 'active' : ''}
-                aria-current={screen === item.key ? 'page' : undefined}
-                onClick={() => navigate(item.key)}
-              >
-                <Icon name={item.icon} />
-                <span>{item.label}</span>
-              </Button>
-            ))}
+            {screens
+              .filter(
+                (item) =>
+                  item.key === 'home' ||
+                  (started && snapshot && screen !== 'summary'),
+              )
+              .map((item) => (
+                <Button
+                  variant="secondary"
+                  key={item.key}
+                  aria-label={item.key === 'home' ? 'ホームへ戻る' : undefined}
+                  title={item.key === 'home' ? 'ホームへ戻る' : undefined}
+                  disabled={locked}
+                  className={screen === item.key ? 'active' : ''}
+                  aria-current={screen === item.key ? 'page' : undefined}
+                  onClick={() => navigate(item.key)}
+                >
+                  <Icon name={item.icon} />
+                  <span>{item.label}</span>
+                </Button>
+              ))}
           </nav>
         )}
         <div className="header-status">
-          {screen !== 'home' && (
-            <Button
-              variant="plain"
-              aria-label="ホームへ戻る"
-              title="ホームへ戻る"
-              disabled={locked}
-              onClick={() => navigate('home')}
-            >
-              <Icon name="home" />
-              ホーム
-            </Button>
-          )}
           <span
             className="connection-status"
             title={

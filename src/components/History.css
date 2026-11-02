@@ -47,7 +47,14 @@
   font-weight: inherit;
 }
 .history .history-order-actions {
+  display: flex;
+  align-items: center;
   gap: 12px;
+  white-space: nowrap;
+}
+.history-order-actions > .control-button {
+  flex-shrink: 0;
+  min-width: 100px;
 }
 .history .history-pagination {
   padding-top: 12px;
