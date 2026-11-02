@@ -264,11 +264,12 @@ test('札枚数は編集時だけ保存を表示し、日付の直接編集と�
   const restore = (await page
     .getByRole('button', { name: 'バックアップから復元', exact: true })
     .boundingBox())!;
-  const next = (await page
-    .getByRole('button', { name: '新しい営業を作る', exact: true })
+  const backup = (await page
+    .getByRole('button', { name: 'バックアップを保存', exact: true })
     .boundingBox())!;
-  expect(restore.y).toBe(next.y);
-  expect(restore.width).toBe(next.width);
+  expect(restore.y).toBe(backup.y);
+  expect(restore.width).toBe(backup.width);
+  expect(restore.x).toBeGreaterThan(backup.x + backup.width);
 
   const save = page.getByRole('button', { name: '保存', exact: true });
   const form = page.locator('.operation-form');
