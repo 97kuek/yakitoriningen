@@ -1,6 +1,6 @@
 # 全体アーキテクチャ
 
-更新日：2026-11-01
+更新日：2026-11-02
 
 PC1台で使うオフライン対応のWebアプリです。React・TypeScript・Viteで画面を作り、業務処理も保存もブラウザ内で実行します。サーバー側のAPI・DB・認証はありません。
 
@@ -10,7 +10,7 @@ PC1台で使うオフライン対応のWebアプリです。React・TypeScript�
 flowchart TD
     host["静的配信：アプリ・画像・PWA"] --> browser
     subgraph browser[使用するPCのブラウザ]
-        ui["画面：会計・受け渡し・注文履歴・設定"] --> application["application：操作の準備・実行・照合"]
+        ui["画面：ホーム・会計・札回収・注文履歴・集計・設定"] --> application["application：操作の準備・実行・照合"]
         application --> domain["domain：価格・注文・札・集計のルール"]
         application --> ports["永続化ポート"]
         adapter["storage：Dexieアダプター"] -. 実装 .-> ports
