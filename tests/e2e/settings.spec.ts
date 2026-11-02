@@ -84,7 +84,7 @@ test('未入力の商品があっても販売価格だけ切り替えられ、�
   await expect(page.getByLabel('名前未入力の本数')).toHaveCount(0);
   await page.reload();
   await startCounter(page);
-  await addSkewers(page, 'もも');
+  await expect(page.getByLabel('ももの本数', { exact: true })).toHaveValue('1');
   await expect(page.getByTestId('total')).toHaveText('￥50');
   await openScreen(page, '設定');
   await expect(page.getByLabel('商品4の名前', { exact: true })).toHaveCount(0);

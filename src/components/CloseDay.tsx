@@ -11,6 +11,8 @@ export function CloseDay({
   snapshot,
   lastBackupSequence,
   blocked,
+  exported,
+  onConfirmBackup,
   onFinish,
   store,
   perform,
@@ -22,11 +24,15 @@ export function CloseDay({
   snapshot: Snapshot;
   lastBackupSequence: number | null;
   blocked: boolean;
+  exported: Snapshot['meta'] | null;
+  onConfirmBackup: (meta: Snapshot['meta']) => void;
   onFinish: () => void;
   store: Cashier;
 }) {
   const [open, setOpen] = useState(false);
-  const [exported, setExported] = useState<Snapshot['meta'] | null>(null);
+  const unreturned = snapshot.tickets.filter(
+    (ticket) => ticket.orderId !== null,
+  );
   const [now, setNow] = useState(() => new Date().toISOString());
   useEffect(() => {
     const timer = window.setInterval(
@@ -54,7 +60,6 @@ export function CloseDay({
       )}
       <Button
         onClick={() => {
-          setExported(null);
           setOpen(true);
         }}
         disabled={busy}
@@ -71,8 +76,7 @@ export function CloseDay({
               disabled={busy || blocked}
               onClick={() =>
                 void perform(async () => {
-                  const saved = await exportBackup();
-                  setExported(saved.meta);
+                  await exportBackup();
                 })
               }
             >
@@ -80,7 +84,7 @@ export function CloseDay({
             </Button>
             <Button
               variant="primary"
-              disabled={busy || blocked || !ready}
+              disabled={busy || blocked || !ready || unreturned.length > 0}
               onClick={() =>
                 void perform(async () => {
                   const current = await store.read();
@@ -94,6 +98,7 @@ export function CloseDay({
                     current.orders.some(
                       (order) => order.status === 'pending',
                     ) ||
+                    current.tickets.some((ticket) => ticket.orderId !== null) ||
                     current.operations.some(
                       (operation) => operation.status === 'pending',
                     )
@@ -101,6 +106,7 @@ export function CloseDay({
                     throw new Error(
                       '記録が変わりました。もう一度バックアップを保存してください。',
                     );
+                  onConfirmBackup(current.meta);
                   setOpen(false);
                   onFinish();
                 })
@@ -113,6 +119,11 @@ export function CloseDay({
       >
         <InlineError message={errorMessage} />
         <p>{snapshot.meta.day}</p>
+        {unreturned.length > 0 && (
+          <p role="status">
+            未回収の札：{unreturned.map((ticket) => ticket.number).join('、')}
+          </p>
+        )}
         {blocked && <p>会計や設定の変更を終えてから終了してください。</p>}
       </Dialog>
     </>

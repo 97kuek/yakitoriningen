@@ -138,6 +138,7 @@ test('通信なしで再起動しても途中の会計を札と金額で示し�
   await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await expect(page.getByRole('button', { name: '会計を確定' })).toBeVisible();
   await context.setOffline(true);
+  page.once('dialog', (dialog) => void dialog.accept());
   await page.reload();
   const pending = page.getByRole('region', { name: '確認が必要な会計' });
   await expect(

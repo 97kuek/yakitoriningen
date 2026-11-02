@@ -15,6 +15,7 @@ import { commandNames } from '../ui';
 import type { Cashier } from '../application/ports';
 import { Button, Dialog, InlineError } from './controls';
 import { DataPanel } from './DataPanel';
+import { DaySetup } from './DaySetup';
 import { Icon } from './Icon';
 import { eventNameExample } from '../presentation/festival';
 export function Startup({
@@ -25,6 +26,7 @@ export function Startup({
   onRestart,
   errorMessage,
   exportBackup,
+  hasDraft,
 }: {
   snapshot: Snapshot | null;
   store: Cashier;
@@ -33,12 +35,15 @@ export function Startup({
   onRestart: () => void;
   errorMessage: string;
   exportBackup: BackupExporter;
+  hasDraft: boolean;
 }) {
   const [event, setEvent] = useState('');
   const [day, setDay] = useState(today());
   const [setupOpen, setSetupOpen] = useState(!snapshot);
   const [menu, setMenu] = useState(() => menuForm(normalPrice(newId())));
   const [tickets, setTickets] = useState(DEFAULT_TICKET_COUNT);
+  const [dateOpen, setDateOpen] = useState(false);
+  const differentDay = snapshot?.meta.day !== today();
   const reserved = snapshot ? pendingOrders(snapshot) : [];
   const pendingOperations = snapshot ? unresolvedOperations(snapshot) : [];
   return (
@@ -104,20 +109,45 @@ export function Startup({
                 <p>会計を始めたら、画面の案内に沿って確認してください。</p>
               </section>
             )}
-            {snapshot.meta.day !== today() && (
-              <p className="hint">
-                今日と違う日付です。別の日は「別の日の営業を準備」から。
-              </p>
+            {differentDay && (
+              <DaySetup
+                store={store}
+                perform={perform}
+                errorMessage={errorMessage}
+                onRestart={onRestart}
+                hasDraft={hasDraft}
+                label="本日の営業を準備"
+                initialDay={today()}
+                primary
+              />
             )}
             <Button
-              variant="primary"
+              variant={differentDay ? 'secondary' : 'primary'}
               type="button"
               className="primary wide"
-              onClick={onStart}
+              onClick={() => (differentDay ? setDateOpen(true) : onStart())}
             >
               会計を始める
               <Icon name="arrow" />
             </Button>
+            <Dialog
+              open={dateOpen}
+              onClose={() => setDateOpen(false)}
+              title="営業日を確認"
+              footer={
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setDateOpen(false);
+                    onStart();
+                  }}
+                >
+                  この日付で開く
+                </Button>
+              }
+            >
+              <p>{snapshot.meta.day}の記録を開きます。</p>
+            </Dialog>
           </>
         ) : (
           <>
@@ -206,6 +236,7 @@ export function Startup({
           errorMessage={errorMessage}
           onRestart={onRestart}
           exportBackup={exportBackup}
+          hasDraft={hasDraft}
         />
       </section>
     </div>

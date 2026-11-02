@@ -29,12 +29,18 @@ export function DaySetup({
   errorMessage,
   onRestart,
   hasDraft,
+  label = '別の日の営業を準備',
+  initialDay,
+  primary = false,
 }: {
   store: Cashier;
   perform: ActionHandler;
   errorMessage: string;
   onRestart: () => void;
   hasDraft: boolean;
+  label?: string;
+  initialDay?: string;
+  primary?: boolean;
 }) {
   const [dayBase, setDayBase] = useState<Snapshot | null>(null);
   const [dayOpen, setDayOpen] = useState(false);
@@ -45,7 +51,7 @@ export function DaySetup({
   return (
     <>
       <Button
-        variant="secondary"
+        variant={primary ? 'primary' : 'secondary'}
         className="day-setup-trigger"
         onClick={() =>
           void perform(async () => {
@@ -59,14 +65,14 @@ export function DaySetup({
             );
             const tomorrow = new Date(`${current.meta.day}T12:00:00Z`);
             tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-            setNextDay(tomorrow.toISOString().slice(0, 10));
+            setNextDay(initialDay ?? tomorrow.toISOString().slice(0, 10));
             setDayMenu(menuForm(findActivePrice(current)!));
             setDayTickets(String(current.meta.ticketCount));
             setDayOpen(true);
           })
         }
       >
-        別の日の営業を準備
+        {label}
       </Button>
       {dayOpen && (
         <Dialog

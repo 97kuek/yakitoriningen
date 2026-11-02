@@ -5,7 +5,7 @@ import type { Meta } from '../domain/model';
 export class LocalBackupHistory implements BackupHistory {
   private memory = new Map<string, number>();
   private key(meta: Meta) {
-    return `yakitori-backup:${meta.databaseId}:${meta.generation}:${meta.day}`;
+    return `yakitori-backup-confirmed:${meta.databaseId}:${meta.generation}:${meta.day}`;
   }
   lastSequence(meta: Meta): number | null {
     const key = this.key(meta);

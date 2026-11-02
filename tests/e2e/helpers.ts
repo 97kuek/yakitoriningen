@@ -156,6 +156,11 @@ export async function openFixture(
 /** Resumes the ledger shown on the startup screen. */
 export async function startCounter(page: Page) {
   await page.getByRole('button', { name: '会計を始める', exact: true }).click();
+  const dateConfirmation = page.getByRole('dialog', { name: '営業日を確認' });
+  if (await dateConfirmation.isVisible())
+    await dateConfirmation
+      .getByRole('button', { name: 'この日付で開く', exact: true })
+      .click();
 }
 
 /** Creates a new event through the first-run form. */

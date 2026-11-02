@@ -8,7 +8,8 @@ import {
   unresolvedOperations,
 } from './domain/snapshot';
 import { newId } from './lib/id';
-import { cashier, backupHistory } from './bootstrap';
+import { cashier, backupHistory, draftCache } from './bootstrap';
+import { useDraft } from './hooks/useDraft';
 import { validateSnapshot, encodeBackup } from './application/backup';
 import { dailySnapshot } from './application/daily-backup';
 import { download } from './presentation/download';
@@ -20,7 +21,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { errorMessage } from './presentation/error-message';
 import { festivalTitle } from './presentation/festival';
 import { emptyDraft } from './ui';
-import type { ActionHandler, CommandSaver, Draft, Handoff, Shared } from './ui';
+import type { ActionHandler, CommandSaver, Handoff, Shared } from './ui';
 import { Checkout } from './components/Checkout';
 import { Help } from './components/Help';
 import { History } from './components/History';
@@ -53,6 +54,9 @@ export default function App() {
   const online = useOnlineStatus();
   const [snapshot, setSnapshot] = useState<Snapshot | null | undefined>();
   const [started, setStarted] = useState(false);
+  const [exportedBackup, setExportedBackup] = useState<Snapshot['meta'] | null>(
+    null,
+  );
   const [, backupChanged] = useState(0);
   const [screen, setScreen] = useState<Screen>('checkout');
   const [nextScreen, setNextScreen] = useState<Screen | null>(null);
@@ -64,12 +68,21 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [fatal, setFatal] = useState(false);
-  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [draft, setDraft] = useDraft(
+    snapshot,
+    draftCache,
+    tabOwnership.state === 'owned',
+  );
   const lock = useRef(false);
   const pendingBeforeAction = useRef<Set<string>>(new Set());
   const previousGeneration = useRef<string | null>(null);
   const update = useAppUpdate(setError);
-  useLeaveConfirmation(settingsDirty || summaryDirty);
+  useLeaveConfirmation(
+    settingsDirty ||
+      summaryDirty ||
+      count(draft.quantities) > 0 ||
+      !!snapshot?.orders.some((order) => order.status === 'pending'),
+  );
 
   function navigate(next: Screen) {
     if (next === screen) return;
@@ -164,8 +177,7 @@ export default function App() {
     if (!current) throw new Error('営業の記録がありません。');
     const text = encodeBackup(dailySnapshot(current));
     download(text, `${current.meta.day}-yakitori.json`);
-    backupHistory.record(current.meta);
-    backupChanged((version) => version + 1);
+    setExportedBackup(current.meta);
     return current;
   };
   const shared: Shared | null = snapshot
@@ -352,6 +364,7 @@ export default function App() {
               }}
               onRestart={restartSession}
               exportBackup={exportBackup}
+              hasDraft={hasDraft}
             />
           ) : (
             <>
@@ -372,6 +385,11 @@ export default function App() {
                       snapshot.meta,
                     )}
                     blocked={unfinished}
+                    exported={exportedBackup}
+                    onConfirmBackup={(meta) => {
+                      backupHistory.record(meta);
+                      backupChanged((version) => version + 1);
+                    }}
                     onFinish={restartSession}
                     exportBackup={exportBackup}
                     {...shared}
