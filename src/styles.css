@@ -2194,3 +2194,7 @@ main:has(.startup-shell) .app-content {
   grid-column: 2;
   grid-row: 2;
 }
+
+.startup-summary {
+  margin-top: 12px;
+}

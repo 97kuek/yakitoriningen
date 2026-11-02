@@ -166,6 +166,7 @@ export async function startCounter(page: Page) {
 /** Creates a new event through the first-run form. */
 export async function startNewEvent(page: Page) {
   await page.goto('/');
+  await page.getByRole('button', { name: '営業を準備', exact: true }).click();
   await page.getByLabel('営業名').fill('早稲田祭 2026');
   await page.getByLabel('営業日').fill(FIXTURE_DAY);
   await page.getByRole('button', { name: '新しく作る' }).click();
@@ -176,7 +177,27 @@ export async function openScreen(
   page: Page,
   name: '会計' | '注文履歴' | '集計' | '設定',
 ) {
-  await page.getByRole('button', { name, exact: true }).click();
+  if (name === '集計') {
+    const home = page.getByRole('button', {
+      name: 'ホームへ戻る',
+      exact: true,
+    });
+    if (await home.isVisible()) await home.click();
+    await page
+      .getByRole('button', { name: '営業後の集計', exact: true })
+      .click();
+    return;
+  }
+  const target = page
+    .getByRole('navigation', { name: '画面の切り替え' })
+    .getByRole('button', { name, exact: true });
+  if (!(await target.isVisible())) {
+    await page
+      .getByRole('button', { name: 'ホームへ戻る', exact: true })
+      .click();
+    await startCounter(page);
+  }
+  await target.click();
 }
 
 export async function addSkewers(page: Page, product: string, count = 1) {

@@ -138,20 +138,20 @@ test('未入金の注文は取り消し・本数修正でき、クリアした�
   page,
 }) => {
   await openFixture(page, await ledgerFixture());
-  // Cancel before payment: fixed cash shortcuts, separated secondary action.
+  // Cancel before payment: additive cash shortcuts, separated secondary action.
   await page.getByLabel('ももの本数').fill('6');
   await page.getByRole('button', { name: '会計へ', exact: true }).click();
   await expect(page.locator('.cash-buttons button')).toHaveText([
     'ちょうど',
-    '￥500',
-    '￥1,000',
-    '￥2,000',
-    '￥5,000',
-    '￥10,000',
+    '＋100',
+    '＋500',
+    '＋1,000',
+    '＋5,000',
+    '＋10,000',
   ]);
   await expect(
-    page.locator('.cash-buttons').getByRole('button', { name: '￥500' }),
-  ).toBeDisabled();
+    page.locator('.cash-buttons').getByRole('button', { name: '＋100' }),
+  ).toBeEnabled();
   const primary = (await page
     .getByRole('button', { name: 'お釣りを確認', exact: true })
     .boundingBox())!;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { Snapshot } from '../domain/model';
 import { TIME_SLOT_MINUTES } from '../domain/constants';
 import { quantitiesByProduct, salesByHalfHour } from '../domain/sales';
@@ -95,7 +95,7 @@ function SlotBars({
   );
 }
 
-export function SalesCharts({
+export const SalesCharts = memo(function SalesCharts({
   snapshot,
 }: {
   snapshot: Pick<Snapshot, 'meta' | 'orders'>;
@@ -204,4 +204,4 @@ export function SalesCharts({
       </div>
     </section>
   );
-}
+});

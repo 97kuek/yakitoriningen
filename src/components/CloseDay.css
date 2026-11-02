@@ -1,0 +1,29 @@
+.close-day-date {
+  color: var(--muted);
+  font-size: var(--font-body);
+}
+.close-day-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+  font-variant-numeric: tabular-nums;
+}
+.close-day-summary > div {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.close-day-summary dt {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: var(--font-body);
+}
+.close-day-summary dd {
+  margin: 0;
+  font-size: var(--font-large);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}

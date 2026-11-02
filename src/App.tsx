@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button, Dialog, IconButton } from './components/controls';
 import { count } from './domain/model';
 import type { Snapshot } from './domain/model';
@@ -13,6 +13,7 @@ import { useDraft } from './hooks/useDraft';
 import { validateSnapshot, encodeBackup } from './application/backup';
 import { dailySnapshot } from './application/daily-backup';
 import { download } from './presentation/download';
+import { ordersCsv } from './presentation/orders-csv';
 import { CloseDay } from './components/CloseDay';
 import { useAppUpdate } from './hooks/useAppUpdate';
 import { useExclusiveTab } from './hooks/useExclusiveTab';
@@ -30,14 +31,18 @@ import type { IconName } from './components/Icon';
 import { Recovery } from './components/Recovery';
 import { Settings } from './components/Settings';
 import { Startup } from './components/Startup';
-import { Summary } from './components/Summary';
+import { StorageWarning } from './components/StorageWarning';
+const Summary = lazy(() =>
+  import('./components/Summary').then((module) => ({
+    default: module.Summary,
+  })),
+);
 import { Waiting } from './components/Waiting';
 
-type Screen = 'checkout' | 'history' | 'summary' | 'settings';
+type Screen = 'home' | 'checkout' | 'history' | 'summary' | 'settings';
 const screens: { key: Screen; label: string; icon: IconName }[] = [
   { key: 'checkout', label: '会計', icon: 'cash' },
   { key: 'history', label: '注文履歴', icon: 'details' },
-  { key: 'summary', label: '集計', icon: 'chart' },
   { key: 'settings', label: '設定', icon: 'settings' },
 ];
 
@@ -58,7 +63,8 @@ export default function App() {
     null,
   );
   const [, backupChanged] = useState(0);
-  const [screen, setScreen] = useState<Screen>('checkout');
+  const [screen, setScreen] = useState<Screen>('home');
+  const [summaryVisited, setSummaryVisited] = useState(false);
   const [nextScreen, setNextScreen] = useState<Screen | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
@@ -93,6 +99,7 @@ export default function App() {
       setNextScreen(next);
       return;
     }
+    if (next === 'summary') setSummaryVisited(true);
     setScreen(next);
   }
 
@@ -117,6 +124,7 @@ export default function App() {
   );
   const discardLocalState = () => {
     setStarted(false);
+    setScreen('home');
     setDraft(emptyDraft());
     setSettingsDirty(false);
     setSummaryDirty(false);
@@ -169,7 +177,7 @@ export default function App() {
   };
   const restartSession = () => {
     discardLocalState();
-    setScreen('checkout');
+    setScreen('home');
     setLastHandoff(null);
   };
   const exportBackup = async () => {
@@ -177,6 +185,16 @@ export default function App() {
     if (!current) throw new Error('営業の記録がありません。');
     const text = encodeBackup(dailySnapshot(current));
     download(text, `${current.meta.day}-yakitori.json`);
+    return current;
+  };
+  const exportDailyFiles = async () => {
+    const current = await store.read();
+    if (!current) throw new Error('営業の記録がありません。');
+    const daily = dailySnapshot(current);
+    const json = encodeBackup(daily);
+    const csv = ordersCsv(daily);
+    download(json, `${current.meta.day}-yakitori.json`);
+    download(csv, `${current.meta.day}-yakitori.csv`, 'text/csv;charset=utf-8');
     setExportedBackup(current.meta);
     return current;
   };
@@ -213,7 +231,7 @@ export default function App() {
           aria-label="焼き鳥人間・会計へ戻る"
           onClick={(event) => {
             event.preventDefault();
-            if (!locked) navigate('checkout');
+            if (!locked) navigate(started ? 'checkout' : 'home');
           }}
         >
           <h1 className="sr-only">焼き鳥人間</h1>
@@ -225,7 +243,7 @@ export default function App() {
             height="230"
           />
         </a>
-        {started && snapshot && (
+        {started && snapshot && screen !== 'home' && screen !== 'summary' && (
           <nav className="tabs" aria-label="画面の切り替え">
             {screens.map((item) => (
               <Button
@@ -243,12 +261,24 @@ export default function App() {
           </nav>
         )}
         <div className="header-status">
+          {screen !== 'home' && (
+            <Button
+              variant="plain"
+              aria-label="ホームへ戻る"
+              title="ホームへ戻る"
+              disabled={locked}
+              onClick={() => navigate('home')}
+            >
+              <Icon name="home" />
+              ホーム
+            </Button>
+          )}
           <span
             className="connection-status"
             title={
               online
-                ? 'オンライン（他の端末との同期はありません）'
-                : 'オフライン（このPCに保存しています）'
+                ? 'インターネットに接続しています。記録はこのPCに保存され、他の端末とは同期しません。'
+                : 'インターネット未接続です。会計は続けられ、記録はこのPCに保存されます。'
             }
             aria-label={
               online ? 'オンライン・端末間同期なし' : 'オフライン・このPCに保存'
@@ -265,6 +295,19 @@ export default function App() {
           />
         </div>
       </header>
+      <StorageWarning
+        blocked={unfinished || locked || screen === 'home'}
+        busy={busy}
+        errorMessage={error}
+        onBackup={
+          snapshot
+            ? () =>
+                perform(async () => {
+                  await exportBackup();
+                })
+            : undefined
+        }
+      />
       <Help open={helpOpen} onClose={() => setHelpOpen(false)} />
       <Dialog
         open={nextScreen !== null}
@@ -349,100 +392,123 @@ export default function App() {
         <fieldset className="app-content" disabled={locked} aria-busy={busy}>
           {snapshot === undefined ? (
             <p className="loading">保存状態を確認しています…</p>
-          ) : !started || !snapshot || !shared ? (
-            <Startup
-              key={snapshot?.meta.generation ?? 'empty'}
-              snapshot={snapshot}
-              store={store}
-              perform={perform}
-              errorMessage={error}
-              onStart={() => {
-                setResumeOrderIds(
-                  snapshot ? pendingOrders(snapshot).map((o) => o.id) : [],
-                );
-                setStarted(true);
-              }}
-              onRestart={restartSession}
-              exportBackup={exportBackup}
-              hasDraft={hasDraft}
-            />
           ) : (
             <>
-              <div className="session-bar">
-                <strong>{festivalTitle(snapshot)}</strong>
-                <div className="session-actions">
-                  <span role="status">{busy ? '保存中…' : ''}</span>
-                  <IconButton
-                    icon="refresh"
-                    label="注文と札の記録を更新"
-                    disabled={busy}
-                    onClick={() => perform(async () => {})}
-                  />
-                  <CloseDay
-                    snapshot={snapshot}
-                    store={store}
-                    lastBackupSequence={backupHistory.lastSequence(
-                      snapshot.meta,
-                    )}
-                    blocked={unfinished}
-                    exported={exportedBackup}
-                    onConfirmBackup={(meta) => {
-                      backupHistory.record(meta);
-                      backupChanged((version) => version + 1);
-                    }}
-                    onFinish={restartSession}
-                    exportBackup={exportBackup}
-                    {...shared}
-                  />
-                </div>
-              </div>
-              <Recovery
-                operations={unresolved}
-                snapshot={snapshot}
-                store={store}
-                draft={draft}
-                setDraft={setDraft}
-                {...shared}
-              />
-              <div hidden={screen !== 'checkout'}>
-                <div className="counter-layout">
-                  <Checkout
-                    snapshot={snapshot}
-                    draft={draft}
-                    setDraft={setDraft}
-                    store={store}
-                    resumeOrderIds={resumeOrderIds}
-                    {...shared}
-                  />
-                  <Waiting
-                    snapshot={snapshot}
-                    lastHandoff={lastHandoff}
-                    onHandoffChange={setLastHandoff}
-                    {...shared}
-                  />
-                </div>
-              </div>
-              {screen === 'history' && (
-                <History snapshot={snapshot} store={store} {...shared} />
-              )}
-              <div hidden={screen !== 'summary'}>
-                <Summary
-                  snapshot={snapshot}
-                  onDirtyChange={setSummaryDirty}
-                  {...shared}
-                />
-              </div>
-              <div hidden={screen !== 'settings'}>
-                <Settings
+              {screen === 'home' && (
+                <Startup
+                  key={snapshot?.meta.generation ?? 'empty'}
                   snapshot={snapshot}
                   store={store}
+                  perform={perform}
+                  errorMessage={error}
+                  onStart={() => {
+                    if (!started)
+                      setResumeOrderIds(
+                        snapshot
+                          ? pendingOrders(snapshot).map((o) => o.id)
+                          : [],
+                      );
+                    setStarted(true);
+                    setScreen('checkout');
+                  }}
+                  onSummary={() => navigate('summary')}
                   onRestart={restartSession}
-                  hasDraft={hasDraft}
                   exportBackup={exportBackup}
-                  onDirtyChange={setSettingsDirty}
-                  {...shared}
+                  hasDraft={hasDraft || settingsDirty || summaryDirty}
                 />
-              </div>
+              )}
+              {screen !== 'home' && snapshot && shared && (
+                <div className="session-bar">
+                  <strong>{festivalTitle(snapshot)}</strong>
+                  <div className="session-actions">
+                    <span role="status">{busy ? '保存中…' : ''}</span>
+                    <IconButton
+                      icon="refresh"
+                      label="注文と札の記録を更新"
+                      disabled={busy}
+                      onClick={() => perform(async () => {})}
+                    />
+                    {screen !== 'summary' && (
+                      <CloseDay
+                        snapshot={snapshot}
+                        store={store}
+                        lastBackupSequence={backupHistory.lastSequence(
+                          snapshot.meta,
+                        )}
+                        blocked={unfinished}
+                        exported={exportedBackup}
+                        onConfirmBackup={(meta) => {
+                          backupHistory.record(meta);
+                          backupChanged((version) => version + 1);
+                        }}
+                        onFinish={restartSession}
+                        exportBackup={exportDailyFiles}
+                        {...shared}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+              {started && snapshot && shared && (
+                <div hidden={screen === 'home' || screen === 'summary'}>
+                  <Recovery
+                    operations={unresolved}
+                    snapshot={snapshot}
+                    store={store}
+                    draft={draft}
+                    setDraft={setDraft}
+                    {...shared}
+                  />
+                  <div hidden={screen !== 'checkout'}>
+                    <div className="counter-layout">
+                      <Checkout
+                        snapshot={snapshot}
+                        draft={draft}
+                        setDraft={setDraft}
+                        store={store}
+                        resumeOrderIds={resumeOrderIds}
+                        {...shared}
+                      />
+                      <Waiting
+                        snapshot={snapshot}
+                        lastHandoff={lastHandoff}
+                        onHandoffChange={setLastHandoff}
+                        {...shared}
+                      />
+                    </div>
+                  </div>
+                  {screen === 'history' && (
+                    <History snapshot={snapshot} store={store} {...shared} />
+                  )}
+                  <div hidden={screen !== 'settings'}>
+                    <Settings
+                      snapshot={snapshot}
+                      store={store}
+                      onRestart={restartSession}
+                      hasDraft={hasDraft}
+                      exportBackup={exportBackup}
+                      onDirtyChange={setSettingsDirty}
+                      {...shared}
+                    />
+                  </div>
+                </div>
+              )}
+              {(screen === 'summary' || summaryVisited) && (
+                <div hidden={screen !== 'summary'}>
+                  <Suspense
+                    fallback={<p className="loading">集計を開いています…</p>}
+                  >
+                    <Summary
+                      key={`${snapshot?.meta.databaseId ?? 'empty'}:${snapshot?.meta.generation ?? ''}`}
+                      snapshot={snapshot}
+                      perform={perform}
+                      saveCommand={saveCommand}
+                      busy={busy}
+                      onDirtyChange={setSummaryDirty}
+                    />
+                  </Suspense>
+                </div>
+              )}
             </>
           )}
         </fieldset>

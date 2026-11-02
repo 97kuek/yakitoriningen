@@ -174,7 +174,7 @@ test('合計の横にセット内訳を置き、お釣りを筆算順に揃え�
   await expect(
     page.locator('.payment .section-heading .ticket-chip'),
   ).toHaveCount(0);
-  await page.getByRole('button', { name: '￥2,000', exact: true }).click();
+  await page.getByLabel('お預かり金額', { exact: true }).fill('2000');
   await page.getByRole('button', { name: 'お釣りを確認' }).click();
   const calculation = page.locator('.cash-calculation > div');
   await expect(calculation.locator('.cash-label')).toHaveText([

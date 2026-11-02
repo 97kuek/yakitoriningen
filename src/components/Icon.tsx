@@ -1,4 +1,5 @@
 import {
+  House,
   ArrowRight,
   Banknote,
   ChartNoAxesColumn,
@@ -25,6 +26,7 @@ import {
   X,
 } from 'lucide-react';
 const icons = {
+  home: House,
   plus: Plus,
   minus: Minus,
   cash: Banknote,

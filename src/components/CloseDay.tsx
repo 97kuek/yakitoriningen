@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import type { Snapshot } from '../domain/model';
 import { BUSINESS_CLOSE_MINUTE } from '../domain/constants';
 import { japanMinuteOfDay } from '../domain/time';
+import { summarizeSales } from '../domain/sales';
 import type { Cashier } from '../application/ports';
 import type { Shared, BackupExporter } from '../ui';
-import { today } from '../presentation/format';
+import { dayText, today, yen } from '../presentation/format';
 import { Button, Dialog, InlineError } from './controls';
+import './CloseDay.css';
 
 export function CloseDay({
   snapshot,
@@ -30,6 +32,9 @@ export function CloseDay({
   store: Cashier;
 }) {
   const [open, setOpen] = useState(false);
+  const dailySales = summarizeSales(
+    snapshot.orders.filter((order) => order.day === snapshot.meta.day),
+  );
   const unreturned = snapshot.tickets.filter(
     (ticket) => ticket.orderId !== null,
   );
@@ -69,7 +74,7 @@ export function CloseDay({
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title="今日の営業を終了"
+        title="1日、お疲れさまでした！"
         footer={
           <>
             <Button
@@ -80,7 +85,7 @@ export function CloseDay({
                 })
               }
             >
-              バックアップを保存
+              JSON・CSVを保存
             </Button>
             <Button
               variant="primary"
@@ -118,7 +123,17 @@ export function CloseDay({
         }
       >
         <InlineError message={errorMessage} />
-        <p>{snapshot.meta.day}</p>
+        <p className="close-day-date">{dayText(snapshot.meta.day)}の営業</p>
+        <dl className="close-day-summary" aria-label="本日の営業結果">
+          <div>
+            <dt>販売本数</dt>
+            <dd>{dailySales.count.toLocaleString('ja-JP')}本</dd>
+          </div>
+          <div>
+            <dt>売上</dt>
+            <dd>{yen(dailySales.sales)}</dd>
+          </div>
+        </dl>
         {unreturned.length > 0 && (
           <p role="status">
             未回収の札：{unreturned.map((ticket) => ticket.number).join('、')}

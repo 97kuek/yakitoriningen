@@ -18,6 +18,7 @@ test('開始画面はPCではイラストと入力を横に並べてスクロー
 }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
+  await page.getByRole('button', { name: '営業を準備', exact: true }).click();
   const art = page.getByRole('img', { name: 'ひよこたちが営む焼き鳥の屋台' });
   const panel = page.locator('.startup.panel');
   await expect(page.locator('.startup form')).toBeVisible();
@@ -388,6 +389,7 @@ test('初めてのブラウザでは準備画面が開き、入力エラーを�
   page,
 }) => {
   await page.goto('/');
+  await page.getByRole('button', { name: '営業を準備', exact: true }).click();
   const setup = page.getByRole('dialog', { name: '営業の準備', exact: true });
   await expect(setup).toBeVisible();
   await setup.getByLabel('営業名').fill('  初回の練習  ');

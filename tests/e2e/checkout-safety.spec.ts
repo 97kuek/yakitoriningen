@@ -67,15 +67,18 @@ test('未回収の札があれば営業を終了できない', async ({ page }) 
   await page
     .getByRole('button', { name: '今日の営業を終了', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', { name: '今日の営業を終了' });
+  const dialog = page.getByRole('dialog', { name: '1日、お疲れさまでした！' });
   await expect(
     dialog.getByText('未回収の札：1', { exact: true }),
   ).toBeVisible();
-  const downloading = page.waitForEvent('download');
+  const filenames: string[] = [];
+  page.on('download', (file) => filenames.push(file.suggestedFilename()));
   await dialog
-    .getByRole('button', { name: 'バックアップを保存', exact: true })
+    .getByRole('button', { name: 'JSON・CSVを保存', exact: true })
     .click();
-  await downloading;
+  await expect
+    .poll(() => filenames.sort())
+    .toEqual(['2026-11-07-yakitori.csv', '2026-11-07-yakitori.json']);
   await expect(
     dialog.getByRole('button', { name: '保存を確認して終了' }),
   ).toBeDisabled();
@@ -101,12 +104,15 @@ test('ダウンロードだけでは保存案内を消さず、保存確認後�
   await page
     .getByRole('button', { name: '今日の営業を終了', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', { name: '今日の営業を終了' });
-  const downloading = page.waitForEvent('download');
+  const dialog = page.getByRole('dialog', { name: '1日、お疲れさまでした！' });
+  const filenames: string[] = [];
+  page.on('download', (file) => filenames.push(file.suggestedFilename()));
   await dialog
-    .getByRole('button', { name: 'バックアップを保存', exact: true })
+    .getByRole('button', { name: 'JSON・CSVを保存', exact: true })
     .click();
-  await downloading;
+  await expect
+    .poll(() => filenames.sort())
+    .toEqual(['2026-11-07-yakitori.csv', '2026-11-07-yakitori.json']);
   await dialog.getByRole('button', { name: '閉じる', exact: true }).click();
   await expect(reminder).toBeVisible();
   await page

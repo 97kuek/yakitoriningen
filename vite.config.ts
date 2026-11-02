@@ -28,6 +28,7 @@ export default defineConfig({
         globPatterns: [
           '**/*.{js,css,html,svg,png,jpg,gif,webp,woff2,webmanifest}',
         ],
+        globIgnores: ['**/share-stall.jpg'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         skipWaiting: false,
         clientsClaim: true,

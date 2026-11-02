@@ -13,7 +13,7 @@ import { pendingOrders, unresolvedOperations } from '../domain/snapshot';
 import type { ActionHandler, BackupExporter } from '../ui';
 import { commandNames } from '../ui';
 import type { Cashier } from '../application/ports';
-import { Button, Dialog, InlineError } from './controls';
+import { Button, Dialog, DigitsInput, InlineError } from './controls';
 import { DataPanel } from './DataPanel';
 import { DaySetup } from './DaySetup';
 import { Icon } from './Icon';
@@ -24,6 +24,7 @@ export function Startup({
   perform,
   onStart,
   onRestart,
+  onSummary,
   errorMessage,
   exportBackup,
   hasDraft,
@@ -33,15 +34,16 @@ export function Startup({
   perform: ActionHandler;
   onStart: () => void;
   onRestart: () => void;
+  onSummary: () => void;
   errorMessage: string;
   exportBackup: BackupExporter;
   hasDraft: boolean;
 }) {
   const [event, setEvent] = useState('');
   const [day, setDay] = useState(today());
-  const [setupOpen, setSetupOpen] = useState(!snapshot);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [menu, setMenu] = useState(() => menuForm(normalPrice(newId())));
-  const [tickets, setTickets] = useState(DEFAULT_TICKET_COUNT);
+  const [tickets, setTickets] = useState(String(DEFAULT_TICKET_COUNT));
   const [dateOpen, setDateOpen] = useState(false);
   const differentDay = snapshot?.meta.day !== today();
   const reserved = snapshot ? pendingOrders(snapshot) : [];
@@ -170,7 +172,7 @@ export function Startup({
                 onSubmit={(e) => {
                   e.preventDefault();
                   void perform(() =>
-                    store.initialize(event, day, tickets, {
+                    store.initialize(event, day, Number(tickets), {
                       price: menuPrice(menu),
                       stock: menuStock(menu),
                     }),
@@ -199,13 +201,12 @@ export function Startup({
                   </label>
                   <label>
                     番号札の枚数
-                    <input
-                      type="number"
-                      min="1"
+                    <DigitsInput
+                      min={1}
                       max={MAX_TICKETS}
                       required
                       value={tickets}
-                      onChange={(e) => setTickets(Number(e.target.value))}
+                      onValueChange={setTickets}
                     />
                   </label>
                 </div>
@@ -229,6 +230,10 @@ export function Startup({
             </p>
           </>
         )}
+        <Button className="wide startup-summary" onClick={onSummary}>
+          <Icon name="chart" />
+          営業後の集計
+        </Button>
         <DataPanel
           snapshot={snapshot}
           store={store}

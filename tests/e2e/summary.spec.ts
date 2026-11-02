@@ -50,7 +50,7 @@ test('日別の売上・30分ごとのグラフ・商品内訳と経費を確認
   const expense = page.getByLabel('当日の経費');
   await expense.fill('00100');
   await expect.poll(() => leaveIsBlocked(page)).toBe(true);
-  await openScreen(page, '会計');
+  await page.getByRole('button', { name: 'ホームへ戻る', exact: true }).click();
   await page
     .getByRole('dialog', { name: '変更が保存されていません' })
     .getByRole('button', { name: '未保存のまま移動' })
