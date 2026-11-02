@@ -9,6 +9,7 @@ import type {
   Catalog,
   Snapshot,
   Ticket,
+  Quantities,
 } from '../domain/model';
 
 /** Atomic access to the ledger. Implementations decide how records are persisted. */
@@ -59,8 +60,15 @@ export interface Cashier {
   }): () => void;
 }
 
-/** Download reminders only; never evidence that a file reached a physical disk. */
+/** Operator-confirmed backup sequence, separate from a download request. */
 export interface BackupHistory {
   lastSequence(meta: Meta): number | null;
   record(meta: Meta): void;
+}
+
+export type Draft = { quantities: Quantities; price: Price | null };
+/** A temporary, local input copy scoped to the database generation and business day. */
+export interface DraftCache {
+  load(meta: Meta): Draft | null;
+  save(meta: Meta, draft: Draft): void;
 }

@@ -1,10 +1,4 @@
-import type {
-  Command,
-  Context,
-  Price,
-  Quantities,
-  Snapshot,
-} from './domain/model';
+import type { Command, Context, Snapshot } from './domain/model';
 export type BackupExporter = () => Promise<Snapshot>;
 
 export type ActionHandler = (work: () => Promise<unknown>) => Promise<void>;
@@ -23,7 +17,8 @@ export type Shared = {
 };
 
 /** The order being entered. The price is fixed when the first skewer is added. */
-export type Draft = { quantities: Quantities; price: Price | null };
+export type { Draft } from './application/ports';
+import type { Draft } from './application/ports';
 export const emptyDraft = (): Draft => ({ quantities: {}, price: null });
 
 /** The latest handoff, kept so it can be undone. */
@@ -33,6 +28,7 @@ export type Handoff = { orderId: string; completionId: string };
 export const commandNames: Record<Command['type'], string> = {
   reserve: '札の確保',
   pay: '会計確定',
+  selectTicket: '札の変更',
   deliver: '受け渡し',
   complete: '受け渡し・札回収',
   undoHandoff: '受け渡し完了の取り消し',

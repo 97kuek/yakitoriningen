@@ -1,4 +1,30 @@
-import type { Order, Ticket } from './model';
+import type { Order, Ticket, Operation, Log } from './model';
+
+/** Legacy reservations omit their number; the first move records where they started. */
+export function reservedTicket(
+  order: Order,
+  operations: Operation[],
+  logs: Log[],
+): number {
+  const related = operations.filter(
+    (operation) =>
+      operation.status === 'done' &&
+      'orderId' in operation.command &&
+      operation.command.orderId === order.id,
+  );
+  const reservation = related.find(
+    (operation) => operation.command.type === 'reserve',
+  )?.command;
+  if (reservation?.type === 'reserve' && reservation.ticket !== undefined)
+    return reservation.ticket;
+  const sequences = new Map(logs.map((log) => [log.operationId, log.sequence]));
+  const firstMove = related
+    .filter((operation) => operation.command.type === 'selectTicket')
+    .sort(
+      (a, b) => (sequences.get(a.id) ?? 0) - (sequences.get(b.id) ?? 0),
+    )[0]?.command;
+  return firstMove?.type === 'selectTicket' ? firstMove.from : order.ticket;
+}
 
 type TicketState = Pick<Order, 'status' | 'delivered' | 'returned'>;
 

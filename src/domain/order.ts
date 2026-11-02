@@ -2,7 +2,16 @@ import type { Command, Order } from './model';
 
 type OrderAction = Extract<
   Command,
-  { type: 'pay' | 'cancel' | 'deliver' | 'return' | 'complete' | 'undoHandoff' }
+  {
+    type:
+      | 'pay'
+      | 'cancel'
+      | 'deliver'
+      | 'return'
+      | 'complete'
+      | 'undoHandoff'
+      | 'selectTicket';
+  }
 >;
 
 /** Order state transitions contain no browser, clock, or persistence access. */
@@ -20,6 +29,12 @@ export function applyOrderAction(
     throw new Error('注文と札の割り当てが一致しません。');
   const order = { ...current };
   switch (action.type) {
+    case 'selectTicket':
+      if (order.status !== 'pending')
+        throw new Error('会計確定後の札は変更できません。');
+      if (order.ticket !== action.from)
+        throw new Error('札が変更されています。現在の番号を確認してください。');
+      return { ...order, ticket: action.ticket };
     case 'pay':
       if (
         operationId !== order.confirmOperationId ||

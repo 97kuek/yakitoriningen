@@ -281,6 +281,7 @@ export function Dialog({
   children,
   footer,
   className = '',
+  focusAfterClose,
 }: {
   open: boolean;
   onClose: () => void;
@@ -288,6 +289,7 @@ export function Dialog({
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  focusAfterClose?: { readonly current: HTMLElement | null };
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -304,7 +306,8 @@ export function Dialog({
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
-      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+      const target = focusAfterClose?.current ?? returnFocusRef.current;
+      if (target?.isConnected) target.focus({ preventScroll: true });
     }
   }, [open]);
 

@@ -478,3 +478,125 @@ it('完了取消の札書込が失敗したら待ち状態も売上も変えな�
   });
   expect(state.logs).toHaveLength(3);
 });
+
+it('確定待ちの入金を保ったまま札を変更し、再試行とバックアップでも二重割当しない', async () => {
+  const command = await reserve();
+  await store.prepare(command.confirmOperationId, ctx, {
+    type: 'pay',
+    orderId: command.orderId,
+    assignmentId: command.assignmentId,
+    received: 1000,
+  });
+  const id = newId();
+  const selection = {
+    type: 'selectTicket',
+    from: 1,
+    orderId: command.orderId,
+    assignmentId: command.assignmentId,
+    ticket: 2,
+  } satisfies Command;
+  await run(selection, id);
+  await store.execute(id, ctx);
+  let snapshot = (await store.read())!;
+  expect(snapshot.orders[0].ticket).toBe(2);
+  expect(snapshot.tickets.find((t) => t.number === 1)!.orderId).toBeNull();
+  expect(snapshot.tickets.find((t) => t.number === 2)!.orderId).toBe(
+    command.orderId,
+  );
+  expect(
+    snapshot.operations.find((op) => op.id === command.confirmOperationId)!
+      .status,
+  ).toBe('pending');
+  const { encodeBackup, parseBackup } = await import('../application/backup');
+  expect(parseBackup(encodeBackup(snapshot)).orders[0].ticket).toBe(2);
+  await store.execute(command.confirmOperationId, ctx);
+  snapshot = (await store.read())!;
+  expect(snapshot.orders[0].received).toBe(1000);
+  expect(parseBackup(encodeBackup(snapshot)).orders[0].ticket).toBe(2);
+  await expect(run({ ...selection, ticket: 1 } as Command)).rejects.toThrow();
+});
+
+it('使用中の札への変更は元の札と注文を変更せず、保存失敗も一括で戻す', async () => {
+  const first = await reserve();
+  const second = await reserve();
+  const command: Command = {
+    type: 'selectTicket',
+    from: 1,
+    orderId: first.orderId,
+    assignmentId: first.assignmentId,
+    ticket: 2,
+  };
+  await expect(run(command)).rejects.toThrow('使用中');
+  expect(
+    (await store.read())!.orders.find((order) => order.id === first.orderId)!
+      .ticket,
+  ).toBe(1);
+  const failed = (await store.read())!.operations.find(
+    (op) => op.status === 'pending',
+  )!;
+  await store.discard(failed.id, ctx);
+  await run({
+    type: 'cancel',
+    orderId: second.orderId,
+    assignmentId: second.assignmentId,
+    reason: '試験取消',
+  });
+  const id = newId();
+  await store.prepare(id, ctx, command);
+  const before = (await store.read())!;
+  const fail = () => {
+    throw new Error('試験用の書き込み失敗');
+  };
+  db.logs.hook('creating', fail);
+  await expect(store.execute(id, ctx)).rejects.toThrow('試験用');
+  db.logs.hook('creating').unsubscribe(fail);
+  expect((await store.read())!).toEqual(before);
+  await store.execute(id, ctx);
+  expect(
+    (await store.read())!.orders.find((order) => order.id === first.orderId)!
+      .ticket,
+  ).toBe(2);
+});
+
+it('完了取消の後で別の注文が同じ札へ変更されても、過去の正しい履歴を復元できる', async () => {
+  const a = await reserve();
+  const aTarget = { orderId: a.orderId, assignmentId: a.assignmentId };
+  await run({ type: 'pay', ...aTarget, received: 1000 }, a.confirmOperationId);
+  const firstCompletion = newId();
+  await run({ type: 'complete', ...aTarget }, firstCompletion);
+  const b = {
+    ...a,
+    orderId: newId(),
+    assignmentId: newId(),
+    confirmOperationId: newId(),
+    ticket: 2,
+  };
+  await run(b);
+  await run({ type: 'undoHandoff', ...aTarget, completionId: firstCompletion });
+  const secondCompletion = newId();
+  await run({ type: 'complete', ...aTarget }, secondCompletion);
+  await run({
+    type: 'selectTicket',
+    from: 2,
+    orderId: b.orderId,
+    assignmentId: b.assignmentId,
+    ticket: 1,
+  });
+  const { encodeBackup, parseBackup } = await import('../application/backup');
+  const snapshot = (await store.read())!;
+  expect(
+    parseBackup(encodeBackup(snapshot)).orders.find(
+      (order) => order.id === b.orderId,
+    )!.ticket,
+  ).toBe(1);
+  await run({
+    type: 'selectTicket',
+    from: 1,
+    orderId: b.orderId,
+    assignmentId: b.assignmentId,
+    ticket: 2,
+  });
+  await expect(
+    run({ type: 'undoHandoff', ...aTarget, completionId: secondCompletion }),
+  ).rejects.toThrow('再利用');
+});

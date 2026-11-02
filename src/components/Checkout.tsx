@@ -46,7 +46,6 @@ export function Checkout({
   resumeOrderIds: string[];
 }) {
   const [clearedDraft, setClearedDraft] = useState<Draft | null>(null);
-  const [selectedTicket, setSelectedTicket] = useState<number | null>(null);
   const activePrice = findActivePrice(snapshot)!;
   const price = draft.price ?? activePrice;
   const products = getMenu(price);
@@ -64,19 +63,7 @@ export function Checkout({
   const tickets = snapshot.tickets.filter(
     (ticket) => ticket.number <= snapshot.meta.ticketCount,
   );
-  const chosenTicket =
-    selectedTicket ??
-    [...tickets]
-      .filter((ticket) => ticket.orderId === null)
-      .sort((a, b) => a.number - b.number)[0]?.number ??
-    null;
-  const hasTicket = tickets.some(
-    (ticket) => ticket.number === chosenTicket && ticket.orderId === null,
-  );
-  useEffect(() => {
-    if (selectedTicket !== null)
-      nextButton.current?.focus({ preventScroll: true });
-  }, [selectedTicket]);
+  const hasTicket = tickets.some((ticket) => ticket.orderId === null);
   const changeQuantity = (id: keyof Quantities, value: number) => {
     if (
       !Number.isInteger(value) ||
@@ -111,6 +98,7 @@ export function Checkout({
               })
             }
             resumed={resumeOrderIds.includes(order.id)}
+            tickets={tickets}
             {...shared}
           />
         ))}
@@ -124,11 +112,6 @@ export function Checkout({
     >
       <div className="section-heading">
         <h2 id="checkout-title">注文</h2>
-        <TicketPicker
-          tickets={tickets}
-          value={chosenTicket}
-          onChange={setSelectedTicket}
-        />
         <div
           className="checkout-feedback"
           role="status"
@@ -291,7 +274,6 @@ export function Checkout({
           shared.perform(async () => {
             await shared.saveCommand({
               type: 'reserve',
-              ticket: chosenTicket!,
               orderId: newId(),
               assignmentId: newId(),
               confirmOperationId: newId(),
@@ -299,7 +281,6 @@ export function Checkout({
               price,
             });
             setClearedDraft(null);
-            setSelectedTicket(null);
             setDraft(emptyDraft());
           })
         }
@@ -309,11 +290,7 @@ export function Checkout({
         <EnterHint />
       </Button>
       {!hasTicket && (
-        <p className="notice">
-          {chosenTicket === null
-            ? '空き札がありません。札の回収を待ってください。'
-            : '選んだ札は使用中です。別の札を選んでください。'}
-        </p>
+        <p className="notice">空き札がありません。札の回収を待ってください。</p>
       )}
     </section>
   );
@@ -338,12 +315,14 @@ function Payment({
   resumed,
   onEdit,
   busy,
+  tickets,
 }: Shared & {
   order: Order;
   operation?: Operation;
   store: Cashier;
   resumed: boolean;
   onEdit: () => void;
+  tickets: Snapshot['tickets'];
 }) {
   const [received, setReceived] = useState('');
   const [confirmReady, setConfirmReady] = useState(true);
@@ -393,7 +372,31 @@ function Payment({
           <Icon name="cash" />
           お会計
         </h2>
-        <Ticket number={order.ticket} />
+        {staged ? (
+          <TicketPicker
+            tickets={tickets.map((ticket) =>
+              ticket.number === order.ticket
+                ? { ...ticket, orderId: null, assignmentId: null }
+                : ticket,
+            )}
+            value={order.ticket}
+            focusAfterClose={confirmButton}
+            onChange={(ticket) =>
+              ticket === order.ticket
+                ? undefined
+                : perform(() =>
+                    saveCommand({
+                      type: 'selectTicket',
+                      ...target,
+                      from: order.ticket,
+                      ticket,
+                    }),
+                  )
+            }
+          />
+        ) : (
+          <Ticket number={order.ticket} />
+        )}
       </div>
       {resumed && (
         <p className="notice">

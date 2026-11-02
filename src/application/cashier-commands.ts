@@ -208,7 +208,7 @@ export class CashierCommands {
       if (command.type === 'reserve') {
         result = await this.reserve(tx, meta, op, command);
       } else if ('orderId' in command) {
-        result = await this.changeOrder(tx, id, command);
+        result = await this.changeOrder(tx, meta, id, command);
       } else if (command.type === 'startDay' || command.type === 'resumeDay') {
         const snapshot = (await readSnapshot(tx))!;
         if (command.type === 'startDay') {
@@ -390,12 +390,45 @@ export class CashierCommands {
 
   private async changeOrder(
     tx: LedgerTransaction,
+    meta: Meta,
     operationId: string,
     command: Extract<Command, { orderId: string }>,
   ): Promise<string> {
     const current = await tx.orders.get(command.orderId);
     if (!current) throw new Error('注文と札の割り当てが一致しません。');
     if (command.type === 'reserve') throw new Error('注文は作成済みです。');
+    if (command.type === 'selectTicket') {
+      const oldTicket = await tx.tickets.get(current.ticket);
+      if (!ownsTicket(oldTicket, current))
+        throw new Error('札の現在の所有者が異なります。');
+      const order = applyOrderAction(
+        current,
+        command,
+        operationId,
+        this.now(),
+        false,
+      );
+      if (order.ticket !== current.ticket) {
+        const ticket = chooseTicket(
+          await tx.tickets.toArray(),
+          meta.ticketCount,
+          order.ticket,
+        );
+        await tx.tickets.put({
+          ...oldTicket!,
+          orderId: null,
+          assignmentId: null,
+        });
+        await tx.tickets.put({
+          ...ticket,
+          orderId: order.id,
+          assignmentId: order.assignmentId,
+          reuseSequence: meta.sequence + 1,
+        });
+      }
+      await tx.orders.put(order);
+      return order.id;
+    }
     const payment =
       command.type === 'cancel' && current.status === 'pending'
         ? await tx.operations.get(current.confirmOperationId)

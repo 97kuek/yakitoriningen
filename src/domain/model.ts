@@ -210,6 +210,14 @@ export const commandSchema = z.discriminatedUnion('type', [
   z
     .object({ type: z.literal('pay'), ...target, received: moneySchema })
     .strict(),
+  z
+    .object({
+      type: z.literal('selectTicket'),
+      ...target,
+      from: ticketNumberSchema,
+      ticket: ticketNumberSchema,
+    })
+    .strict(),
   z.object({ type: z.literal('deliver'), ...target }).strict(),
   z.object({ type: z.literal('complete'), ...target }).strict(),
   z

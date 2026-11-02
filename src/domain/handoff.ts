@@ -1,4 +1,5 @@
 import type { Order, Snapshot, Ticket } from './model';
+import { reservedTicket } from './ticket';
 
 type HandoffHistory = Pick<Snapshot, 'orders' | 'operations' | 'logs'>;
 
@@ -8,6 +9,7 @@ export function handoffUndoError(
   completionId: string,
   history: HandoffHistory,
   ticket: Ticket | undefined,
+  beforeSequence = Number.POSITIVE_INFINITY,
 ): string | null {
   if (order.status !== 'paid' || !order.delivered || !order.returned)
     return '取り消せる受け渡し完了ではありません。';
@@ -21,31 +23,43 @@ export function handoffUndoError(
     completion.command.type !== 'complete' ||
     completion.command.orderId !== order.id ||
     completion.command.assignmentId !== order.assignmentId ||
-    completedAt === undefined
+    completedAt === undefined ||
+    completedAt >= beforeSequence
   )
     return '受け渡し完了の記録が見つかりません。';
   if (
     history.logs.some(
-      (log) => log.target === order.id && log.sequence > completedAt,
+      (log) =>
+        log.target === order.id &&
+        log.sequence > completedAt &&
+        log.sequence < beforeSequence,
     )
   )
     return '直近の受け渡し完了だけ取り消せます。';
-  const reusedOrders = new Set(
-    history.orders
-      .filter((other) => other.ticket === order.ticket && other.id !== order.id)
-      .map((other) => other.id),
+  const sequences = new Map(
+    history.logs.map((log) => [log.operationId, log.sequence]),
   );
-  const laterReservations = history.operations.filter(
-    (op) =>
-      op.status === 'done' &&
-      op.command.type === 'reserve' &&
-      reusedOrders.has(op.command.orderId),
-  );
-  const reused = laterReservations.some((op) =>
-    history.logs.some(
-      (log) => log.operationId === op.id && log.sequence > completedAt,
-    ),
-  );
+  const orders = new Map(history.orders.map((other) => [other.id, other]));
+  const reused = history.operations.some((op) => {
+    const sequence = sequences.get(op.id) ?? 0;
+    const command = op.command;
+    if (
+      op.status !== 'done' ||
+      (command.type !== 'reserve' && command.type !== 'selectTicket') ||
+      command.orderId === order.id ||
+      sequence <= completedAt ||
+      sequence >= beforeSequence
+    )
+      return false;
+    const other = orders.get(command.orderId);
+    const number =
+      command.type === 'selectTicket'
+        ? command.ticket
+        : other
+          ? reservedTicket(other, history.operations, history.logs)
+          : undefined;
+    return number === order.ticket;
+  });
   if (
     !ticket ||
     ticket.orderId !== null ||

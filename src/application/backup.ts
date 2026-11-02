@@ -154,6 +154,16 @@ function validate(data: Snapshot): void {
     const reservations = related.filter((op) => op.command.type === 'reserve');
     requireValid(reservations.length === 1, '注文の作成操作がありません');
     const reservation = reservations[0];
+    const selection = related
+      .filter((op) => op.command.type === 'selectTicket')
+      .sort(
+        (a, b) =>
+          (logs.get(b.id)?.sequence ?? 0) - (logs.get(a.id)?.sequence ?? 0),
+      )[0];
+    const selectedTicket =
+      selection?.command.type === 'selectTicket'
+        ? selection.command.ticket
+        : undefined;
     if (reservation?.command.type === 'reserve') {
       requireValid(
         canonical(reservation.command.quantities) ===
@@ -161,8 +171,8 @@ function validate(data: Snapshot): void {
           canonical(reservation.command.price) === canonical(order.price) &&
           reservation.event === order.event &&
           reservation.day === order.day &&
-          (reservation.command.ticket === undefined ||
-            reservation.command.ticket === order.ticket) &&
+          ((selectedTicket ?? reservation.command.ticket) === undefined ||
+            (selectedTicket ?? reservation.command.ticket) === order.ticket) &&
           reservation.command.assignmentId === order.assignmentId,
         '注文と作成操作の内容',
       );

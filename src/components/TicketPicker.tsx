@@ -9,10 +9,12 @@ export function TicketPicker({
   tickets,
   value,
   onChange,
+  focusAfterClose,
 }: {
   tickets: Ticket[];
   value: number | null;
-  onChange: (number: number) => void;
+  onChange: (number: number) => void | Promise<void>;
+  focusAfterClose?: { readonly current: HTMLElement | null };
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -33,6 +35,7 @@ export function TicketPicker({
         onClose={() => setOpen(false)}
         title="渡す札を選ぶ"
         className="ticket-picker-dialog"
+        focusAfterClose={focusAfterClose}
       >
         <div className="ticket-picker-grid">
           {[...tickets]
@@ -44,10 +47,12 @@ export function TicketPicker({
                 title={ticket.orderId ? '使用中' : `札 ${ticket.number}`}
                 disabled={ticket.orderId !== null}
                 aria-pressed={ticket.number === value}
-                onClick={() => {
-                  onChange(ticket.number);
-                  setOpen(false);
-                }}
+                onClick={() =>
+                  void (async () => {
+                    await onChange(ticket.number);
+                    setOpen(false);
+                  })()
+                }
               >
                 {ticket.number}
               </Button>

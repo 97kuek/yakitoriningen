@@ -13,17 +13,20 @@ test('渡す札を空き番号から選んで会計し、使用中の札を選�
 }) => {
   await openFixture(page, await ledgerFixture());
   await addSkewers(page, 'もも', 2);
+  await page.getByRole('button', { name: '会計へ', exact: true }).click();
+  await page.getByLabel('お預かり金額').fill('500');
+  await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await page.getByRole('button', { name: '渡す札を選ぶ', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '渡す札を選ぶ' });
   await dialog.getByRole('button', { name: '札12を選ぶ', exact: true }).click();
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.payment .ticket-chip')).toContainText('12');
-  await page.getByLabel('お預かり金額').fill('500');
-  await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await page.getByRole('button', { name: '会計を確定', exact: true }).click();
   await expect(
     page.getByTestId('waiting-order').locator('.ticket-chip'),
   ).toContainText('12');
+  await addSkewers(page, 'もも');
+  await page.getByRole('button', { name: '会計へ', exact: true }).click();
+  await page.getByLabel('お預かり金額').fill('500');
+  await page.getByRole('button', { name: 'お釣りを確認', exact: true }).click();
   await page.getByRole('button', { name: '渡す札を選ぶ', exact: true }).click();
   await expect(
     dialog.getByRole('button', { name: '札12を選ぶ', exact: true }),

@@ -1,6 +1,7 @@
 import type { Order, Operation, Snapshot } from '../domain/model';
 import { applyOrderAction } from '../domain/order';
 import { handoffUndoError } from '../domain/handoff';
+import { reservedTicket } from '../domain/ticket';
 import { canonical } from './serialization';
 
 /** Replay persisted actions so a completion and its undo retain both records. */
@@ -14,6 +15,7 @@ export function validateOrderHistory(
   );
   let replay: Order = {
     ...order,
+    ticket: reservedTicket(order, actions, snapshot.logs),
     status: 'pending',
     received: null,
     change: null,
@@ -33,14 +35,9 @@ export function validateOrderHistory(
       const error = handoffUndoError(
         replay,
         command.completionId,
-        {
-          ...snapshot,
-          operations: snapshot.operations.filter(
-            (op) => (sequences.get(op.id) ?? Infinity) < sequence,
-          ),
-          logs: snapshot.logs.filter((log) => log.sequence < sequence),
-        },
+        snapshot,
         { number: order.ticket, orderId: null, assignmentId: null },
+        sequence,
       );
       if (error) throw new Error(error);
     }
@@ -53,6 +50,7 @@ export function validateOrderHistory(
     );
   }
   const state = (value: Order) => ({
+    ticket: value.ticket,
     status: value.status,
     received: value.received,
     change: value.change,
