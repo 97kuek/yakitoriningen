@@ -740,7 +740,7 @@ dd {
 }
 .startup > .day-setup-trigger {
   width: 100%;
-  margin-top: 12px;
+  margin: 12px 0 0;
 }
 .startup-record .startup-event {
   margin: 0;
@@ -1278,10 +1278,6 @@ dialog {
 }
 .day-setup-trigger {
   margin: 18px 0 0 8px;
-}
-.startup > .day-setup-trigger {
-  width: 100%;
-  margin: 0 0 12px;
 }
 .restore-dialog .restore {
   margin-top: 0;
