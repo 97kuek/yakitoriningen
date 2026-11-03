@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createMenuDraft, priceLabel } from '../domain/catalog';
 import { priceSchema } from '../domain/model';
 import type { Price, Snapshot } from '../domain/model';
@@ -38,19 +38,19 @@ export function MenuSettings({
   snapshot: Snapshot;
   onDirtyChange: (dirty: boolean) => void;
 } & Pick<Shared, 'perform' | 'saveCommand' | 'busy'>) {
-  const [draft, setDraft] = useState<MenuForm>(() =>
-    menuForm(active, stockForDay(snapshot)),
+  const storedDraft = useMemo(
+    () => menuForm(active, stockForDay(snapshot)),
+    [active, snapshot],
   );
-  const [savedContents, setSavedContents] = useState(() =>
-    menuContents(menuForm(active, stockForDay(snapshot))),
-  );
+  const storedContents = menuContents(storedDraft);
+  const [draft, setDraft] = useState<MenuForm>(() => storedDraft);
+  const [savedContents, setSavedContents] = useState(() => storedContents);
   const [saved, setSaved] = useState('');
-  const current = createMenuDraft(active);
+  const current = useMemo(() => createMenuDraft(active), [active]);
   const dirty = menuContents(draft) !== savedContents;
-  const storedContents = menuContents(menuForm(active, stockForDay(snapshot)));
   useEffect(() => {
     if (!dirty) {
-      setDraft(menuForm(active, stockForDay(snapshot)));
+      setDraft(storedDraft);
       setSavedContents(storedContents);
     }
   }, [storedContents]);

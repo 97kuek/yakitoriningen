@@ -321,17 +321,6 @@ small {
   height: 22px;
   flex-shrink: 0;
 }
-.storage-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: var(--font-small);
-  white-space: nowrap;
-}
-.storage-status.ready {
-  color: var(--ink);
-}
 main {
   width: 100%;
   max-width: 1360px;
@@ -622,18 +611,6 @@ main {
 }
 .waiting h2 > .icon {
   color: var(--ink);
-}
-.count-badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 25px;
-  height: 25px;
-  font-size: var(--font-small);
-  background: var(--ink);
-  color: var(--paper);
-  border-radius: 6px;
-  padding: 1px 6px;
-  font-weight: 600;
 }
 .waiting-totals {
   display: flex;
@@ -973,9 +950,6 @@ dialog > h2 {
   .header-status {
     gap: 8px;
   }
-  .storage-status > span {
-    display: none;
-  }
   .counter-layout {
     grid-template-columns: minmax(340px, 1fr) minmax(350px, 1fr);
     gap: 17px;
@@ -1027,13 +1001,6 @@ dialog > h2 {
     height: 36px;
     padding: 6px;
     min-height: 36px;
-  }
-  .storage-status {
-    gap: 5px;
-  }
-  .storage-status > span {
-    display: inline;
-    font-size: var(--font-small);
   }
   .tabs {
     grid-column: 1/-1;
@@ -1365,25 +1332,6 @@ input:not([type='checkbox']) {
   background: var(--paper);
   padding: 12px 0;
 }
-.ticket-badge {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 4px;
-  flex: 0 0 50px;
-  height: 34px;
-  line-height: 34px;
-  border-radius: 5px;
-  background: var(--selected-surface);
-  white-space: nowrap;
-}
-.ticket-badge small {
-  font-size: var(--font-small);
-}
-.ticket-badge strong {
-  font-size: var(--font-body);
-  font-weight: 500;
-}
 .order-content {
   min-width: 0;
   flex: 1;
@@ -1603,11 +1551,6 @@ input:not([type='checkbox']) {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.startup-menu-price {
-  display: inline-block;
-  margin: 0 12px 4px 0;
-  font-size: var(--font-small);
-}
 .product-name small {
   color: var(--muted);
   font-size: var(--font-small);
@@ -1802,7 +1745,6 @@ input:not([type='checkbox']) {
 }
 
 /* Consistent controls across the cashier and preparation screens. */
-.startup-menu-price,
 .product-name small,
 .price-strip small {
   font-size: var(--font-body);
@@ -2060,15 +2002,6 @@ dialog.control-dialog.day-setup-dialog {
 .about-details a:hover {
   text-decoration-color: var(--ink);
   background: var(--selected-surface);
-}
-.day-caption {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  column-gap: 12px;
-}
-.day-caption .hint {
-  white-space: nowrap;
 }
 
 #root {

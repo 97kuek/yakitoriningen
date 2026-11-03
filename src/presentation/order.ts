@@ -33,14 +33,6 @@ export function orderDateTime(order: Pick<Order, 'paidAt' | 'createdAt'>) {
   return dateTimeFormat.format(new Date(order.paidAt ?? order.createdAt));
 }
 
-/** Detailed state for the order details panel. */
-export function orderState(order: Order) {
-  if (order.status === 'pending') return '会計保留';
-  if (order.status === 'cancelled')
-    return order.refunded > 0 ? '全額返金済み' : '取消済み';
-  return order.delivered ? '受け渡し済み' : '受け渡し待ち';
-}
-
 /** Short state for the history table. */
 export function historyStateLabel(order: Order) {
   if (order.status === 'cancelled') return '取消';

@@ -52,22 +52,31 @@ export function Waiting({
   const completing = useRef(false);
   const lastCompletion = useRef(-Infinity);
   const returnOperationIds = useRef(new Map<string, string>());
-  const waiting = snapshot.orders
-    .filter(
-      (order) => order.day === snapshot.meta.day && isAwaitingHandoff(order),
-    )
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const waiting = useMemo(
+    () =>
+      snapshot.orders
+        .filter(
+          (order) =>
+            order.day === snapshot.meta.day && isAwaitingHandoff(order),
+        )
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    [snapshot],
+  );
   const unreturnedOrders = snapshot.orders.filter(needsTicketReturn);
   const returnRows = snapshot.orders.filter(
     (order) => needsTicketReturn(order) || heldRecoveryIds.includes(order.id),
   );
-  const products = [
-    ...new Map(
-      waiting
-        .flatMap((order) => orderItems(order))
-        .map((item) => [item.id, item]),
-    ).values(),
-  ];
+  const products = useMemo(() => {
+    const totals = new Map<string, ReturnType<typeof orderItems>[number]>();
+    for (const order of waiting)
+      for (const item of orderItems(order)) {
+        totals.set(item.id, {
+          ...item,
+          quantity: (totals.get(item.id)?.quantity ?? 0) + item.quantity,
+        });
+      }
+    return [...totals.values()];
+  }, [waiting]);
   const completedOrder = snapshot.orders.find(
     (order) => order.id === lastHandoff?.orderId,
   );
@@ -152,7 +161,7 @@ export function Waiting({
             <span key={p.id}>
               <span>{p.name}</span>
               <strong>
-                {waiting.reduce((n, o) => n + (o.quantities[p.id] ?? 0), 0)}
+                {p.quantity}
                 <small>本</small>
               </strong>
             </span>

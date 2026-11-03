@@ -70,27 +70,6 @@ export function salesByHalfHour(orders: readonly Order[]) {
   }));
 }
 
-/** Skewers sold per half hour and product. Refunded orders are excluded, as in the product totals. */
-export function quantitiesByHalfHour(orders: readonly Order[]) {
-  const groups = new Map<number, Record<string, number>>();
-  for (const order of orders) {
-    const slot = paidSlot(order);
-    if (slot === null || order.status !== 'paid') continue;
-    const quantities = groups.get(slot) ?? {};
-    for (const [id, quantity] of Object.entries(order.quantities))
-      if (quantity) quantities[id] = (quantities[id] ?? 0) + quantity;
-    groups.set(slot, quantities);
-  }
-  return chartSlots(orders).map((minute) => {
-    const quantities = groups.get(minute) ?? {};
-    return {
-      minute,
-      quantities,
-      total: Object.values(quantities).reduce((sum, n) => sum + n, 0),
-    };
-  });
-}
-
 export function quantitiesByProduct(orders: readonly Order[]) {
   const products = new Map<
     string,

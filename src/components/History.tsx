@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import './History.css';
 import { orderText, timeText, yen } from '../presentation/format';
 import { timeSlotOptions } from '../presentation/festival';
@@ -68,8 +68,9 @@ export function History({
       </th>
     );
   }
-  const orders = snapshot.orders.filter(
-    (order) => order.day === snapshot.meta.day,
+  const orders = useMemo(
+    () => snapshot.orders.filter((order) => order.day === snapshot.meta.day),
+    [snapshot],
   );
   const slotStart = slot ? Number(slot) : undefined;
   const filters = {
@@ -78,13 +79,15 @@ export function History({
     sort,
     direction,
   };
-  const history = historyPage(
-    orders,
-    ticketSearch,
-    state,
-    page,
-    undefined,
-    filters,
+  const history = useMemo(
+    () =>
+      historyPage(orders, ticketSearch, state, page, undefined, {
+        from: slotStart,
+        to: slotStart === undefined ? undefined : slotStart + TIME_SLOT_MINUTES,
+        sort,
+        direction,
+      }),
+    [orders, ticketSearch, state, page, slotStart, sort, direction],
   );
   const firstShown = history.page * history.size + 1;
   const lastShown = Math.min((history.page + 1) * history.size, history.total);

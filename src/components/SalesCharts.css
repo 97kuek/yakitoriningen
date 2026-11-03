@@ -30,9 +30,6 @@
   margin: 0;
   min-width: 0;
 }
-.chart-grid .chart-wide {
-  grid-column: 1 / -1;
-}
 .chart-grid figcaption {
   font-size: var(--font-body);
   font-weight: 600;

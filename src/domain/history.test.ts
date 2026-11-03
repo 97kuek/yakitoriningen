@@ -74,12 +74,6 @@ it('日本時間の範囲を開始を含み終了を含まずに絞り、並べ�
     historyPage(orders, '1', 'waiting', 0, 50, options).orders.map((o) => o.id),
   ).toEqual(['c']);
   expect(
-    historyPage(orders, '', 'all', 0, 50, {
-      sort: 'ticket',
-      direction: 'asc',
-    }).orders.map((o) => o.ticket),
-  ).toEqual([1, 2, 3, 4]);
-  expect(
     historyPage(orders, '', 'all', 0, 50, { from: 720, to: 600 }).total,
   ).toBe(0);
   expect(historyPage(orders, '', 'all', 0, 50, { to: 600 }).total).toBe(1);

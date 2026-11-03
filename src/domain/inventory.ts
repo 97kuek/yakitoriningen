@@ -47,18 +47,26 @@ export function adjustedStock(
   return quantities;
 }
 
-export function stockBalance(
-  snapshot: Snapshot,
-  day = snapshot.meta.day,
-): Quantities {
-  const remaining = { ...stockForDay(snapshot, day) };
+/** Compute physical, display and reservable stock from the same day's records. */
+export function stockLevels(snapshot: Snapshot, day = snapshot.meta.day) {
+  const balance = stockForDay(snapshot, day);
+  const reserved: Quantities = {};
   for (const order of snapshot.orders) {
-    if (order.day !== day || order.paidAt === null) continue;
+    if (order.day !== day) continue;
     for (const [id, quantity] of Object.entries(order.quantities)) {
-      if (Object.hasOwn(remaining, id)) remaining[id] -= quantity;
+      if (!Object.hasOwn(balance, id)) continue;
+      if (order.paidAt !== null) balance[id] -= quantity;
+      if (order.status === 'pending')
+        reserved[id] = (reserved[id] ?? 0) + quantity;
     }
   }
-  return remaining;
+  const remaining: Quantities = {};
+  const available: Quantities = {};
+  for (const [id, value] of Object.entries(balance)) {
+    remaining[id] = Math.max(0, value);
+    available[id] = Math.max(0, remaining[id] - (reserved[id] ?? 0));
+  }
+  return { balance, remaining, available };
 }
 
 /** Physical stock is never displayed as a negative count. */
@@ -66,38 +74,29 @@ export function remainingStock(
   snapshot: Snapshot,
   day = snapshot.meta.day,
 ): Quantities {
-  return Object.fromEntries(
-    Object.entries(stockBalance(snapshot, day)).map(([id, value]) => [
-      id,
-      Math.max(0, value),
-    ]),
-  );
+  return stockLevels(snapshot, day).remaining;
 }
 export function availableStock(
   snapshot: Snapshot,
   day = snapshot.meta.day,
 ): Quantities {
-  const remaining = remainingStock(snapshot, day);
-  for (const order of snapshot.orders) {
-    if (order.day !== day || order.status !== 'pending') continue;
-    for (const [id, value] of Object.entries(order.quantities))
-      if (Object.hasOwn(remaining, id))
-        remaining[id] = Math.max(0, remaining[id] - value);
-  }
-  return remaining;
+  return stockLevels(snapshot, day).available;
 }
 export function validateStock(snapshot: Snapshot, stock: Quantities) {
+  const used: Quantities = {};
+  for (const order of snapshot.orders) {
+    if (
+      order.day !== snapshot.meta.day ||
+      (order.paidAt === null && order.status !== 'pending')
+    )
+      continue;
+    for (const [id, quantity] of Object.entries(order.quantities))
+      used[id] = (used[id] ?? 0) + quantity;
+  }
   for (const [id, value] of Object.entries(stock)) {
-    const used = snapshot.orders
-      .filter(
-        (order) =>
-          order.day === snapshot.meta.day &&
-          (order.paidAt !== null || order.status === 'pending'),
-      )
-      .reduce((sum, order) => sum + (order.quantities[id] ?? 0), 0);
-    if (value < used)
+    if (value < (used[id] ?? 0))
       throw new Error(
-        `在庫は販売・会計中の${used}本以上にしてください。追加分も含めた、用意した本数を入力します。`,
+        `在庫は販売・会計中の${used[id]}本以上にしてください。追加分も含めた、用意した本数を入力します。`,
       );
   }
 }

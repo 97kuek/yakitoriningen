@@ -8,7 +8,7 @@ export const HISTORY_PAGE_SIZE = 50;
 export const TICKET_SEARCH_MAX_LENGTH = String(MAX_TICKETS).length;
 
 export type HistoryState = 'all' | 'waiting' | 'complete' | 'cancelled';
-export type HistorySort = 'time' | 'ticket' | 'amount';
+export type HistorySort = 'time' | 'amount';
 export type SortDirection = 'asc' | 'desc';
 export type HistoryOptions = {
   /** Order time range in Japan as minutes since midnight: `from` inclusive, `to` exclusive. */
@@ -59,11 +59,9 @@ export function filterHistory(
     })
     .sort((a, b) => {
       const value =
-        sort === 'ticket'
-          ? a.ticket - b.ticket
-          : sort === 'amount'
-            ? a.quote.total - b.quote.total
-            : a.createdAt.localeCompare(b.createdAt);
+        sort === 'amount'
+          ? a.quote.total - b.quote.total
+          : a.createdAt.localeCompare(b.createdAt);
       return (
         (direction === 'asc' ? value : -value) ||
         b.createdAt.localeCompare(a.createdAt) ||

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconButton, Button, EnterHint, preventKeyRepeat } from './controls';
 import { count } from '../domain/model';
 import type { Operation, Order, Quantities, Snapshot } from '../domain/model';
@@ -13,11 +13,7 @@ import { tryQuote } from '../domain/pricing';
 import { pendingOrders } from '../domain/snapshot';
 import { newId } from '../lib/id';
 import { orderItems, yen } from '../presentation/format';
-import {
-  remainingStock,
-  availableStock,
-  stockBalance,
-} from '../domain/inventory';
+import { stockLevels } from '../domain/inventory';
 import { useCheckoutKeys } from '../hooks/useCheckoutKeys';
 import { emptyDraft } from '../ui';
 import type { Draft, Shared } from '../ui';
@@ -48,15 +44,17 @@ export function Checkout({
   const activePrice = findActivePrice(snapshot)!;
   const price = draft.price ?? activePrice;
   const products = getMenu(price);
-  const remaining = remainingStock(snapshot);
-  const available = availableStock(snapshot);
-  const balance = stockBalance(snapshot);
+  const { remaining, available, balance } = useMemo(
+    () => stockLevels(snapshot),
+    [snapshot],
+  );
   const checkoutRoot = useRef<HTMLElement>(null);
   const nextButton = useRef<HTMLButtonElement>(null);
   useCheckoutKeys(checkoutRoot, nextButton);
   // An invalid total cannot be submitted; the draft stays editable.
   const estimate = tryQuote(draft.quantities, price);
-  const latestEstimate = tryQuote(draft.quantities, activePrice);
+  const latestEstimate =
+    price === activePrice ? estimate : tryQuote(draft.quantities, activePrice);
   const pending = pendingOrders(snapshot);
   const unresolved = snapshot.operations.some((op) => op.status === 'pending');
   const tickets = snapshot.tickets.filter(

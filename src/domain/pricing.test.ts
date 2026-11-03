@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { quote } from './pricing';
 import { priceSchema, quantitySchema } from './model';
 import * as catalog from './catalog';
+import { MAX_PRODUCTS, MAX_QUANTITY } from './constants';
 const normal = {
   id: 'p1',
   label: '通常',
@@ -228,4 +229,72 @@ describe('商品別メニュー', () => {
 it('商品が0件の価格は保存しない', async () => {
   const { priceSchema } = await import('./model');
   expect(() => priceSchema.parse({ ...normal, items: [] })).toThrow();
+});
+
+it('商品・本数が上限でもセット数と端数を正確に計算する', () => {
+  const items = Array.from({ length: MAX_PRODUCTS }, (_, index) => ({
+    id: `item${index}`,
+    name: `商品${index}`,
+    price: 150,
+    discountPrice: 50,
+  }));
+  const quantities = Object.fromEntries(
+    items.map(({ id }) => [id, MAX_QUANTITY]),
+  );
+  const count = MAX_PRODUCTS * MAX_QUANTITY;
+  expect(quote(quantities, { ...normal, items })).toEqual({
+    total: (count / 5) * 600,
+    count,
+    bundles: count / 5,
+    singles: 0,
+  });
+});
+
+it('単価やセット条件が異なっても全組合せを調べた最小金額と一致する', () => {
+  // Independent oracle: enumerate every possible bundle, rather than sorting units.
+  for (const mix of [true, false])
+    for (const size of [1, 2, 3, 4])
+      for (const bundlePrice of [0, 250, 500]) {
+        const memo = new Map<string, number>();
+        const units = [300, 150, 0];
+        function minimum(q: number[]): number {
+          const key = q.join();
+          if (memo.has(key)) return memo.get(key)!;
+          let result = q.reduce((sum, n, index) => sum + n * units[index], 0);
+          for (let a = 0; a <= q[0]; a++)
+            for (let b = 0; b <= q[1]; b++)
+              for (let c = 0; c <= q[2]; c++) {
+                const bundle = [a, b, c];
+                if (
+                  a + b + c !== size ||
+                  (!mix && bundle.filter(Boolean).length !== 1)
+                )
+                  continue;
+                result = Math.min(
+                  result,
+                  bundlePrice + minimum(q.map((n, index) => n - bundle[index])),
+                );
+              }
+          memo.set(key, result);
+          return result;
+        }
+        const price = {
+          ...normal,
+          mix,
+          bundleSize: size,
+          bundlePrice,
+          items: units.map((unit, index) => ({
+            id: `p${index}`,
+            name: `商品${index}`,
+            price: unit,
+            discountPrice: unit,
+          })),
+        };
+        for (let a = 0; a <= 3; a++)
+          for (let b = 0; b <= 3; b++)
+            for (let c = 0; c <= 3; c++)
+              expect(quote({ p0: a, p1: b, p2: c }, price).total).toBe(
+                minimum([a, b, c]),
+              );
+      }
 });

@@ -4,6 +4,38 @@ import { bundleApplies, getMenu, getUnitPrice } from './catalog';
 
 export type Quote = ReturnType<typeof quote>;
 
+type PricedQuantity = { unit: number; quantity: number };
+
+/** Rows must be in descending unit-price order; no per-skewer array is needed. */
+function bundleDiscount(rows: PricedQuantity[], size: number, price: number) {
+  let bundles = 0;
+  let saving = 0;
+  let partialCount = 0;
+  let partialTotal = 0;
+  for (const { unit, quantity } of rows) {
+    let left = quantity;
+    if (partialCount) {
+      const take = Math.min(left, size - partialCount);
+      partialCount += take;
+      partialTotal += take * unit;
+      left -= take;
+      if (partialCount < size) continue;
+      if (partialTotal <= price) break;
+      saving += partialTotal - price;
+      bundles++;
+      partialCount = 0;
+      partialTotal = 0;
+    }
+    if (unit * size <= price) break;
+    const whole = Math.floor(left / size);
+    bundles += whole;
+    saving += whole * (unit * size - price);
+    partialCount = left % size;
+    partialTotal = partialCount * unit;
+  }
+  return { bundles, saving };
+}
+
 export function quote(quantities: Quantities, price: Price) {
   const q = quantitySchema.parse(quantities);
   const p = priceSchema.parse(price);
@@ -21,24 +53,21 @@ export function quote(quantities: Quantities, price: Price) {
     const eligible = menu.filter(
       (item) => !p.bundleItems || p.bundleItems.includes(item.id),
     );
-    const units = eligible.map((item) =>
-      Array<number>(q[item.id] ?? 0).fill(getUnitPrice(item, p)),
-    );
-    const groups = p.mix ? [units.flat().sort((a, b) => b - a)] : units;
+    const rows = eligible
+      .map((item) => ({
+        unit: getUnitPrice(item, p),
+        quantity: q[item.id] ?? 0,
+      }))
+      .filter((row) => row.quantity > 0);
+    const groups = p.mix
+      ? [rows.sort((a, b) => b.unit - a.unit)]
+      : rows.map((row) => [row]);
     // Largest unit prices yield the greatest saving for each fixed-size bundle.
-    for (const group of groups)
-      for (
-        let start = 0;
-        start + p.bundleSize <= group.length;
-        start += p.bundleSize
-      ) {
-        const singleTotal = group
-          .slice(start, start + p.bundleSize)
-          .reduce((sum, unit) => sum + unit, 0);
-        if (singleTotal <= p.bundlePrice) break;
-        total -= singleTotal - p.bundlePrice;
-        bundles++;
-      }
+    for (const group of groups) {
+      const discount = bundleDiscount(group, p.bundleSize, p.bundlePrice);
+      total -= discount.saving;
+      bundles += discount.bundles;
+    }
   }
   const singles = totalCount - bundles * p.bundleSize;
   return quoteSchema.parse({
