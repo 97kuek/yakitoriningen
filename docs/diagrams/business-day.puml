@@ -1,0 +1,88 @@
+@startuml
+skinparam backgroundColor #FFFEF8
+skinparam defaultFontName "Hiragino Sans"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam ArrowColor #504F45
+skinparam activityBackgroundColor #FFFFFF
+skinparam activityBorderColor #88877B
+skinparam activityDiamondBackgroundColor #FFF9D9
+skinparam activityDiamondBorderColor #88877B
+skinparam swimlaneBorderColor #CBC8B9
+title 焼き鳥人間 — 営業準備・終了のアクティビティ図
+start
+partition "営業準備・開始" {
+:ホームを開く;
+if (保存された営業記録がある?) then ([なし])
+  :「営業を準備」から営業名・日付・
+商品・価格・札枚数・任意在庫を入力;
+  :initializeで空DBを検証し、
+初期設定・札・開始操作・ログを原子的に保存;
+  :コミット済みSnapshotを読み直す;
+else ([あり])
+  :現在の営業を開くか、
+「新しい営業を作る」で別の日を選ぶ;
+  if (別の営業日を準備・再開する?) then ([はい])
+    if (新しい営業日?) then ([新規])
+      :営業名・日付・商品・価格・札枚数・任意在庫を入力;
+      :未保存入力・連番・未解決操作・使用中の札と
+対象日が未使用であることを検証;
+      :prepare(startDay) → execute;
+      :DB世代と営業切替条件を再検証し、
+営業日・価格・札・操作・ログを原子的に保存;
+    else ([別の保存済み日])
+      :保存済みの日を選び「この日の営業に戻る」;
+      :未保存入力・連番・未解決操作・使用中の札と
+保存済みの日付・設定を検証;
+      :prepare(resumeDay) → execute;
+      :DB世代と営業切替条件を再検証し、
+営業日・札・操作・ログを原子的に保存;
+    endif
+    :onRestartでホームへ戻る;
+    :App.performのfinallyで
+コミット済みSnapshotを読み直す;
+  else ([現在の営業をそのまま開く])
+  endif
+endif
+:ホームに現在の営業名・日付を表示;
+:「会計を始める」;
+if (営業日が今日と異なる?) then ([はい])
+  :営業日確認ダイアログを表示;
+  :日付を確認して「この日付で開く」;
+else ([いいえ])
+endif
+:現在の営業日の会計画面へ移動
+（保存コマンドは発行しない）;
+}
+:営業する（会計・受け渡し・設定）;
+partition "営業終了・出力" {
+:途中会計・未解決操作・未回収札・\n未保存入力を解消する;
+:「今日の営業を終了」で販売本数・売上を確認;
+repeat
+  :「JSON・CSVを保存」;
+  :readで全ストアを同じ時点から取得;
+  :dailySnapshotで当日分を抽出し、\n同じ内容からJSONと全件CSVを生成;
+  :2ファイルのダウンロードを開始し、\n出力時のDB識別子・世代・日付・連番を保持;
+  :両ファイルの保存を確認して\n「保存を確認して終了」;
+  :readで最新Snapshotを再取得;
+  :DB識別子・世代・日付・連番の一致と\n途中会計・未解決操作・使用中の札がないことを再確認;
+  if (終了条件を満たす?) then ([はい])
+    :終了可能とする;
+  else ([いいえ])
+    :記録変更エラーを表示;
+    :途中の作業を解消し、保存をやり直す;
+  endif
+repeat while (終了条件を満たさない?) is ([はい]) not ([いいえ])
+:BackupHistory.record(meta)で\n担当者の保存確認を記録;
+:入力状態を片付け、ホームへ戻る;
+}
+stop
+legend bottom
+  対応: Startup.tsx / DaySetup.tsx / CloseDay.tsx / App.tsx / CashierCommands
+  初回initializeは空DBだけを受け付ける。別日の準備・再開でも既存の営業記録は残す。
+  現在日の「会計を始める」は画面遷移のみ。resumeDayは別の保存済み日へ切り替える操作。
+  終了は画面の状態遷移であり、永続化する「閉店済み」状態はない。
+  保存確認は担当者の申告。ブラウザは物理ファイルの保存完了を自動検出しない。
+  準備・保存処理の例外時は表示を確定させない。復元手順は本図の対象外。
+endlegend
+@enduml

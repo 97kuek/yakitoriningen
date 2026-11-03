@@ -1,0 +1,54 @@
+@startuml
+skinparam backgroundColor #FFFEF8
+skinparam defaultFontName "Hiragino Sans"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam ArrowColor #504F45
+skinparam usecaseBackgroundColor #FFFFFF
+skinparam usecaseBorderColor #88877B
+skinparam rectangleBackgroundColor #FFF9D9
+skinparam rectangleBorderColor #CBC8B9
+left to right direction
+title 焼き鳥人間 — ユースケース図
+actor "担当者" as Operator
+rectangle "焼き鳥人間（PC内のWebアプリ）" {
+  usecase "営業を準備・再開する" as Open
+  usecase "注文を受けて現金会計する" as Checkout
+  usecase "商品を渡して札を回収する" as Handoff
+  usecase "受け渡し完了を取り消す" as Undo
+  usecase "注文履歴を確認する" as History
+  usecase "会計を全額返金する" as Refund
+  usecase "商品・価格・在庫・経費を設定する" as Settings
+  usecase "売上を集計する" as Summary
+  usecase "JSONバックアップを保存する" as Backup
+  usecase "JSONから営業記録を復元する" as Restore
+  usecase "復元内容を確認する" as Preview
+  usecase "営業を終了する" as Close
+  usecase "終了用JSON・CSVを保存する" as DailyFiles
+}
+Operator -- Open
+Operator -- Checkout
+Operator -- Handoff
+Operator -- Undo
+Operator -- History
+Operator -- Refund
+Operator -- Settings
+Operator -- Summary
+Operator -- Backup
+Operator -- Restore
+Operator -- Close
+Restore ..> Preview : <<include>>
+Close ..> DailyFiles : <<include>>
+note right of Undo
+  対象札が一度も再利用されていないこと。
+  後で札が空いても、この条件は変わらない。
+end note
+note right of DailyFiles
+  同じSnapshotから当日分を出力。
+  担当者の保存確認後にホームへ戻る。
+end note
+note bottom of Operator
+  アプリを直接操作する役割は担当者のみ。
+  権限別の役割分担や認証は実装していない。
+end note
+@enduml

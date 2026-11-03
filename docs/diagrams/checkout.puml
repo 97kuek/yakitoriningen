@@ -1,0 +1,71 @@
+@startuml
+skinparam backgroundColor #FFFEF8
+skinparam defaultFontName "Hiragino Sans"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam ArrowColor #504F45
+skinparam activityBackgroundColor #FFFFFF
+skinparam activityBorderColor #88877B
+skinparam activityDiamondBackgroundColor #FFF9D9
+skinparam activityDiamondBorderColor #88877B
+skinparam swimlaneBorderColor #CBC8B9
+title 焼き鳥人間 — 会計・受け渡しのアクティビティ図（通常系）
+|担当者|
+start
+:商品と本数を入力;
+|画面|
+:最初の入力時の価格を下書きへ固定;
+|担当者|
+:「会計へ」;
+|画面|
+:saveCommand(reserve);
+|業務処理・保存|
+:prepareでreserve操作を保留保存;
+:executeで価格・在庫・空き札・DB世代を検証;
+:未入金注文・札割り当て・完了操作・ログを\n一つのトランザクションでコミット;
+|画面|
+:予約成功後に下書きを空にし、
+保存結果を読み直す;
+|担当者|
+:お預かり金額を入力し「お釣りを確認」;
+|業務処理・保存|
+:prepare(confirmOperationId, pay)で\n金額を含む確定操作を保留保存;
+|画面|
+:保存した預かり金額・お釣りを表示;
+|担当者|
+:現金とお釣りを照合し「会計を確定」;
+:ダイアログで渡す札を確認・選択し
+「この札で確定」;
+|画面|
+if (予約時の札から変更する?) then ([変更する])
+  :saveCommand(selectTicket);
+  |業務処理・保存|
+  :旧札の所有権と新札の空きを検証し\n札変更・注文・操作・ログを原子的に保存;
+  |画面|
+else ([変更しない])
+endif
+:execute(confirmOperationId, context);
+|業務処理・保存|
+:DB世代・注文状態・入金額・札の所有権を検証;
+:入金済み注文・完了操作・ログを\n一つのトランザクションでコミット;
+|画面|
+:コミット後の注文を読み直して表示;
+|担当者|
+:札を渡す;
+:商品を渡し、実物札を回収して\n受け渡しのチェックを押す;
+|画面|
+:saveCommand(complete);
+|業務処理・保存|
+:受け渡しと回収・札解放・操作・ログを\n一つのトランザクションでコミット;
+|画面|
+:コミット後の待ち一覧と空き札を表示;
+stop
+legend bottom
+  対応: Checkout.tsx / App.tsx / CashierCommands / domain/order.ts
+  reserve・selectTicket・completeのsaveCommandはprepare→execute。
+  payは現金確認の前後にprepareとexecuteを分ける。
+  「この札で確定」のクリック後、必要なら札変更を保存し、その成功後にpayを実行する。
+  保存失敗時は未確定表示を維持し、現金・札と照合して同じ操作IDで再試行する。
+  エラー分岐・数量修正・返金・再起動時の復旧は、この通常系の図では省略。
+endlegend
+@enduml

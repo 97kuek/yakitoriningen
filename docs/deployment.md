@@ -1,7 +1,7 @@
 ---
 title: "デプロイ"
 status: current
-updated: "2026-11-02"
+updated: "2026-11-03"
 ---
 
 # 公開と更新
@@ -10,7 +10,7 @@ updated: "2026-11-02"
 
 2026-10-31に認証情報を設定し、[GitHub Actionsからの公開成功](https://github.com/97kuek/yakitoriningen/actions/runs/41171116833)を確認しました。以後は`main`へのpushで検証と公開を実行します。
 
-Cloudflare Pagesで`dist/`のアプリ・画像・PWAだけを配信します。注文・売上・経費は各PCのIndexedDBに保存し、Cloudflareへ送信しません。営業では上記のURLを継続利用します。
+Cloudflare Pagesは、`dist/`内のアプリ・画像・PWAだけを配信します。注文・売上・経費は各PCのIndexedDBに保存し、Cloudflareへ送信しません。営業では上記のURLを継続利用します。
 
 ## GitHub Actionsによる自動公開
 
@@ -21,11 +21,13 @@ Cloudflare Pagesで`dist/`のアプリ・画像・PWAだけを配信します。
 3. 全検証が成功した`dist/`をartifactとして保存する。
 4. `main`へのpush、または`main`上の手動実行で、同じartifactを取得し再ビルドせずCloudflare Pagesへ公開する。
 
-PRでは公開しません。forkからのPRにもCloudflareの認証情報を渡しません。検証失敗時は公開jobを実行せず、公開認証情報がない場合も公開jobを失敗にします。成功時は実行結果のSummaryに公開したcommitとURLを記録します。
+PRでは公開せず、forkからのPRにもCloudflareの認証情報を渡しません。検証に失敗した場合は公開ジョブを実行しません。公開用の認証情報がない場合は、公開ジョブを失敗として扱います。公開に成功したら、実行結果のSummaryに公開したcommitとURLを記録します。
 
-失敗したE2EのHTMLレポート・trace・画像は`playwright-failure` artifactに7日間保存します。`dist` artifactも7日間保存します。各jobは20分（検証）・10分（公開）で打ち切ります。新しいPR更新は古い検証を取り消し、`main`の実行は同時公開を避けるため順番に処理します。公開直前に最新の`main`と一致することも確認し、古い実行の再公開を防ぎます。
+E2Eに失敗した場合は、HTMLレポート・trace・画像を`playwright-failure` artifactに7日間保存します。`dist` artifactの保存期間も7日間です。検証ジョブは20分、公開ジョブは10分で打ち切ります。
 
-Actionsは検証したリリースのcommit SHAで固定し、Dependabotが週に一度更新PRを作ります。トークンの権限は`contents: read`だけを使い、workflowからGitHubへのcommit・PRコメント投稿は行いません。GitHubは`production` environmentへの実行をdeploymentとして記録します。
+PRを更新したら古い検証を取り消します。`main`の実行は、同時公開を避けるため順番に処理します。公開直前にも最新の`main`との一致を確認し、古い実行の再公開を防ぎます。
+
+使用するActionsは、検証したリリースのcommit SHAで固定します。Dependabotが週に一度、更新PRを作ります。トークンの権限は`contents: read`だけを使い、workflowからGitHubへのcommitやPRコメントの投稿は行いません。GitHubは`production` environmentへの実行をdeploymentとして記録します。
 
 ### 最初に一度だけ設定する認証情報
 
@@ -40,7 +42,7 @@ GitHubのリポジトリ設定「Secrets and variables」→「Actions」に次�
 | Repository secret | `CLOUDFLARE_API_TOKEN` | 作成したCloudflare APIトークン |
 | Repository variable | `CLOUDFLARE_ACCOUNT_ID` | `yakitoriningen`が属するCloudflareアカウントID |
 
-Account IDは秘密情報ではないためvariableに置きます。トークンの実値をコマンド引数・ファイル・Gitへ残さず登録するには、対話入力を使います。
+Account IDは秘密情報ではないためvariableに置きます。トークンの実値がコマンド引数・ファイル・Gitに残らないよう、登録には対話入力を使います。
 
 ```sh
 gh secret set CLOUDFLARE_API_TOKEN
@@ -72,11 +74,13 @@ npx wrangler whoami
 npx wrangler pages project create yakitoriningen --production-branch main --force
 ```
 
-プロジェクトの作成は初回だけです。作成時の`--force`はCLIによるWorkersへの自動切り替えを避け、`pages.dev`で公開する指定です。既存プロジェクトの更新時には付けません。既にある場合は作成せず、次の更新手順を使います。ログイン時は公開先のCloudflareアカウントを選びます。APIトークンをコマンドやGitへ保存しません。
+プロジェクトを作成するのは初回だけです。既にある場合は作成せず、次の更新手順を使います。作成時の`--force`は、CLIによるWorkersへの自動切り替えを避けて`pages.dev`で公開する指定です。既存プロジェクトの更新時には付けません。
+
+ログイン時は公開先のCloudflareアカウントを選び、APIトークンをコマンドやGitへ保存しません。
 
 ## ローカルから明示的に公開する場合
 
-通常の更新は`main`へのpushで公開します。ローカルからの公開が必要で、明示的に依頼された場合だけ以下を使います。
+通常の更新は`main`へのpushで公開します。ローカルからの公開が必要で、明示的に依頼された場合だけ、次のコマンドを使います。
 
 ```sh
 npm run check
@@ -95,7 +99,7 @@ npm run deploy
 
 このコマンドは再ビルド後、`yakitoriningen`プロジェクトの本番ブランチ`main`へ公開します。`wrangler.jsonc`の`pages_build_output_dir`は`dist/`だけを指定しています。互換日は同梱ランタイムが対応する`2026-10-23`です。
 
-既存のDirect UploadプロジェクトをWranglerで更新します。CloudflareのGit integrationへの切り替えや別プロジェクトの作成は不要です。独自ドメインやCloudflareアカウント全体のサブドメインも変更しません。
+Wranglerで既存のDirect Uploadプロジェクトを更新します。CloudflareのGit integrationへ切り替えたり、別プロジェクトを作成したりする必要はありません。独自ドメインやCloudflareアカウント全体のサブドメインも変更しません。
 
 ## 更新ファイルの配信
 
@@ -115,11 +119,11 @@ npm run deploy
 
 ## 記録の引き継ぎ
 
-ローカルのURLと公開先URLは保存先が別です。必要な記録がある場合は、元の画面で記録を保存・読み直し確認し、公開先の「バックアップから復元」から復元します。複数PCで同じURLを開いても注文は共有されません。
+ローカルのURLと公開先URLでは、記録の保存先が異なります。引き継ぐ記録がある場合は、元の画面で記録をファイルに保存し、読み直して確認します。そのうえで、公開先の「バックアップから復元」で復元します。複数PCで同じURLを開いても注文は共有されません。
 
 以前の試験用URLで記録を作った場合も同じ手順で引き継ぎます。公開先のURLを変えても、記録が自動で移ることはありません。
 
-入力中・保留の操作や未保存の設定を解消してから、画面の「更新する」を押します。更新はアプリの表示ファイルだけを切り替え、記録は同じブラウザ内に残ります。更新のためにバックアップを選択・復元する必要はありません。
+入力中の内容・保留の操作・未保存の設定を解消してから、画面の「更新する」を押します。更新はアプリの表示ファイルだけを切り替え、記録は同じブラウザ内に残ります。更新のためにバックアップを選択・復元する必要はありません。
 
 ## 根拠
 

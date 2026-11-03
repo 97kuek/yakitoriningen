@@ -1,0 +1,123 @@
+@startuml
+skinparam backgroundColor #FFFEF8
+skinparam defaultFontName "Hiragino Sans"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #504F45
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #88877B
+hide empty methods
+hide circle
+left to right direction
+title 焼き鳥人間 — 保存レコードの型図（UML DataTypeへの投影）
+class Snapshot <<dataType>>
+class Meta <<dataType>> {
+  +key: string = "main"
+  +databaseId: string
+  +generation: string
+  +event: string
+  +day: string
+  +activePriceId: string
+  +ticketCount: number
+  +sequence: number
+  +expenseTotal: number | null
+}
+class Price <<dataType>> {
+  +id: string
+  +label: string
+  +unit: number
+  +bundleSize: number
+  +bundlePrice: number
+  +bundleEnabled: boolean
+  +mix: boolean
+}
+class MenuItem <<dataType>> {
+  +id: string
+  +name: string
+  +price: number
+  +discountPrice: number
+}
+class Order <<dataType>> {
+  +id: string
+  +assignmentId: string
+  +confirmOperationId: string
+  +event: string
+  +day: string
+  +ticket: number
+  +status: pending | paid | cancelled
+  +received: number | null
+  +change: number | null
+  +delivered: boolean
+  +returned: boolean
+  +refunded: number
+}
+class "Order.quoteの構造型" as Quote <<dataType>> {
+  +total: number
+  +count: number
+  +bundles: number
+  +singles: number
+}
+class Ticket <<dataType>> {
+  +number: number
+  +reuseSequence: number [0..1]
+  +orderId: string | null
+  +assignmentId: string | null
+}
+class Operation <<dataType>> {
+  +id: string
+  +event: string
+  +day: string
+  +status: pending | done | dismissed
+  +result: string | null
+}
+class Context <<dataType>> {
+  +databaseId: string
+  +generation: string
+}
+class Command <<dataType>> {
+  +type: string {discriminant}
+}
+class Log <<dataType>> {
+  +sequence: number
+  +operationId: string
+  +type: string
+  +target: string
+  +at: string
+}
+Snapshot --> "1" Meta : meta
+Snapshot --> "0..*" Price : prices {ordered}
+Snapshot --> "0..*" Order : orders {ordered}
+Snapshot --> "0..*" Ticket : tickets {ordered}
+Snapshot --> "0..*" Operation : operations {ordered}
+Snapshot --> "0..*" Log : logs {ordered}
+Price "0..*" --> "0..*" MenuItem : items {ordered}\n{任意。指定時は1件以上}
+Order "0..*" --> "1" Price : price（当時の値）
+Order "0..*" --> "1" Quote : quote
+Operation "0..*" --> "1" Context : context
+Operation "0..*" --> "1" Command : command
+note bottom of Snapshot
+  model.tsのレコード・配列型を示す。
+  実行時のEntityクラスやDBの外部キーではない。
+  矢印は値を持つプロパティ。所有・合成は仮定しない。
+  一部のスカラー・日時・商品別のmap属性は省略。
+end note
+note right of Ticket
+  現在の所有者はorderIdとassignmentIdで検証。
+  Order.ticketは実物の番号で、履歴間で再利用する。
+  注文履歴と札に永続的な1対1関係はない。
+end note
+note right of Command
+  typeで識別する保存済みのunion型。
+  reserve / pay / selectTicket / complete /
+  cancel / startDay / resumeDay等を保持。
+  旧コマンドも互換性のため読み込む。
+end note
+legend bottom
+  多重度はプロパティ値の型。Snapshot配列の0..*は型定義に対応し、業務上の整合性制約は別途検証する。
+  逆端はすべて0..*。Snapshot側の重なる表示は省略するが、1とは解釈しない。
+  参照元の数や所有者を制約せず、DBの外部キーも意味しない。
+  ID文字列の参照は実オブジェクト参照と区別し、関連線に置き換えない。
+  Order.quoteの構造型に独立したexport typeや実行時クラスはない。
+endlegend
+@enduml

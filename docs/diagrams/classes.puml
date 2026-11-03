@@ -3,8 +3,6 @@ skinparam backgroundColor #FFFEF8
 skinparam defaultFontName "Hiragino Sans"
 skinparam defaultFontSize 14
 skinparam shadowing false
-skinparam roundCorner 10
-skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
 skinparam ArrowColor #504F45
 skinparam classBackgroundColor #FFFFFF
@@ -12,55 +10,101 @@ skinparam classBorderColor #88877B
 skinparam packageBackgroundColor #FFF9D9
 skinparam packageBorderColor #CBC8B9
 hide empty members
+hide circle
 left to right direction
-title 焼き鳥人間 — 実装のクラス・ポート
-class "cashier\nbootstrap.ts" as CashierObject <<object>> {
-  +read / initialize / prepare
-  +execute / discard / restore
-  +watch(observer)
+title 焼き鳥人間 — 実装クラス・ポートのクラス図
+package "application" {
+  interface Cashier <<interface>> {
+    +read(): Promise<Snapshot | null>
+    +initialize(event, day, tickets, settings?): Promise<Context>
+    +prepare(id, context, command): Promise<Operation>
+    +execute(id, context): Promise<string>
+    +discard(id, context): Promise<void>
+    +restore(snapshot, expected): Promise<void>
+    +watch(observer): () => void
+  }
+  class CashierCommands {
+    -repository: LedgerRepository {readOnly}
+    {field} -newId: () => string {readOnly}
+    {field} -now: () => string {readOnly}
+    +read(): Promise<Snapshot | null>
+    +initialize(event, day, tickets, settings?): Promise<Context>
+    +prepare(id, context, command): Promise<Operation>
+    +execute(id, context): Promise<string>
+    +discard(id, context): Promise<void>
+    +restore(snapshot, expected): Promise<void>
+  }
+  interface LedgerRepository <<interface>> {
+    +read<T>(work): Promise<T>
+    +write<T>(work): Promise<T>
+  }
+  interface LedgerTransaction <<interface>> {
+    +meta: Records<Meta, string>
+    +prices: Pick<Records<Price, string>, ...>
+    +orders: Records<Order, string>
+    +tickets: Records<Ticket, number>
+    +operations: Records<Operation, string>
+    +logs: Pick<Records<Log, number>, ...>
+  }
+  interface "Records<T, K>" as Records <<interface>> {
+    +get(key: K): Promise<T | undefined>
+    +add(value: T): Promise<unknown>
+    +put(value: T): Promise<unknown>
+    +delete(key: K): Promise<void>
+    +bulkAdd(values: T[]): Promise<unknown>
+    +clear(): Promise<void>
+    +count(): Promise<number>
+    +toArray(): Promise<T[]>
+  }
 }
-interface Cashier {
-  +read(): Promise<Snapshot | null>
-  +initialize / prepare / execute
-  +discard / restore / watch
+package "storage" {
+  class CashierStore {
+    +CashierStore(db = new Database())
+  }
+  class DexieLedgerRepository {
+    -db: Database {readOnly}
+    -records(): LedgerTransaction
+    +read<T>(work): Promise<T>
+    +write<T>(work): Promise<T>
+  }
+  class Database {
+    +meta: Table<Meta, string>
+    +prices: Table<Price, string>
+    +orders: Table<Order, string>
+    +tickets: Table<Ticket, number>
+    +operations: Table<Operation, string>
+    +logs: Table<Log, number>
+  }
 }
-class CashierStore <<storage>> {
-  +db: Database
-}
-class CashierCommands <<application>> {
-  -repository: LedgerRepository
-  +read / initialize / prepare
-  +execute / discard / restore
-}
-interface LedgerRepository <<port>> {
-  +read(work)
-  +write(work)
-}
-class DexieLedgerRepository <<storage>> {
-  -db: Database
-  +read(work)
-  +write(work)
-}
-class Database <<storage>> {
-  +meta / prices / orders
-  +tickets / operations / logs
-}
-class Dexie <<library>>
-CashierObject ..|> Cashier : 公開ポートを実装
-CashierObject -right-> CashierStore : 操作を委譲・変更を購読
-CashierStore -right-|> CashierCommands : 業務手順を継承
-CashierCommands -right-> LedgerRepository : 原子的な読み書きを依頼
-DexieLedgerRepository ..|> LedgerRepository : 保存ポートを実装
-CashierStore -down-> DexieLedgerRepository : constructorで生成
-DexieLedgerRepository -right-> Database : 同じtransactionで保存
-Database -right-|> Dexie : DBスキーマを定義
+class Dexie <<external library>>
+CashierStore -up-|> CashierCommands
+CashierCommands "0..*" --> "1" LedgerRepository : repository
+DexieLedgerRepository ..|> LedgerRepository
+CashierStore ..> DexieLedgerRepository : <<create>>
+DexieLedgerRepository "0..*" --> "1" Database : db
+Database -up-|> Dexie
+LedgerRepository ..> LedgerTransaction : work引数の型
+LedgerTransaction ..> Records : 属性の型
+note top of Cashier
+  bootstrap.tsのcashierオブジェクトが
+  構造的にこのinterfaceを満たす。
+  storeへ委譲し、watchを追加する。
+  CashierStore単体にはwatchがない。
+end note
 note bottom of CashierCommands
-  時刻・ID生成をconstructorから注入。
-  domainの関数が価格・状態遷移を計算する。
-  Snapshot・CommandはTypeScriptの型。
+  public操作を記載し、private補助メソッドは省略。
+  domain関数へ業務ルールを委譲する。
+  各操作の引数型はports.ts・model.tsを参照。
 end note
-note bottom of LedgerRepository
-  workへLedgerTransactionを渡す。
-  meta・orders・ticketsなどを一括操作。
+note bottom of LedgerTransaction
+  pricesはput/delete不可、logsはget/put/delete不可。
+  Pickの許可メンバー一覧はports.tsを参照。
+  このinterface自体がDBクラスなのではない。
 end note
+legend bottom
+  + public / - private / {readOnly} readonly属性。白三角の実線は汎化、破線はinterface実現。
+  実線の矢印は保持する参照、破線矢印は依存。生成だけの関係に所有・合成は仮定しない。
+  Cashierはオブジェクトリテラルで実装するため、架空の実装クラスや実現関係は加えない。
+  Records等のinterfaceはTypeScriptの構造的な契約。TypeScriptの型と実行時クラスを区別する。
+endlegend
 @enduml

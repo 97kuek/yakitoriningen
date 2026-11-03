@@ -1,0 +1,44 @@
+@startuml
+skinparam backgroundColor #FFFEF8
+skinparam defaultFontName "Hiragino Sans"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam objectBackgroundColor #FFFFFF
+skinparam objectBorderColor #88877B
+skinparam ArrowColor #504F45
+top to bottom direction
+title 焼き鳥人間 — 会計確定のコミュニケーション図
+object "<u>画面の実行コンテキスト</u>" as UI
+object "<u>cashier : Cashier</u>" as Cashier
+object "<u>store : CashierStore</u>" as Store
+object "<u>repository : DexieLedgerRepository</u>" as Repository
+object "<u>db : Database</u>" as DB
+UI -right-> Cashier : 1: execute(confirmOperationId, context)
+Cashier -down-> Store : 1.1: execute(id, context)
+Store -left-> Repository : 1.1.1: write(work)
+Repository -up-> DB : 1.1.1.1: transaction('rw', tables, callback)
+note top of UI
+  Payment / TicketPickerのイベント処理。
+  React関数を架空のクラスにせず、
+  実行時の役割を無型の参加者として示す。
+end note
+note bottom of Store
+  executeはCashierCommandsから継承。
+  pay操作がpendingである通常系を示す。
+  準備保存済み操作・注文・札を照合し、
+  applyOrderActionで入金済みに遷移する。
+end note
+note left of DB
+  transactionのcallbackはwork(tx)を実行する。
+  tx : LedgerTransactionのrecordsを通して
+  orders.put・logs.add・meta.put・operations.putを実行。
+  検証失敗なら全体をロールバック。
+end note
+legend bottom
+  下線付きの箱は実行時の参加者。矢印は呼び出しメッセージで、番号の小数部は呼び出しの入れ子。
+  workとDexieのcallback内部の呼び出し、および戻りメッセージは省略。
+  writeのPromiseはコミット後に解決し、executeの結果が画面へ返る。
+  watchのliveQuery通知とは別に、App.performはreadでコミット済み状態を再取得する。
+  対応: Checkout.tsx / App.tsx / bootstrap.ts / cashier-commands.ts / ledger-repository.ts
+endlegend
+@enduml
