@@ -8,7 +8,18 @@ import { DataPanel } from './DataPanel';
 import { MenuSettings } from './MenuSettings';
 import { Button, DigitsInput } from './controls';
 import { StorageStatus } from './StorageStatus';
+import type { StorageProtection } from '../hooks/useStorageProtection';
+
+const protectionText: Record<StorageProtection, string> = {
+  checking: '自動削除の防止を確認しています…',
+  protected: '自動削除の防止：有効',
+  denied:
+    '自動削除の防止は許可されていません。バックアップを保存してください。',
+  unavailable:
+    '自動削除の防止を設定できません。バックアップを保存してください。',
+};
 export function Settings({
+  protection,
   snapshot,
   store,
   onRestart,
@@ -17,6 +28,7 @@ export function Settings({
   exportBackup,
   ...shared
 }: Shared & {
+  protection: StorageProtection;
   snapshot: Snapshot;
   store: Cashier;
   onRestart: () => void;
@@ -26,7 +38,6 @@ export function Settings({
 }) {
   const active = findActivePrice(snapshot)!;
   const [tickets, setTickets] = useState(String(snapshot.meta.ticketCount));
-  const [persisted, setPersisted] = useState<boolean | null>(null);
   const [saved, setSaved] = useState('');
   const [menuDirty, setMenuDirty] = useState(false);
   const operationDirty = tickets !== String(snapshot.meta.ticketCount);
@@ -101,26 +112,7 @@ export function Settings({
           <section className="operation-section">
             <h3>記録の保護</h3>
             <StorageStatus />
-            <Button
-              onClick={() =>
-                shared.perform(async () => {
-                  if (!navigator.storage?.persist)
-                    throw new Error(
-                      'このブラウザでは記録の保護を設定できません。',
-                    );
-                  setPersisted(await navigator.storage.persist());
-                })
-              }
-            >
-              記録を保護する
-            </Button>
-            {persisted !== null && (
-              <p role="status">
-                {persisted
-                  ? '記録の保護が有効です。'
-                  : '記録の保護は許可されませんでした。バックアップを保存してください。'}
-              </p>
-            )}
+            <p role="status">{protectionText[protection]}</p>
           </section>
         </section>
         <p className="sr-only" role="status">

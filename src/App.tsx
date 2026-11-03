@@ -19,6 +19,7 @@ import { useAppUpdate } from './hooks/useAppUpdate';
 import { useExclusiveTab } from './hooks/useExclusiveTab';
 import { useLeaveConfirmation } from './hooks/useLeaveConfirmation';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
+import { useStorageProtection } from './hooks/useStorageProtection';
 import { errorMessage } from './presentation/error-message';
 import { festivalTitle } from './presentation/festival';
 import { emptyDraft } from './ui';
@@ -142,6 +143,7 @@ export default function App() {
   }, [snapshot?.meta.generation]);
 
   const owned = tabOwnership.state === 'owned';
+  const protection = useStorageProtection(owned && !!snapshot);
   const perform: ActionHandler = async (work) => {
     if (lock.current || !owned) return;
     lock.current = true;
@@ -479,6 +481,7 @@ export default function App() {
                   )}
                   <div hidden={screen !== 'settings'}>
                     <Settings
+                      protection={protection}
                       snapshot={snapshot}
                       store={store}
                       onRestart={restartSession}
