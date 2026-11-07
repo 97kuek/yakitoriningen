@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import {
+  chooseFlavor,
   ledgerFixture,
   openFixture,
   openScreen,
@@ -24,10 +25,12 @@ test('味を追加・改名し、味別の本数を再開・会計・履歴・�
     .getByRole('group', { name: 'もも たれ', exact: true })
     .getByRole('spinbutton')
     .fill('2');
+  await chooseFlavor(page, 'もも', '塩だれ');
   await page
     .getByRole('group', { name: 'もも 塩だれ', exact: true })
     .getByRole('spinbutton')
     .fill('1');
+  await chooseFlavor(page, 'かわ', '塩');
   await page
     .getByRole('group', { name: 'かわ 塩', exact: true })
     .getByRole('spinbutton')
@@ -40,6 +43,7 @@ test('味を追加・改名し、味別の本数を再開・会計・履歴・�
       .getByRole('group', { name: 'もも たれ', exact: true })
       .getByRole('spinbutton'),
   ).toHaveValue('2');
+  await chooseFlavor(page, 'もも', '塩だれ');
   await expect(
     page
       .getByRole('group', { name: 'もも 塩だれ', exact: true })
@@ -98,7 +102,7 @@ test('味を追加・改名し、味別の本数を再開・会計・履歴・�
   expect(JSON.stringify(saved)).toContain('"shio":1');
 });
 
-test('味を分けても同じ商品の在庫上限を共有し、数字キーは先頭の味へ追加する', async ({
+test('味を分けても同じ商品の在庫上限を共有し、数字キーは選択中の味へ追加する', async ({
   page,
 }) => {
   await openFixture(page, await ledgerFixture());
@@ -109,17 +113,30 @@ test('味を分けても同じ商品の在庫上限を共有し、数字キー�
   await openScreen(page, '会計');
   await page.locator('body').click({ position: { x: 5, y: 120 } });
   await page.keyboard.press('1');
-  const tare = page.getByRole('group', { name: 'もも たれ', exact: true });
-  const shio = page.getByRole('group', { name: 'もも 塩だれ', exact: true });
-  await expect(tare.getByRole('spinbutton')).toHaveValue('1');
-  await shio.getByRole('button', { name: /増やす/ }).click();
-  await expect(tare.getByRole('button', { name: /増やす/ })).toBeDisabled();
-  await expect(shio.getByRole('button', { name: /増やす/ })).toBeDisabled();
+  const input = page.getByLabel('ももの本数', { exact: true });
+  const plus = page.getByRole('button', {
+    name: 'ももを1本増やす',
+    exact: true,
+  });
+  const minus = page.getByRole('button', {
+    name: 'ももを1本減らす',
+    exact: true,
+  });
+  await expect(input).toHaveValue('1');
+  await chooseFlavor(page, 'もも', '塩だれ');
+  await plus.click();
+  await expect(plus).toBeDisabled();
+  await chooseFlavor(page, 'もも', 'たれ');
+  await expect(plus).toBeDisabled();
+  await expect(input).toHaveValue('1');
   await expect(page.getByTestId('total')).toHaveText('￥300');
-  await shio.getByRole('button', { name: /減らす/ }).click();
-  await tare.getByRole('button', { name: /増やす/ }).click();
-  await expect(tare.getByRole('spinbutton')).toHaveValue('2');
-  await expect(shio.getByRole('spinbutton')).toHaveValue('0');
+  await chooseFlavor(page, 'もも', '塩だれ');
+  await minus.click();
+  await chooseFlavor(page, 'もも', 'たれ');
+  await plus.click();
+  await expect(input).toHaveValue('2');
+  await chooseFlavor(page, 'もも', '塩だれ');
+  await expect(input).toHaveValue('0');
   await expect(page.getByTestId('total')).toHaveText('￥300');
 });
 
@@ -130,7 +147,9 @@ test('0本に戻した味を削除しても、残った味の注文を最新価�
   const tare = page.getByRole('group', { name: 'もも たれ', exact: true });
   const shio = page.getByRole('group', { name: 'もも 塩だれ', exact: true });
   await tare.getByRole('spinbutton').fill('1');
+  await chooseFlavor(page, 'もも', '塩だれ');
   await shio.getByRole('spinbutton').fill('1');
+  await chooseFlavor(page, 'もも', 'たれ');
   await tare.getByRole('spinbutton').fill('0');
   await openScreen(page, '設定');
   await page.getByRole('button', { name: 'たれを削除', exact: true }).click();

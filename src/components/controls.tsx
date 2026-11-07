@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useId,
   useRef,
   useState,
@@ -9,6 +10,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon, type IconName } from './Icon';
 
 /**
@@ -217,6 +219,7 @@ export function Select({
   disabled = false,
   id,
   className = '',
+  floating = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -225,12 +228,20 @@ export function Select({
   disabled?: boolean;
   id?: string;
   className?: string;
+  floating?: boolean;
 }) {
   const generatedId = useId();
   const triggerId = id ?? generatedId;
   const listId = `${triggerId}-options`;
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [position, setPosition] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
   const [open, setOpen] = useState(false);
   const selectedIndex = options.findIndex((option) => option.value === value);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -283,7 +294,11 @@ export function Select({
   useEffect(() => {
     if (!open) return;
     function handleOutside(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (
+        !rootRef.current?.contains(event.target as Node) &&
+        !listRef.current?.contains(event.target as Node)
+      )
+        setOpen(false);
     }
     document.addEventListener('pointerdown', handleOutside, true);
     return () =>
@@ -296,10 +311,113 @@ export function Select({
 
   useEffect(() => {
     if (!open) return;
-    rootRef.current
-      ?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`)
-      ?.scrollIntoView({ block: 'nearest' });
-  }, [open, activeIndex]);
+    const list = listRef.current;
+    const option = list?.querySelector<HTMLElement>(
+      `[data-option-index="${activeIndex}"]`,
+    );
+    if (!list || !option) return;
+    if (!floating) {
+      option.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    // Scroll only the floating list, never its clipped product or the page.
+    if (option.offsetTop < list.scrollTop) list.scrollTop = option.offsetTop;
+    else if (
+      option.offsetTop + option.offsetHeight >
+      list.scrollTop + list.clientHeight
+    )
+      list.scrollTop =
+        option.offsetTop + option.offsetHeight - list.clientHeight;
+  }, [open, activeIndex, floating]);
+
+  // Keep menus inside the viewport and outside scrolling product-list clipping.
+  useLayoutEffect(() => {
+    if (!open || !floating) return;
+    let anchor: DOMRect | null = null;
+    function placeList() {
+      const trigger = triggerRef.current;
+      const list = listRef.current;
+      if (!trigger || !list) return;
+      const rect = trigger.getBoundingClientRect();
+      anchor = rect;
+      const gap = 4;
+      const margin = 8;
+      const below = window.innerHeight - rect.bottom - margin - gap;
+      const above = rect.top - margin - gap;
+      const desired = Math.min(240, list.scrollHeight + 2);
+      const up = below < desired && above > below;
+      const maxHeight = Math.max(0, Math.min(desired, up ? above : below));
+      const width = Math.min(
+        Math.max(rect.width, 180),
+        window.innerWidth - margin * 2,
+      );
+      setPosition({
+        left: Math.max(
+          margin,
+          Math.min(rect.left, window.innerWidth - width - margin),
+        ),
+        top: up ? rect.top - maxHeight - gap : rect.bottom + gap,
+        width,
+        maxHeight,
+      });
+    }
+    placeList();
+    function handleScroll(event: Event) {
+      if (listRef.current?.contains(event.target as Node)) return;
+      const rect = triggerRef.current?.getBoundingClientRect();
+      // A queued scroll event from focusing the trigger does not move its anchor.
+      if (
+        rect &&
+        anchor &&
+        (rect.top !== anchor.top || rect.left !== anchor.left)
+      )
+        setOpen(false);
+    }
+    window.addEventListener('resize', placeList);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      window.removeEventListener('resize', placeList);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [open, floating, options.length]);
+  const list = open && (
+    <ul
+      ref={listRef}
+      style={
+        floating
+          ? {
+              position: 'fixed',
+              inset: 'auto',
+              zIndex: 100,
+              minWidth: 0,
+              ...position,
+              visibility: position ? 'visible' : 'hidden',
+            }
+          : undefined
+      }
+      id={listId}
+      role="listbox"
+      aria-label={label}
+      className="control-select-options"
+      onPointerDown={(event) => event.preventDefault()}
+    >
+      {options.map((option, index) => (
+        <li
+          key={option.value}
+          id={`${listId}-${index}`}
+          role="option"
+          aria-selected={option.value === value}
+          data-option-index={index}
+          data-active={index === activeIndex}
+          onPointerMove={() => setActiveIndex(index)}
+          onClick={() => selectOption(index)}
+        >
+          <span>{option.label}</span>
+          {option.value === value && <Icon name="check" />}
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <div ref={rootRef} className={`control-select ${className}`}>
@@ -327,31 +445,7 @@ export function Select({
         <span>{options[selectedIndex]?.label ?? '選択してください'}</span>
         <Icon name="chevron" />
       </Button>
-      {open && (
-        <ul
-          id={listId}
-          role="listbox"
-          aria-label={label}
-          className="control-select-options"
-          onPointerDown={(event) => event.preventDefault()}
-        >
-          {options.map((option, index) => (
-            <li
-              key={option.value}
-              id={`${listId}-${index}`}
-              role="option"
-              aria-selected={option.value === value}
-              data-option-index={index}
-              data-active={index === activeIndex}
-              onPointerMove={() => setActiveIndex(index)}
-              onClick={() => selectOption(index)}
-            >
-              <span>{option.label}</span>
-              {option.value === value && <Icon name="check" />}
-            </li>
-          ))}
-        </ul>
-      )}
+      {floating && list ? createPortal(list, document.body) : list}
     </div>
   );
 }

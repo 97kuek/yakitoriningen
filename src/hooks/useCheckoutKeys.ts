@@ -31,14 +31,21 @@ export function useCheckoutKeys(
       const inside = panel.contains(target);
       if (!inside && target !== document.body) return;
       if (event.key !== 'Enter') {
-        if (target.closest('input, textarea, select, [contenteditable="true"]'))
+        if (
+          target.closest(
+            'input, textarea, select, [contenteditable="true"], [role="combobox"][aria-expanded="true"]',
+          )
+        )
           return;
         const product = panel.querySelector<HTMLButtonElement>(
           `button[data-product-key="${event.key}"]`,
         );
         if (!product || product.matches(':disabled')) return;
         event.preventDefault();
-        if (!event.repeat) product.click();
+        if (!event.repeat) {
+          product.click();
+          product.focus({ preventScroll: true });
+        }
         return;
       }
 

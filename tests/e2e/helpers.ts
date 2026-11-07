@@ -202,6 +202,18 @@ export async function openScreen(
   await target.click();
 }
 
+/** Chooses which flavor the product's single counter edits. */
+export async function chooseFlavor(
+  page: Page,
+  product: string,
+  flavor: string,
+) {
+  await page
+    .getByRole('combobox', { name: `${product}の味`, exact: true })
+    .click();
+  await page.getByRole('option', { name: flavor, exact: true }).click();
+}
+
 export async function addSkewers(page: Page, product: string, count = 1) {
   for (let index = 0; index < count; index++)
     await page.getByRole('button', { name: `${product}を1本増やす` }).click();
