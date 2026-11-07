@@ -6,6 +6,8 @@ import {
   MAX_BUNDLE_SIZE,
   MAX_CANCEL_REASON_LENGTH,
   MAX_EVENT_NAME_LENGTH,
+  MAX_FLAVORS,
+  MAX_FLAVOR_NAME_LENGTH,
   MAX_ID_LENGTH,
   MAX_MONEY,
   MAX_PRICE_LABEL_LENGTH,
@@ -63,6 +65,33 @@ export const stockSchema = z.preprocess(
     .refine((value) => Object.keys(value).length <= MAX_PRODUCTS),
 );
 export type Quantities = z.infer<typeof quantitySchema>;
+export const flavorQuantitiesSchema = z.preprocess(
+  rejectUnsafeKeys,
+  z
+    .record(
+      productIdSchema,
+      z.preprocess(
+        rejectUnsafeKeys,
+        z
+          .record(productIdSchema, z.number().int().min(0).max(MAX_QUANTITY))
+          .refine((value) => Object.keys(value).length <= MAX_FLAVORS),
+      ),
+    )
+    .refine((value) => Object.keys(value).length <= MAX_PRODUCTS),
+);
+export type FlavorQuantities = z.infer<typeof flavorQuantitiesSchema>;
+export const flavorSchema = z
+  .object({
+    id: productIdSchema,
+    name: z.string().trim().min(1).max(MAX_FLAVOR_NAME_LENGTH),
+  })
+  .strict();
+export type Flavor = z.infer<typeof flavorSchema>;
+/** Defaults are resolved for display/input only; legacy saved records stay unchanged. */
+export const defaultFlavors: readonly Flavor[] = [
+  { id: 'tare', name: 'たれ' },
+  { id: 'shio', name: '塩だれ' },
+];
 export const moneySchema = z.number().int().min(0).max(MAX_MONEY);
 const id = z.string().min(1).max(MAX_ID_LENGTH);
 const ticketNumberSchema = z.number().int().min(1).max(MAX_TICKETS);
@@ -90,9 +119,30 @@ export const priceSchema = z
     bundleItems: z.array(productIdSchema).max(MAX_PRODUCTS).optional(),
     discounted: z.boolean().optional(),
     bundleDuringDiscount: z.boolean().optional(),
+    flavors: z.array(flavorSchema).min(1).max(MAX_FLAVORS).optional(),
   })
   .strict()
   .superRefine((price, ctx) => {
+    if (
+      price.flavors &&
+      new Set(price.flavors.map((flavor) => flavor.id)).size !==
+        price.flavors.length
+    )
+      ctx.addIssue({
+        code: 'custom',
+        path: ['flavors'],
+        message: '味のIDが重複しています',
+      });
+    if (
+      price.flavors &&
+      new Set(price.flavors.map((flavor) => flavor.name)).size !==
+        price.flavors.length
+    )
+      ctx.addIssue({
+        code: 'custom',
+        path: ['flavors'],
+        message: '味の名前が重複しています',
+      });
     const ids = (price.items ?? defaultProducts).map((p) => p.id);
     if (new Set(ids).size !== ids.length)
       ctx.addIssue({
@@ -163,6 +213,7 @@ export const orderSchema = z
     day: dateSchema,
     ticket: ticketNumberSchema,
     quantities: quantitySchema,
+    flavors: flavorQuantitiesSchema.optional(),
     names: z.preprocess(
       rejectUnsafeKeys,
       z
@@ -205,6 +256,7 @@ export const commandSchema = z.discriminatedUnion('type', [
       assignmentId: id,
       confirmOperationId: id,
       quantities: quantitySchema,
+      flavors: flavorQuantitiesSchema.optional(),
       price: priceSchema,
     })
     .strict(),

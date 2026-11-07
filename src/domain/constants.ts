@@ -3,6 +3,8 @@
  * Lowering a limit can make existing databases and backups unreadable.
  */
 export const MAX_PRODUCTS = 30;
+export const MAX_FLAVORS = 10;
+export const MAX_FLAVOR_NAME_LENGTH = 20;
 export const MAX_QUANTITY = 999;
 export const MAX_STOCK = 1_000_000;
 export const LOW_STOCK = 20;

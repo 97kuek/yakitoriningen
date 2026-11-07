@@ -3,8 +3,12 @@ import {
   DEFAULT_UNIT_PRICE,
   PRICE_LABELS,
 } from './constants';
-import { defaultProducts } from './model';
-import type { MenuItem, Price, Snapshot } from './model';
+import { defaultProducts, defaultFlavors } from './model';
+import type { Flavor, MenuItem, Price, Snapshot } from './model';
+
+export function getFlavors(price: Price): Flavor[] {
+  return price.flavors ?? defaultFlavors.map((flavor) => ({ ...flavor }));
+}
 
 export function getMenu(price: Price): MenuItem[] {
   return (
@@ -52,6 +56,7 @@ export function findActivePrice(
 
 export function createMenuDraft(price: Price): Price & {
   items: MenuItem[];
+  flavors: Flavor[];
   bundleItems: string[];
   discounted: boolean;
 } {
@@ -63,6 +68,7 @@ export function createMenuDraft(price: Price): Price & {
   return {
     ...price,
     items,
+    flavors: getFlavors(price).map((flavor) => ({ ...flavor })),
     bundleItems: price.bundleItems
       ? [...price.bundleItems]
       : items.map((item) => item.id),

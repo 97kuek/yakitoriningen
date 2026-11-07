@@ -10,6 +10,7 @@ import type {
   Snapshot,
   Ticket,
   Quantities,
+  FlavorQuantities,
 } from '../domain/model';
 
 /** Atomic access to the ledger. Implementations decide how records are persisted. */
@@ -66,7 +67,11 @@ export interface BackupHistory {
   record(meta: Meta): void;
 }
 
-export type Draft = { quantities: Quantities; price: Price | null };
+export type Draft = {
+  quantities: Quantities;
+  flavors?: FlavorQuantities;
+  price: Price | null;
+};
 /** A temporary, local input copy scoped to the database generation and business day. */
 export interface DraftCache {
   load(meta: Meta): Draft | null;

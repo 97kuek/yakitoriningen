@@ -28,6 +28,7 @@ import {
 import { restoreDays } from './restore';
 import { quote } from '../domain/pricing';
 import { getMenu } from '../domain/catalog';
+import { validateFlavorQuantities } from '../domain/flavors';
 import { handoffUndoError } from '../domain/handoff';
 import { applyOrderAction } from '../domain/order';
 import { contextOf } from '../domain/snapshot';
@@ -154,6 +155,12 @@ export class CashierCommands {
     input: Command,
   ): Promise<Operation> {
     const command = commandSchema.parse(input);
+    if (command.type === 'reserve')
+      validateFlavorQuantities(
+        command.quantities,
+        command.flavors,
+        command.price,
+      );
     return this.repository.write(async (tx) => {
       const meta = await tx.meta.get(META_KEY);
       assertContext(meta, context);
@@ -341,6 +348,7 @@ export class CashierCommands {
     const price = await tx.prices.get(command.price.id);
     if (!price || canonical(price) !== canonical(command.price))
       throw new Error('価格設定が一致しません。');
+    validateFlavorQuantities(command.quantities, command.flavors, price);
     const available = availableStock((await readSnapshot(tx))!);
     for (const [id, value] of Object.entries(command.quantities))
       if (available[id] !== undefined && value > available[id])
@@ -366,6 +374,7 @@ export class CashierCommands {
       day: op.day,
       ticket: ticket.number,
       quantities: command.quantities,
+      ...(command.flavors === undefined ? {} : { flavors: command.flavors }),
       names: Object.fromEntries(getMenu(price).map((p) => [p.id, p.name])),
       price,
       quote: estimate,

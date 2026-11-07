@@ -10,6 +10,7 @@ import {
 import type { Snapshot } from '../domain/model';
 import { quote } from '../domain/pricing';
 import { getMenu } from '../domain/catalog';
+import { validateFlavorQuantities } from '../domain/flavors';
 import { ownsTicket, releasesTicket } from '../domain/ticket';
 import { validateOrderHistory } from './order-history';
 import { canonical } from './serialization';
@@ -98,6 +99,7 @@ function validate(data: Snapshot): void {
     data.logs.map((log) => [log.operationId, log.sequence]),
   );
   for (const order of data.orders) {
+    validateFlavorQuantities(order.quantities, order.flavors, order.price);
     requireValid(order.event === data.meta.event, '開催回が一致しません');
     requireValid(
       canonical(order.price) === canonical(prices.get(order.price.id)),
@@ -175,6 +177,7 @@ function validate(data: Snapshot): void {
       requireValid(
         canonical(reservation.command.quantities) ===
           canonical(order.quantities) &&
+          canonical(reservation.command.flavors) === canonical(order.flavors) &&
           canonical(reservation.command.price) === canonical(order.price) &&
           reservation.event === order.event &&
           reservation.day === order.day &&
@@ -244,6 +247,12 @@ function validate(data: Snapshot): void {
       requireValid(sequences.has(i), 'ログ連番の欠落');
   }
   for (const op of data.operations) {
+    if (op.command.type === 'reserve')
+      validateFlavorQuantities(
+        op.command.quantities,
+        op.command.flavors,
+        op.command.price,
+      );
     const log = logs.get(op.id);
     requireValid(
       op.context.databaseId === data.meta.databaseId &&

@@ -1,9 +1,20 @@
 import { z } from 'zod';
 import type { Draft, DraftCache } from '../application/ports';
-import { count, priceSchema, quantitySchema, type Meta } from '../domain/model';
+import {
+  count,
+  flavorQuantitiesSchema,
+  priceSchema,
+  quantitySchema,
+  type Meta,
+} from '../domain/model';
+import { validateFlavorQuantities } from '../domain/flavors';
 
 const schema = z
-  .object({ quantities: quantitySchema, price: priceSchema.nullable() })
+  .object({
+    quantities: quantitySchema,
+    flavors: flavorQuantitiesSchema.optional(),
+    price: priceSchema.nullable(),
+  })
   .strict();
 /** Input recovery only; never writes an order or a payment. */
 export class LocalDraftCache implements DraftCache {
@@ -15,11 +26,18 @@ export class LocalDraftCache implements DraftCache {
       const text = localStorage.getItem(this.key(meta));
       if (!text) return null;
       const result = schema.safeParse(JSON.parse(text));
-      return result.success &&
-        result.data.price &&
-        count(result.data.quantities) > 0
-        ? result.data
-        : null;
+      if (
+        !result.success ||
+        !result.data.price ||
+        count(result.data.quantities) === 0
+      )
+        return null;
+      validateFlavorQuantities(
+        result.data.quantities,
+        result.data.flavors,
+        result.data.price,
+      );
+      return result.data;
     } catch {
       return null;
     }

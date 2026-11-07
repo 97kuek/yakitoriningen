@@ -38,6 +38,23 @@ it('空の注文は一時保存を消し、確定後に復活させない', () =
   cache.save(meta, { quantities: {}, price: null });
   expect(cache.load(meta)).toBeNull();
 });
+it('味別の本数を再読み込み後も保つ', () => {
+  const cache = new LocalDraftCache();
+  const flavored = {
+    ...draft,
+    flavors: { momo: { tare: 2, shio: 1 } },
+  };
+  cache.save(meta, flavored);
+  expect(cache.load(meta)).toEqual(flavored);
+});
+it('商品合計を超える味の一時保存は読み込まない', () => {
+  const cache = new LocalDraftCache();
+  cache.save(meta, {
+    ...draft,
+    flavors: { momo: { tare: 4 } },
+  } as typeof draft);
+  expect(cache.load(meta)).toBeNull();
+});
 it('壊れた一時保存や保存できない環境でも会計を停止させない', () => {
   const cache = new LocalDraftCache();
   cache.save(meta, draft);
