@@ -214,7 +214,9 @@ test('30商品の注文でも数量と商品IDが干渉せず、受け渡し後�
   for (const item of items) await addSkewers(page, item.name);
   await expect(page.getByTestId('total')).toHaveText('￥3,000');
   await pay(page, '5000');
-  await expect(page.getByTestId('waiting-order')).toContainText(/商品30\s*1本/);
+  await expect(page.getByTestId('waiting-order')).toContainText(
+    /商品30\s*たれ\s*1本/,
+  );
   await addSkewers(page, '商品1');
   await pay(page, '5000');
   const totals = page.locator('.waiting-totals');

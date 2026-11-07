@@ -11,7 +11,7 @@ import { isAwaitingHandoff } from '../domain/order';
 import { needsTicketReturn } from '../domain/ticket';
 import { waitTime, elapsedWait } from '../domain/wait-time';
 import { newId } from '../lib/id';
-import { orderItems, timeText, dayText } from '../presentation/format';
+import { orderLines, orderLineTotals, timeText } from '../presentation/format';
 import type { Order, Snapshot } from '../domain/model';
 import type { Handoff, Shared } from '../ui';
 import { Icon } from './Icon';
@@ -67,15 +67,24 @@ export function Waiting({
     (order) => needsTicketReturn(order) || heldRecoveryIds.includes(order.id),
   );
   const products = useMemo(() => {
-    const totals = new Map<string, ReturnType<typeof orderItems>[number]>();
-    for (const order of waiting)
-      for (const item of orderItems(order)) {
-        totals.set(item.id, {
-          ...item,
-          quantity: (totals.get(item.id)?.quantity ?? 0) + item.quantity,
-        });
+    const groups = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        lines: ReturnType<typeof orderLineTotals>;
       }
-    return [...totals.values()];
+    >();
+    for (const line of orderLineTotals(waiting)) {
+      const product = groups.get(line.id) ?? {
+        id: line.id,
+        name: line.name,
+        lines: [],
+      };
+      product.lines.push(line);
+      groups.set(line.id, product);
+    }
+    return [...groups.values()];
   }, [waiting]);
   const completedOrder = snapshot.orders.find(
     (order) => order.id === lastHandoff?.orderId,
@@ -157,13 +166,24 @@ export function Waiting({
           aria-label="未受け渡しの本数（調理済み分を含む）"
           title="調理済み分を含む、未受け渡しの本数"
         >
-          {products.map((p) => (
-            <span key={p.id}>
-              <span>{p.name}</span>
-              <strong>
-                {p.quantity}
-                <small>本</small>
-              </strong>
+          {products.map((product) => (
+            <span key={product.id}>
+              <span>{product.name}</span>
+              <span className="waiting-product-flavors">
+                {product.lines.map((line) => (
+                  <span key={line.flavorName ?? 'unspecified'}>
+                    {line.flavorName && (
+                      <small className="order-flavor-name">
+                        {line.flavorName}
+                      </small>
+                    )}
+                    <strong>
+                      {line.quantity}
+                      <small>本</small>
+                    </strong>
+                  </span>
+                ))}
+              </span>
             </span>
           ))}
         </div>
@@ -190,9 +210,15 @@ export function Waiting({
             <Ticket number={order.ticket} />
             <div className="order-content">
               <div className="order-quantities">
-                {orderItems(order).map((item) => (
-                  <span key={item.id}>
+                {orderLines(order).map((item) => (
+                  <span key={JSON.stringify([item.id, item.flavorId ?? null])}>
                     {item.name}
+                    {item.flavorName && (
+                      <small className="order-flavor-name">
+                        {' '}
+                        {item.flavorName}
+                      </small>
+                    )}
                     <strong>
                       {item.quantity}
                       <small>本</small>

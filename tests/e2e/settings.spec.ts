@@ -145,7 +145,7 @@ test('追加商品の対象セットと個別値下げを会計し、削除後�
   await page.getByRole('button', { name: '変更を保存', exact: true }).click();
   await expect(page.getByText('保存しました。', { exact: true })).toBeVisible();
   await openScreen(page, '注文履歴');
-  await expect(page.getByRole('table')).toContainText('つくね 2本');
+  await expect(page.getByRole('table')).toContainText('つくね（たれ） 2本');
 });
 
 test('空欄の価格は保存せず、明示した0円と上限の価格は入力中の注文を変えずに保存する', async ({

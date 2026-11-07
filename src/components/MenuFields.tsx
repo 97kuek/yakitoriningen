@@ -11,6 +11,7 @@ import {
 import type { MenuForm } from '../presentation/menu-form';
 import { newId } from '../lib/id';
 import { DigitsInput, IconButton } from './controls';
+import { FlavorFields } from './FlavorFields';
 import './MenuSettings.css';
 
 /** Shared fields for editing the live menu or preparing the next event. */
@@ -154,6 +155,7 @@ export function MenuFields({
           </div>
         ))}
       </div>
+      <FlavorFields draft={draft} onChange={editDraft} />
       <BundleFields draft={draft} onChange={editDraft} />
     </>
   );

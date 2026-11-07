@@ -93,3 +93,26 @@
 .menu-item-name input[type='checkbox'] {
   justify-self: center;
 }
+
+.flavor-settings {
+  margin: 20px 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.flavor-settings .section-heading {
+  margin-bottom: 8px;
+}
+.flavor-settings h3 {
+  margin: 0;
+}
+.flavor-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 20px;
+}
+.flavor-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}

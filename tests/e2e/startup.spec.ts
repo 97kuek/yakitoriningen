@@ -160,7 +160,9 @@ test('通信なしで再起動しても途中の会計を札と金額で示し�
   await startCounter(page);
   await expect(page.getByRole('heading', { name: 'お会計' })).toBeVisible();
   await confirmPayment(page);
-  await expect(page.getByTestId('waiting-order')).toContainText(/もも\s*1本/);
+  await expect(page.getByTestId('waiting-order')).toContainText(
+    /もも\s*たれ\s*1本/,
+  );
 });
 
 test('確認待ちの記録は再試行に失敗しても途中で消えない', async ({ page }) => {

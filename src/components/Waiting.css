@@ -186,3 +186,17 @@
 .waiting-recovery-slot:empty {
   display: none;
 }
+
+.waiting-product-flavors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.waiting-product-flavors > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.waiting-product-flavors .order-flavor-name {
+  margin: 0;
+}

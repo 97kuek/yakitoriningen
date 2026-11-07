@@ -33,7 +33,7 @@ test('会計・受け渡し・再起動・返金を通しで行い、書込はst
   await pay(page);
   await expect(page.getByTestId('checkout-feedback')).toBeEmpty();
   const order = page.getByTestId('waiting-order').first();
-  await expect(order).toContainText(/もも\s*3本/);
+  await expect(order).toContainText(/もも\s*たれ\s*3本/);
   await addSkewers(page, 'ねぎま');
   await completeButton(page).click();
   await expect(page.getByLabel('ねぎまの本数')).toHaveValue('1');
@@ -170,8 +170,12 @@ test('未入金の注文は取り消し・本数修正でき、クリアした�
   await expect(page.getByLabel('ももの本数')).toHaveValue('1');
   await addSkewers(page, 'かわ');
   await pay(page);
-  await expect(page.getByTestId('waiting-order')).toContainText(/もも\s*1本/);
-  await expect(page.getByTestId('waiting-order')).toContainText(/かわ\s*1本/);
+  await expect(page.getByTestId('waiting-order')).toContainText(
+    /もも\s*たれ\s*1本/,
+  );
+  await expect(page.getByTestId('waiting-order')).toContainText(
+    /かわ\s*たれ\s*1本/,
+  );
 
   // Clear keeps the original quantities and price until a new entry starts.
   await page.getByLabel('ももの本数').fill('2');

@@ -351,9 +351,16 @@ main {
 }
 .counter-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 0.94fr) minmax(400px, 1.06fr);
+  grid-template-columns: minmax(400px, 1.06fr) minmax(360px, 0.94fr);
+  grid-template-areas: 'waiting checkout';
   gap: 20px;
   align-items: start;
+}
+.counter-layout > .checkout {
+  grid-area: checkout;
+}
+.counter-layout > .waiting {
+  grid-area: waiting;
 }
 .panel {
   border: 1.5px solid var(--line);
@@ -926,7 +933,7 @@ dialog > h2 {
     padding-top: 22px;
   }
   .counter-layout {
-    grid-template-columns: 1fr 1.12fr;
+    grid-template-columns: 1.12fr 1fr;
     gap: 25px;
   }
   .product {
@@ -951,7 +958,7 @@ dialog > h2 {
     gap: 8px;
   }
   .counter-layout {
-    grid-template-columns: minmax(340px, 1fr) minmax(350px, 1fr);
+    grid-template-columns: minmax(350px, 1fr) minmax(340px, 1fr);
     gap: 17px;
   }
   .panel {
@@ -1031,6 +1038,9 @@ dialog > h2 {
   }
   .counter-layout {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      'checkout'
+      'waiting';
     gap: 17px;
   }
   .panel {
@@ -2100,6 +2110,54 @@ main:has(.startup-shell) .app-content {
 .checkout .product-title > .product-stock {
   grid-column: 2;
   grid-row: 2;
+}
+
+.checkout .product {
+  display: block;
+  padding: 8px;
+}
+.checkout .product-title {
+  line-height: 1.2;
+}
+.product-flavors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px 20px;
+  margin-top: 8px;
+}
+.flavor-counter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.flavor-counter > span {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-body);
+}
+.flavor-counter .stepper {
+  gap: 4px;
+}
+.flavor-counter .quantity-input input {
+  width: 40px;
+}
+.order-flavor-name {
+  font-size: var(--font-body);
+  font-weight: 400;
+  color: var(--muted);
+  margin-inline: 4px;
+}
+.payment .receipt-items .order-flavor-name {
+  display: inline;
+}
+@media (max-width: 1100px) {
+  .product-flavors {
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  }
+  .flavor-counter {
+    flex-direction: column;
+  }
 }
 
 .startup-summary {

@@ -2,6 +2,7 @@ import { getMenu } from '../domain/catalog';
 import type { Order, Snapshot } from '../domain/model';
 import { JAPAN_TIME_ZONE } from '../domain/time';
 import { dayName } from '../domain/day';
+import { orderText } from './format';
 
 // Excel needs a byte order mark to read UTF-8 CSV as Japanese text.
 const UTF8_BOM = '﻿';
@@ -51,6 +52,7 @@ export function ordersCsv(
     '受渡済',
     '札回収済',
     '取消理由',
+    '味別内訳',
   ];
   const names = new Map<string, string>();
   if (snapshot.meta && snapshot.operations && snapshot.logs)
@@ -82,6 +84,7 @@ export function ordersCsv(
     o.delivered ? '受け渡し済み' : '未受け渡し',
     o.returned ? '回収済み' : '未回収',
     o.cancelReason,
+    o.flavors === undefined ? '' : orderText(o),
   ]);
   return (
     UTF8_BOM +

@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconButton, Button, EnterHint, preventKeyRepeat } from './controls';
 import { count } from '../domain/model';
-import type { Operation, Order, Quantities, Snapshot } from '../domain/model';
+import type { Operation, Order, Snapshot } from '../domain/model';
 import {
   bundleApplies,
   findActivePrice,
   getMenu,
-  getUnitPrice,
+  getFlavors,
 } from '../domain/catalog';
-import { MAX_MONEY, MAX_QUANTITY, LOW_STOCK } from '../domain/constants';
+import { MAX_MONEY, MAX_QUANTITY } from '../domain/constants';
 import { tryQuote } from '../domain/pricing';
 import { pendingOrders } from '../domain/snapshot';
 import { newId } from '../lib/id';
-import { orderItems, yen } from '../presentation/format';
+import { orderLines, yen } from '../presentation/format';
 import { stockLevels } from '../domain/inventory';
 import { useCheckoutKeys } from '../hooks/useCheckoutKeys';
 import { emptyDraft } from '../ui';
@@ -20,6 +20,8 @@ import type { Draft, Shared } from '../ui';
 import type { Cashier } from '../application/ports';
 import { Icon } from './Icon';
 import { TicketPicker } from './TicketPicker';
+import { ProductInput } from './ProductInput';
+import { validateFlavorQuantities } from '../domain/flavors';
 
 /** Amounts added for common notes and coins. */
 const CASH_INCREMENTS = [100, 500, 1000, 5000, 10000];
@@ -44,6 +46,7 @@ export function Checkout({
   const activePrice = findActivePrice(snapshot)!;
   const price = draft.price ?? activePrice;
   const products = getMenu(price);
+  const flavors = getFlavors(price);
   const { remaining, available, balance } = useMemo(
     () => stockLevels(snapshot),
     [snapshot],
@@ -61,22 +64,52 @@ export function Checkout({
     (ticket) => ticket.number <= snapshot.meta.ticketCount,
   );
   const hasTicket = tickets.some((ticket) => ticket.orderId === null);
-  const changeQuantity = (id: keyof Quantities, value: number) => {
+  const changeQuantity = (
+    id: string,
+    flavorId: string | undefined,
+    value: number,
+  ) => {
+    const allocated = draft.flavors?.[id] ?? {};
+    const selected = flavorId
+      ? (allocated[flavorId] ?? 0)
+      : (draft.quantities[id] ?? 0) -
+        Object.values(allocated).reduce((sum, n) => sum + n, 0);
+    const total = (draft.quantities[id] ?? 0) - selected + value;
     if (
       !Number.isInteger(value) ||
       value < 0 ||
-      value > Math.min(MAX_QUANTITY, available[id] ?? MAX_QUANTITY)
+      total > Math.min(MAX_QUANTITY, available[id] ?? MAX_QUANTITY)
     )
       return;
     setClearedDraft(null);
-    const quantities = Object.fromEntries(
-      products.map((product) => [
-        product.id,
-        product.id === id ? value : (draft.quantities[product.id] ?? 0),
-      ]),
+    const quantities = { ...draft.quantities, [id]: total };
+    let nextFlavors = draft.flavors;
+    if (flavorId) {
+      const next = Object.fromEntries(
+        Object.entries({ ...allocated, [flavorId]: value }).filter(
+          ([, quantity]) => quantity > 0,
+        ),
+      );
+      nextFlavors = { ...draft.flavors };
+      if (Object.keys(next).length) nextFlavors[id] = next;
+      else delete nextFlavors[id];
+    }
+    setDraft(
+      count(quantities)
+        ? {
+            quantities,
+            price,
+            ...(nextFlavors ? { flavors: nextFlavors } : {}),
+          }
+        : emptyDraft(),
     );
-    setDraft({ quantities, price: count(quantities) ? price : null });
   };
+  let canUseLatest = !!latestEstimate;
+  try {
+    validateFlavorQuantities(draft.quantities, draft.flavors, activePrice);
+  } catch {
+    canUseLatest = false;
+  }
   if (pending.length)
     return (
       <section className="checkout panel payment-mode">
@@ -92,6 +125,7 @@ export function Checkout({
               setDraft({
                 quantities: { ...order.quantities },
                 price: order.price,
+                ...(order.flavors ? { flavors: order.flavors } : {}),
               })
             }
             resumed={resumeOrderIds.includes(order.id)}
@@ -158,7 +192,7 @@ export function Checkout({
       {draft.price && draft.price.id !== activePrice.id && (
         <div className="notice compact-notice">
           <span>この注文は変更前の価格です。</span>
-          {latestEstimate ? (
+          {canUseLatest && latestEstimate ? (
             <Button
               variant="plain"
               type="button"
@@ -175,67 +209,32 @@ export function Checkout({
         </div>
       )}
       <div className="products">
-        {products.map((p, index) => (
-          <div className={`product product-${index}`} key={p.id}>
-            <div className="product-name">
-              <div className="product-title">
-                {index < 9 && (
-                  <kbd className="product-key" aria-hidden="true">
-                    {index + 1}
-                  </kbd>
-                )}
-                <strong>{p.name}</strong>
-                {remaining[p.id] !== undefined && (
-                  <span
-                    className={`product-stock ${remaining[p.id] <= LOW_STOCK ? 'stock-low' : ''}`}
-                  >
-                    残り {remaining[p.id]}本
-                    {balance[p.id] < 0 ? '・在庫を確認' : ''}
-                  </span>
-                )}
-              </div>
-              <small>{yen(getUnitPrice(p, price))}</small>
-            </div>
-            <div className="stepper">
-              <IconButton
-                variant="secondary"
-                type="button"
-                disabled={!(draft.quantities[p.id] ?? 0)}
-                onClick={() =>
-                  changeQuantity(p.id, (draft.quantities[p.id] ?? 0) - 1)
-                }
-                label={`${p.name}を1本減らす`}
-                icon="minus"
-              />
-              <div className="quantity-input">
-                <input
-                  aria-label={`${p.name}の本数`}
-                  type="number"
-                  min="0"
-                  max={Math.min(MAX_QUANTITY, available[p.id] ?? MAX_QUANTITY)}
-                  value={draft.quantities[p.id] ?? 0}
-                  onChange={(e) => changeQuantity(p.id, Number(e.target.value))}
-                />
-              </div>
-              <IconButton
-                variant="secondary"
-                type="button"
-                className="increase"
-                data-product-key={index < 9 ? index + 1 : undefined}
-                aria-keyshortcuts={index < 9 ? String(index + 1) : undefined}
-                disabled={
-                  (draft.quantities[p.id] ?? 0) >=
-                  Math.min(MAX_QUANTITY, available[p.id] ?? MAX_QUANTITY)
-                }
-                onClick={() =>
-                  changeQuantity(p.id, (draft.quantities[p.id] ?? 0) + 1)
-                }
-                label={`${p.name}を1本増やす`}
-                icon="plus"
-              />
-            </div>
-          </div>
-        ))}
+        {products.map((product, index) => {
+          const allocated = draft.flavors?.[product.id] ?? {};
+          const unspecified =
+            (draft.quantities[product.id] ?? 0) -
+            Object.values(allocated).reduce((sum, n) => sum + n, 0);
+          return (
+            <ProductInput
+              key={product.id}
+              product={product}
+              price={price}
+              index={index}
+              flavors={flavors}
+              quantities={allocated}
+              unspecified={unspecified}
+              remaining={remaining[product.id]}
+              inconsistent={balance[product.id] < 0}
+              available={Math.min(
+                MAX_QUANTITY,
+                available[product.id] ?? MAX_QUANTITY,
+              )}
+              onChange={(flavorId, value) =>
+                changeQuantity(product.id, flavorId, value)
+              }
+            />
+          );
+        })}
       </div>
       <div className="checkout-total">
         <div>
@@ -275,6 +274,7 @@ export function Checkout({
               assignmentId: newId(),
               confirmOperationId: newId(),
               quantities: draft.quantities,
+              ...(draft.flavors ? { flavors: draft.flavors } : {}),
               price,
             });
             setClearedDraft(null);
@@ -393,9 +393,12 @@ function Payment({
         </p>
       )}
       <div className="receipt-items">
-        {orderItems(order).map((item) => (
-          <span key={item.id}>
+        {orderLines(order).map((item, index) => (
+          <span key={`${item.id}-${index}`}>
             {item.name}
+            {item.flavorName && (
+              <span className="order-flavor-name">{item.flavorName}</span>
+            )}
             <b>{item.quantity}本</b>
           </span>
         ))}

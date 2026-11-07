@@ -204,8 +204,8 @@ test('合計の横にセット内訳を置き、お釣りを筆算順に揃え�
   const totals = page.getByRole('group', {
     name: '未受け渡しの本数（調理済み分を含む）',
   });
-  await expect(totals).toContainText('もも3本');
-  await expect(totals).toContainText('かわ3本');
+  await expect(totals).toContainText(/もも\s*たれ\s*3本/);
+  await expect(totals).toContainText(/かわ\s*たれ\s*3本/);
   await expect(totals.locator('strong').first()).toHaveCSS('font-size', '24px');
   await openScreen(page, '注文履歴');
   await page.getByRole('button', { name: '注文の詳細', exact: true }).click();

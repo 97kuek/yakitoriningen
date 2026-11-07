@@ -1,5 +1,5 @@
 import type { Order, Snapshot } from '../domain/model';
-import { orderItems, yen } from '../presentation/format';
+import { orderLines, yen } from '../presentation/format';
 import {
   orderDateTime,
   historyStateLabel,
@@ -35,9 +35,14 @@ export function OrderDetails({
         {order.paidAt ? '会計日時' : '受付日時'} {orderDateTime(order)}
       </time>
       <ul className="order-details-items" aria-label="注文した商品">
-        {orderItems(order).map((item) => (
-          <li key={item.id}>
-            <span>{item.name}</span>
+        {orderLines(order).map((item) => (
+          <li key={JSON.stringify([item.id, item.flavorId ?? null])}>
+            <span>
+              {item.name}
+              {item.flavorName && (
+                <small className="order-flavor-name"> {item.flavorName}</small>
+              )}
+            </span>
             <span>{item.quantity}本</span>
           </li>
         ))}

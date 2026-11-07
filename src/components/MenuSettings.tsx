@@ -18,6 +18,7 @@ import './MenuSettings.css';
 function menuContents(price: MenuForm) {
   return JSON.stringify({
     items: price.items,
+    flavors: price.flavors,
     bundleEnabled: price.bundleEnabled,
     bundleItems: price.bundleItems,
     bundleSize: price.bundleSize,
