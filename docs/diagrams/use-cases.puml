@@ -18,7 +18,7 @@ rectangle "焼き鳥人間（PC内のWebアプリ）" {
   usecase "受け渡し完了を取り消す" as Undo
   usecase "注文履歴を確認する" as History
   usecase "会計を全額返金する" as Refund
-  usecase "商品・価格・在庫・経費を設定する" as Settings
+  usecase "商品・味・価格・在庫・経費を設定する" as Settings
   usecase "売上を集計する" as Summary
   usecase "JSONバックアップを保存する" as Backup
   usecase "JSONから営業記録を復元する" as Restore

@@ -38,7 +38,16 @@ class MenuItem <<dataType>> {
   +price: number
   +discountPrice: number
 }
+class Flavor <<dataType>> {
+  +id: string
+  +name: string
+}
+class FlavorQuantities <<dataType>> {
+  +[productId]: Record<flavorId, number>
+}
 class Order <<dataType>> {
+  +quantities: Record<productId, number>
+  +flavors: FlavorQuantities [0..1]
   +id: string
   +assignmentId: string
   +confirmOperationId: string
@@ -92,6 +101,8 @@ Snapshot --> "0..*" Ticket : tickets {ordered}
 Snapshot --> "0..*" Operation : operations {ordered}
 Snapshot --> "0..*" Log : logs {ordered}
 Price "0..*" --> "0..*" MenuItem : items {ordered}\n{任意。指定時は1件以上}
+Price "0..*" --> "0..*" Flavor : flavors {ordered}\n{任意。指定時は1〜10件}
+Order ..> FlavorQuantities : flavorsの型
 Order "0..*" --> "1" Price : price（当時の値）
 Order "0..*" --> "1" Quote : quote
 Operation "0..*" --> "1" Context : context
