@@ -15,6 +15,20 @@ test('味が4種類でも商品ごとの本数操作は1組で、味を切り替
   await openFixture(page, await ledgerFixture({ price: { flavors } }));
   for (const product of await page.locator('.product').all())
     await expect(product.locator('.stepper')).toHaveCount(1);
+  for (const width of [1280, 1174, 864, 390]) {
+    await page.setViewportSize({ width, height: 720 });
+    for (const product of await page.locator('.product').all()) {
+      const info = (await product.locator('.product-title').boundingBox())!;
+      const flavor = (await product.getByRole('combobox').boundingBox())!;
+      const counter = (await product.locator('.stepper').boundingBox())!;
+      expect(flavor.x).toBeGreaterThanOrEqual(info.x + info.width);
+      expect(flavor.x + flavor.width).toBeLessThanOrEqual(counter.x);
+      expect(flavor.y).toBeLessThan(info.y + info.height);
+      expect(flavor.y + flavor.height).toBeGreaterThan(info.y);
+      expect(Math.abs(flavor.y - counter.y)).toBeLessThan(1);
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   const momo = page.locator('.product').first();
   const plus = momo.getByRole('button', {
     name: 'ももを1本増やす',
